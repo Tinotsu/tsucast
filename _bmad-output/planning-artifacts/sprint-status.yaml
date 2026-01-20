@@ -1,0 +1,416 @@
+# Sprint Status - tsucast
+# Generated: 2026-01-20
+# Project: tsucast
+# Tracking System: file-system
+# Story Location: _bmad-output/stories/
+
+# STATUS DEFINITIONS:
+# ==================
+# Epic Status:
+#   - backlog: Epic not yet started
+#   - in-progress: Epic actively being worked on
+#   - done: All stories in epic completed
+#
+# Story Status:
+#   - backlog: Story only exists in epic file
+#   - ready-for-dev: Story file created, ready for development
+#   - in-progress: Developer actively working on implementation
+#   - review: Implementation complete, ready for review
+#   - done: Story completed
+#
+# Retrospective Status:
+#   - optional: Can be completed but not required
+#   - done: Retrospective has been completed
+#
+# WORKFLOW NOTES:
+# ===============
+# - Mark epic as 'in-progress' when starting work on its first story
+# - Create story file with /create-story before starting development
+# - Dev moves story to 'review', then runs code-review
+# - After code-review passes, mark story as 'done'
+
+generated: 2026-01-20 22:00
+project: tsucast
+project_key: tsucast
+tracking_system: file-system
+story_location: "_bmad-output/stories/"
+
+# =============================================================================
+# IMPLEMENTATION PRIORITY ORDER
+# =============================================================================
+# Epic 1: Authentication (foundation for all features)
+# Epic 2: Content Ingestion (prerequisite for audio)
+# Epic 3: Audio Generation & Playback (core magic experience)
+# Epic 4: Library & Organization (retention/stickiness)
+# Epic 5: Monetization (business model)
+# Epic 6: Production Readiness (launch quality)
+# =============================================================================
+
+development_status:
+  # ===========================================================================
+  # EPIC 1: User Authentication & Session Management
+  # ===========================================================================
+  # Goal: Users can securely register, login, and access tsucast across devices
+  # FRs: FR35, FR36, FR37, FR38
+  # Stories: 3
+  epic-1:
+    title: "User Authentication & Session Management"
+    status: done
+    stories: 3
+    frs: [FR35, FR36, FR37, FR38]
+
+  1-1-email-registration-login:
+    title: "Email Registration & Login"
+    status: done
+    frs: [FR35, FR36]
+    dependencies: []
+    files:
+      - app/(auth)/login.tsx
+      - app/(auth)/signup.tsx
+      - hooks/useAuth.ts
+      - services/supabase.ts
+      - supabase/migrations/001_user_profiles.sql
+
+  1-2-social-authentication:
+    title: "Social Authentication (Apple & Google)"
+    status: done
+    frs: [FR36]
+    dependencies: [1-1]
+    files:
+      - components/auth/AppleSignInButton.tsx
+      - components/auth/GoogleSignInButton.tsx
+      - hooks/useAuth.ts
+
+  1-3-session-management-logout:
+    title: "Session Management & Logout"
+    status: done
+    frs: [FR37, FR38]
+    dependencies: [1-1]
+    files:
+      - hooks/useAuth.ts
+      - app/(tabs)/settings.tsx
+
+  epic-1-retrospective: optional
+
+  # ===========================================================================
+  # EPIC 2: Content Ingestion
+  # ===========================================================================
+  # Goal: Users can paste any URL and have content extracted for audio
+  # FRs: FR1, FR2, FR3, FR4, FR5
+  # Stories: 4
+  epic-2:
+    title: "Content Ingestion"
+    status: backlog
+    stories: 4
+    frs: [FR1, FR2, FR3, FR4, FR5]
+
+  2-1-url-input-validation:
+    title: "URL Input & Validation"
+    status: ready-for-dev
+    frs: [FR1]
+    dependencies: [epic-1]
+    files:
+      - app/(tabs)/index.tsx
+      - components/add/PasteInput.tsx
+      - utils/validation.ts
+      - apps/api/src/routes/cache.ts
+
+  2-2-html-content-extraction:
+    title: "HTML Content Extraction"
+    status: ready-for-dev
+    frs: [FR3]
+    dependencies: [2-1]
+    files:
+      - apps/api/src/routes/generate.ts
+      - apps/api/src/services/parser.ts
+
+  2-3-pdf-content-extraction:
+    title: "PDF Content Extraction"
+    status: ready-for-dev
+    frs: [FR2, FR4]
+    dependencies: [2-2]
+    files:
+      - apps/api/src/services/parser.ts
+
+  2-4-extraction-error-reporting:
+    title: "Extraction Error Reporting"
+    status: ready-for-dev
+    frs: [FR5]
+    dependencies: [2-2]
+    files:
+      - components/ui/ErrorState.tsx
+      - supabase/migrations/extraction_reports.sql
+      - apps/api/src/routes/report.ts
+
+  epic-2-retrospective: optional
+
+  # ===========================================================================
+  # EPIC 3: Audio Generation & Playback
+  # ===========================================================================
+  # Goal: Users experience the magic - paste URL, hear audio in <10 seconds
+  # FRs: FR6-FR23
+  # Stories: 6
+  epic-3:
+    title: "Audio Generation & Playback"
+    status: backlog
+    stories: 6
+    frs: [FR6, FR7, FR8, FR9, FR10, FR11, FR12, FR13, FR14, FR15, FR16, FR17, FR18]
+
+  3-1-voice-selection-preview:
+    title: "Voice Selection & Preview"
+    status: ready-for-dev
+    frs: [FR6, FR9]
+    dependencies: [epic-2]
+    files:
+      - components/add/VoiceSelector.tsx
+      - constants/voices.ts
+
+  3-2-streaming-audio-generation:
+    title: "Streaming Audio Generation"
+    status: ready-for-dev
+    frs: [FR7, FR8]
+    dependencies: [3-1]
+    files:
+      - apps/api/src/routes/generate.ts
+      - apps/api/src/services/tts.ts
+      - apps/api/src/services/storage.ts
+      - supabase/migrations/audio_cache.sql
+      - components/add/GeneratingState.tsx
+
+  3-3-player-screen-controls:
+    title: "Player Screen & Controls"
+    status: ready-for-dev
+    frs: [FR10, FR11, FR17, FR18]
+    dependencies: [3-2]
+    files:
+      - app/player/[id].tsx
+      - components/player/PlayButton.tsx
+      - components/player/ProgressBar.tsx
+      - hooks/useAudioPlayer.ts
+      - stores/playerStore.ts
+
+  3-4-background-audio-lockscreen:
+    title: "Background Audio & Lock Screen"
+    status: ready-for-dev
+    frs: [FR14, FR15, FR16]
+    dependencies: [3-3]
+    files:
+      - hooks/useAudioPlayer.ts
+      - app.json
+
+  3-5-playback-speed-control:
+    title: "Playback Speed Control"
+    status: ready-for-dev
+    frs: [FR12]
+    dependencies: [3-3]
+    files:
+      - components/player/SpeedControl.tsx
+
+  3-6-sleep-timer:
+    title: "Sleep Timer"
+    status: ready-for-dev
+    frs: [FR13]
+    dependencies: [3-3]
+    files:
+      - components/player/SleepTimer.tsx
+
+  epic-3-retrospective: optional
+
+  # ===========================================================================
+  # EPIC 4: Library & Organization
+  # ===========================================================================
+  # Goal: Users have a personal podcast library with progress tracking
+  # FRs: FR19-FR34
+  # Stories: 4
+  epic-4:
+    title: "Library & Organization"
+    status: backlog
+    stories: 4
+    frs: [FR19, FR20, FR21, FR22, FR23, FR24, FR25, FR26, FR27, FR28, FR29, FR30, FR31, FR32, FR33, FR34]
+
+  4-1-library-view:
+    title: "Library View"
+    status: ready-for-dev
+    frs: [FR24, FR25, FR26, FR27]
+    dependencies: [epic-3]
+    files:
+      - app/(tabs)/library.tsx
+      - components/library/LibraryList.tsx
+      - components/library/LibraryItem.tsx
+      - hooks/useLibrary.ts
+      - supabase/migrations/user_library.sql
+
+  4-2-playback-progress-tracking:
+    title: "Playback Progress Tracking"
+    status: ready-for-dev
+    frs: [FR19]
+    dependencies: [4-1]
+    files:
+      - hooks/useLibrary.ts
+      - apps/api/src/routes/library.ts
+
+  4-3-playlist-management:
+    title: "Playlist Management"
+    status: ready-for-dev
+    frs: [FR28, FR29, FR30, FR31, FR32, FR33, FR34]
+    dependencies: [4-1]
+    files:
+      - app/playlist/[id].tsx
+      - components/library/PlaylistCard.tsx
+      - components/library/CreatePlaylistModal.tsx
+      - hooks/usePlaylists.ts
+      - supabase/migrations/playlists.sql
+
+  4-4-queue-management:
+    title: "Queue Management"
+    status: ready-for-dev
+    frs: [FR20, FR21, FR22, FR23]
+    dependencies: [4-1]
+    files:
+      - components/player/QueueButton.tsx
+      - hooks/useAudioPlayer.ts
+
+  epic-4-retrospective: optional
+
+  # ===========================================================================
+  # EPIC 5: Monetization & Subscriptions
+  # ===========================================================================
+  # Goal: Business model with free/paid tiers and App Store payments
+  # FRs: FR39, FR40, FR41, FR42, FR43, FR44
+  # Stories: 3
+  epic-5:
+    title: "Monetization & Subscriptions"
+    status: backlog
+    stories: 3
+    frs: [FR39, FR40, FR41, FR42, FR43, FR44]
+
+  5-1-free-tier-implementation:
+    title: "Free Tier Implementation"
+    status: ready-for-dev
+    frs: [FR39]
+    dependencies: [epic-3]
+    files:
+      - components/ui/LimitBanner.tsx
+      - hooks/useSubscription.ts
+
+  5-2-limit-display-upgrade-prompt:
+    title: "Limit Display & Upgrade Prompt"
+    status: ready-for-dev
+    frs: [FR40, FR41]
+    dependencies: [5-1]
+    files:
+      - components/ui/LimitModal.tsx
+      - hooks/useSubscription.ts
+
+  5-3-in-app-purchase-integration:
+    title: "In-App Purchase Integration"
+    status: ready-for-dev
+    frs: [FR42, FR43, FR44]
+    dependencies: [5-2]
+    files:
+      - services/purchases.ts
+      - apps/api/src/routes/webhooks.ts
+
+  epic-5-retrospective: optional
+
+  # ===========================================================================
+  # EPIC 6: Production Readiness
+  # ===========================================================================
+  # Goal: App is polished, reliable, and ready for App Store submission
+  # FRs: FR45, FR46, FR47 + NFRs
+  # Stories: 4
+  epic-6:
+    title: "Production Readiness"
+    status: backlog
+    stories: 4
+    frs: [FR45, FR46, FR47]
+
+  6-1-error-handling-user-feedback:
+    title: "Error Handling & User Feedback"
+    status: ready-for-dev
+    frs: [FR45, FR46, FR47]
+    dependencies: [epic-3]
+    files:
+      - components/ui/ErrorState.tsx
+      - components/ui/Toast.tsx
+      - hooks/useToast.ts
+      - apps/api/src/routes/health.ts
+      - apps/api/src/middleware/timeout.ts
+      - apps/api/src/middleware/logging.ts
+      - apps/api/src/lib/logger.ts
+
+  6-2-performance-optimization:
+    title: "Performance Optimization"
+    status: ready-for-dev
+    frs: []
+    nfrs: [NFR1, NFR4, NFR5]
+    dependencies: [epic-4]
+    files:
+      - components/ui/Skeleton.tsx
+      - components/library/LibrarySkeleton.tsx
+
+  6-3-app-store-preparation:
+    title: "App Store Preparation"
+    status: ready-for-dev
+    frs: []
+    nfrs: [NFR16, NFR17]
+    dependencies: [epic-5]
+    files:
+      - app.json
+      - eas.json
+      - assets/images/
+
+  6-4-persistent-mini-player:
+    title: "Persistent Mini-Player"
+    status: ready-for-dev
+    frs: []
+    dependencies: [3-3]
+    files:
+      - components/player/MiniPlayer.tsx
+      - app/_layout.tsx
+
+  epic-6-retrospective: optional
+
+# =============================================================================
+# SPRINT SUMMARY
+# =============================================================================
+summary:
+  total_epics: 6
+  total_stories: 24
+  completed_epics: 1
+  completed_stories: 3
+  in_progress_stories: 0
+  ready_for_dev_stories: 21
+  backlog_stories: 0
+
+# =============================================================================
+# MILESTONE TARGETS
+# =============================================================================
+milestones:
+  mvp:
+    description: "Core magic experience - paste URL, hear audio in 10s"
+    required_epics: [epic-1, epic-2, epic-3]
+    required_stories: 13
+
+  launch:
+    description: "Full app ready for App Store submission"
+    required_epics: [epic-1, epic-2, epic-3, epic-4, epic-5, epic-6]
+    required_stories: 24
+
+  yc_target:
+    description: "1,000 paid subscribers in 3 months"
+    target_date: 2026-04-20
+    required_metrics:
+      - paid_subscribers: 1000
+      - weekly_active_listeners: 3000
+      - sessions_per_week: 3
+
+# =============================================================================
+# NOTES
+# =============================================================================
+notes:
+  - "Epic 1-3 form the MVP (13 stories) - core magic experience"
+  - "Epic 4 adds retention/stickiness with library management"
+  - "Epic 5 enables monetization - critical for business model"
+  - "Epic 6 is polish for App Store submission"
+  - "Recommended: Complete Epic 1-3 first for 'magic moment' validation"
