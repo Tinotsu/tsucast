@@ -14,6 +14,7 @@ env:
 jobs:
   migrate:
     runs-on: ubuntu-latest
+    environment: environments
 
     steps:
       - name: Checkout repository
