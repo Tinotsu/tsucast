@@ -11,9 +11,6 @@ jobs:
   migrate:
     runs-on: ubuntu-latest
     environment: environments
-    env:
-      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
 
     steps:
       - name: Checkout repository
@@ -24,11 +21,7 @@ jobs:
         with:
           version: latest
 
-      - name: Link Supabase project
-        run: supabase link --project-ref ${{ secrets.SUPABASE_PROJECT_REF }}
-
       - name: Run migrations
-        run: supabase db push
-
-      - name: Verify migration status
-        run: supabase migration list
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: supabase db push --db-url "$DATABASE_URL"
