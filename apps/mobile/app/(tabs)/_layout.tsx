@@ -21,7 +21,7 @@ export default function TabLayout() {
         name="index"
         options={{
           title: 'Add',
-          tabBarIcon: ({ color, size }) => (
+          tabBarIcon: ({ color, size }: { color: string; size: number }) => (
             <Ionicons name="add-circle" size={size} color={color} />
           ),
         }}
@@ -30,7 +30,7 @@ export default function TabLayout() {
         name="library"
         options={{
           title: 'Library',
-          tabBarIcon: ({ color, size }) => (
+          tabBarIcon: ({ color, size }: { color: string; size: number }) => (
             <Ionicons name="library" size={size} color={color} />
           ),
         }}
@@ -39,7 +39,7 @@ export default function TabLayout() {
         name="settings"
         options={{
           title: 'Settings',
-          tabBarIcon: ({ color, size }) => (
+          tabBarIcon: ({ color, size }: { color: string; size: number }) => (
             <Ionicons name="settings" size={size} color={color} />
           ),
         }}

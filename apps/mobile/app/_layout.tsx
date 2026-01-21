@@ -10,6 +10,10 @@ import Toast from 'react-native-toast-message';
 import { View, ActivityIndicator } from 'react-native';
 import { useAuth } from '@/hooks/useAuth';
 import { queryClient } from '@/services/queryClient';
+import { setupPlayer } from '@/services/trackPlayer';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { toastConfig } from '@/components/ui/Toast';
+import { MiniPlayer } from '@/components/player/MiniPlayer';
 
 // Prevent splash screen from auto-hiding
 SplashScreen.preventAutoHideAsync();
@@ -52,9 +56,8 @@ export default function RootLayout() {
   useEffect(() => {
     async function prepare() {
       try {
-        // Add any initialization here (fonts, player setup, etc.)
-        // await loadFonts();
-        // await setupPlayer();
+        // Initialize audio player
+        await setupPlayer();
       } catch (e) {
         if (__DEV__) console.warn('Error during app initialization:', e);
       } finally {
@@ -75,30 +78,42 @@ export default function RootLayout() {
   }
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <GestureHandlerRootView style={{ flex: 1 }}>
-        <SafeAreaProvider>
-          <AuthNavigationHandler>
-            <View className="flex-1 bg-black">
-              <Stack screenOptions={{ headerShown: false }}>
-                <Stack.Screen name="(auth)" />
-                <Stack.Screen name="(tabs)" />
-                <Stack.Screen
-                  name="upgrade"
-                  options={{
-                    headerShown: true,
-                    title: 'Upgrade to Pro',
-                    headerStyle: { backgroundColor: '#000000' },
-                    headerTintColor: '#ffffff',
-                  }}
-                />
-              </Stack>
-              <StatusBar style="light" />
-            </View>
-          </AuthNavigationHandler>
-          <Toast />
-        </SafeAreaProvider>
-      </GestureHandlerRootView>
-    </QueryClientProvider>
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <GestureHandlerRootView style={{ flex: 1 }}>
+          <SafeAreaProvider>
+            <AuthNavigationHandler>
+              <View className="flex-1 bg-black">
+                <Stack screenOptions={{ headerShown: false }}>
+                  <Stack.Screen name="(auth)" />
+                  <Stack.Screen name="(tabs)" />
+                  <Stack.Screen
+                    name="player/[id]"
+                    options={{
+                      presentation: 'modal',
+                      animation: 'slide_from_bottom',
+                      gestureEnabled: true,
+                      gestureDirection: 'vertical',
+                    }}
+                  />
+                  <Stack.Screen
+                    name="upgrade"
+                    options={{
+                      headerShown: true,
+                      title: 'Upgrade to Pro',
+                      headerStyle: { backgroundColor: '#000000' },
+                      headerTintColor: '#ffffff',
+                    }}
+                  />
+                </Stack>
+                <MiniPlayer />
+                <StatusBar style="light" />
+              </View>
+            </AuthNavigationHandler>
+            <Toast config={toastConfig} />
+          </SafeAreaProvider>
+        </GestureHandlerRootView>
+      </QueryClientProvider>
+    </ErrorBoundary>
   );
 }
