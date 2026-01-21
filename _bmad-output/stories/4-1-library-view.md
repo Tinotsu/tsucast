@@ -1,6 +1,6 @@
 # Story 4.1: Library View
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 
@@ -38,7 +38,7 @@ so that I can find and play past articles.
 ## Tasks / Subtasks
 
 ### Task 1: User Library Database Table (AC: all)
-- [ ] 1.1 Create migration `supabase/migrations/004_user_library.sql`:
+- [x] 1.1 Create migration `supabase/migrations/004_user_library.sql`:
   ```sql
   CREATE TABLE user_library (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -66,10 +66,10 @@ so that I can find and play past articles.
     BEFORE UPDATE ON user_library
     FOR EACH ROW EXECUTE FUNCTION update_updated_at();
   ```
-- [ ] 1.2 Run migration
+- [x] 1.2 Run migration
 
 ### Task 2: Library API Endpoints (AC: 1, 3)
-- [ ] 2.1 Create `apps/api/src/routes/library.ts`:
+- [x] 2.1 Create `apps/api/src/routes/library.ts`:
   ```typescript
   import { Hono } from 'hono';
   import { authMiddleware } from '../middleware/auth';
@@ -127,10 +127,10 @@ so that I can find and play past articles.
 
   export default library;
   ```
-- [ ] 2.2 Register route in main app
+- [x] 2.2 Register route in main app
 
 ### Task 3: Library Hook (AC: 1, 2, 3)
-- [ ] 3.1 Create `hooks/useLibrary.ts`:
+- [x] 3.1 Create `hooks/useLibrary.ts`:
   ```typescript
   import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
   import { getLibrary, deleteFromLibrary } from '@/services/api';
@@ -160,14 +160,14 @@ so that I can find and play past articles.
     };
   }
   ```
-- [ ] 3.2 Install React Query:
+- [x] 3.2 Install React Query:
   ```bash
   npm install @tanstack/react-query
   ```
-- [ ] 3.3 Set up QueryClient provider in `app/_layout.tsx`
+- [x] 3.3 Set up QueryClient provider in `app/_layout.tsx`
 
 ### Task 4: Library Screen (AC: 1, 4)
-- [ ] 4.1 Create `app/(tabs)/library.tsx`:
+- [x] 4.1 Create `app/(tabs)/library.tsx`:
   ```typescript
   import { useLibrary } from '@/hooks/useLibrary';
   import { LibraryList } from '@/components/library/LibraryList';
@@ -217,7 +217,7 @@ so that I can find and play past articles.
   ```
 
 ### Task 5: Library List Component (AC: 1, 4)
-- [ ] 5.1 Create `components/library/LibraryList.tsx`:
+- [x] 5.1 Create `components/library/LibraryList.tsx`:
   ```typescript
   import { FlashList } from '@shopify/flash-list';
   import { LibraryItem } from './LibraryItem';
@@ -243,13 +243,13 @@ so that I can find and play past articles.
     );
   }
   ```
-- [ ] 5.2 Install FlashList for performance:
+- [x] 5.2 Install FlashList for performance:
   ```bash
   npx expo install @shopify/flash-list
   ```
 
 ### Task 6: Library Item Component (AC: 1, 2, 3)
-- [ ] 6.1 Create `components/library/LibraryItem.tsx`:
+- [x] 6.1 Create `components/library/LibraryItem.tsx`:
   ```typescript
   import Swipeable from 'react-native-gesture-handler/Swipeable';
   import { router } from 'expo-router';
@@ -330,13 +330,13 @@ so that I can find and play past articles.
     );
   }
   ```
-- [ ] 6.2 Install gesture handler:
+- [x] 6.2 Install gesture handler:
   ```bash
   npx expo install react-native-gesture-handler
   ```
 
 ### Task 7: Navigate to Player with Saved Position (AC: 2)
-- [ ] 7.1 Update player to load from library position:
+- [x] 7.1 Update player to load from library position:
   ```typescript
   // In useAudioPlayer.ts
   const loadFromLibrary = async (libraryItem: LibraryItemData) => {
@@ -354,7 +354,7 @@ so that I can find and play past articles.
   ```
 
 ### Task 8: Add Tab Navigation (AC: 1)
-- [ ] 8.1 Update `app/(tabs)/_layout.tsx` with library tab:
+- [x] 8.1 Update `app/(tabs)/_layout.tsx` with library tab:
   ```typescript
   <Tabs>
     <Tabs.Screen
@@ -447,14 +447,29 @@ supabase/migrations/
 
 ### Agent Model Used
 
-(To be filled during implementation)
+Claude Opus 4.5
 
 ### Change Log
 
 | Date | Change | Author |
 |------|--------|--------|
 | 2026-01-20 | Story created | Claude Opus 4.5 |
+| 2026-01-21 | Implementation completed | Claude Opus 4.5 |
 
 ### File List
 
-(To be filled after implementation)
+**Created:**
+- `supabase/migrations/004_user_library.sql`
+- `apps/api/src/routes/library.ts`
+- `apps/mobile/hooks/useLibrary.ts`
+- `apps/mobile/app/(tabs)/library.tsx`
+- `apps/mobile/components/library/LibraryList.tsx`
+- `apps/mobile/components/library/LibraryItem.tsx`
+- `apps/mobile/components/library/LibrarySkeleton.tsx`
+
+**Modified:**
+- `apps/api/src/index.ts` (added library route)
+- `apps/mobile/app/(tabs)/_layout.tsx` (added library tab)
+- `apps/mobile/app/_layout.tsx` (QueryClient provider)
+- `apps/mobile/hooks/useAudioPlayer.ts` (loadFromLibrary)
+- `apps/mobile/services/api.ts` (getLibrary, deleteFromLibrary)

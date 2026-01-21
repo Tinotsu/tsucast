@@ -1,6 +1,6 @@
 # Story 4.2: Playback Progress Tracking
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 
@@ -35,7 +35,7 @@ so that I can resume where I left off.
 ## Tasks / Subtasks
 
 ### Task 1: Position Save API Endpoint (AC: 1, 4)
-- [ ] 1.1 Add to `apps/api/src/routes/library.ts`:
+- [x] 1.1 Add to `apps/api/src/routes/library.ts`:
   ```typescript
   // Update playback position
   library.patch('/library/:id/position', authMiddleware, async (c) => {
@@ -62,7 +62,7 @@ so that I can resume where I left off.
   ```
 
 ### Task 2: Position Saving Hook (AC: 1)
-- [ ] 2.1 Create `hooks/usePositionSaving.ts`:
+- [x] 2.1 Create `hooks/usePositionSaving.ts`:
   ```typescript
   import { useRef, useEffect } from 'react';
   import TrackPlayer, { useProgress } from 'react-native-track-player';
@@ -130,7 +130,7 @@ so that I can resume where I left off.
   ```
 
 ### Task 3: Track Library ID in Player Store (AC: 1, 2)
-- [ ] 3.1 Update `stores/playerStore.ts`:
+- [x] 3.1 Update `stores/playerStore.ts`:
   ```typescript
   interface PlayerState {
     currentTrack: Track | null;
@@ -149,7 +149,7 @@ so that I can resume where I left off.
   ```
 
 ### Task 4: Load with Saved Position (AC: 2)
-- [ ] 4.1 Update `hooks/useAudioPlayer.ts`:
+- [x] 4.1 Update `hooks/useAudioPlayer.ts`:
   ```typescript
   const loadFromLibrary = async (libraryItem: LibraryItemData) => {
     const { setCurrentLibraryId } = usePlayerStore.getState();
@@ -187,7 +187,7 @@ so that I can resume where I left off.
   ```
 
 ### Task 5: Completion Detection (AC: 3)
-- [ ] 5.1 Add completion handler in `services/playbackService.ts`:
+- [x] 5.1 Add completion handler in `services/playbackService.ts`:
   ```typescript
   TrackPlayer.addEventListener(Event.PlaybackQueueEnded, async () => {
     const { currentLibraryId } = usePlayerStore.getState();
@@ -201,7 +201,7 @@ so that I can resume where I left off.
     }
   });
   ```
-- [ ] 5.2 Add API function in `services/api.ts`:
+- [x] 5.2 Add API function in `services/api.ts`:
   ```typescript
   export async function markAsPlayed(libraryId: string): Promise<void> {
     const token = await getAuthToken();
@@ -222,7 +222,7 @@ so that I can resume where I left off.
   ```
 
 ### Task 6: Visual Completion Indicator (AC: 3)
-- [ ] 6.1 Update `components/library/LibraryItem.tsx`:
+- [x] 6.1 Update `components/library/LibraryItem.tsx`:
   ```typescript
   // Add completed indicator
   {item.is_played && (
@@ -251,7 +251,7 @@ so that I can resume where I left off.
   ```
 
 ### Task 7: API Service Functions (AC: 1, 3)
-- [ ] 7.1 Add to `services/api.ts`:
+- [x] 7.1 Add to `services/api.ts`:
   ```typescript
   export async function savePlaybackPosition(
     libraryId: string,
@@ -271,7 +271,7 @@ so that I can resume where I left off.
   ```
 
 ### Task 8: Integrate Position Saving (AC: 1)
-- [ ] 8.1 Add usePositionSaving to player screen:
+- [x] 8.1 Add usePositionSaving to player screen:
   ```typescript
   // In app/player/[id].tsx
   import { usePositionSaving } from '@/hooks/usePositionSaving';
@@ -282,7 +282,7 @@ so that I can resume where I left off.
     // ... rest of player
   }
   ```
-- [ ] 8.2 Call saveOnPause when pausing:
+- [x] 8.2 Call saveOnPause when pausing:
   ```typescript
   const { saveOnPause } = usePositionSaving();
 
@@ -360,14 +360,25 @@ apps/api/
 
 ### Agent Model Used
 
-(To be filled during implementation)
+Claude Opus 4.5
 
 ### Change Log
 
 | Date | Change | Author |
 |------|--------|--------|
 | 2026-01-20 | Story created | Claude Opus 4.5 |
+| 2026-01-21 | Implementation completed | Claude Opus 4.5 |
 
 ### File List
 
-(To be filled after implementation)
+**Created:**
+- `apps/mobile/hooks/usePositionSaving.ts`
+
+**Modified:**
+- `apps/api/src/routes/library.ts` (PATCH /library/:id/position)
+- `apps/mobile/stores/playerStore.ts` (currentLibraryId)
+- `apps/mobile/hooks/useAudioPlayer.ts` (loadFromLibrary with position)
+- `apps/mobile/services/playbackService.ts` (PlaybackQueueEnded handler)
+- `apps/mobile/services/api.ts` (savePlaybackPosition, markAsPlayed)
+- `apps/mobile/components/library/LibraryItem.tsx` (completion indicator)
+- `apps/mobile/app/player/[id].tsx` (position saving integration)

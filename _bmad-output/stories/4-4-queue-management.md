@@ -1,6 +1,6 @@
 # Story 4.4: Queue Management
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 
@@ -40,7 +40,7 @@ so that I can queue up articles for continuous listening.
 ## Tasks / Subtasks
 
 ### Task 1: Queue Button Component (AC: 1)
-- [ ] 1.1 Create `components/player/QueueButton.tsx`:
+- [x] 1.1 Create `components/player/QueueButton.tsx`:
   ```typescript
   interface QueueButtonProps {
     queueLength: number;
@@ -64,7 +64,7 @@ so that I can queue up articles for continuous listening.
   ```
 
 ### Task 2: Queue Modal/Sheet (AC: 1, 3)
-- [ ] 2.1 Create `components/player/QueueSheet.tsx`:
+- [x] 2.1 Create `components/player/QueueSheet.tsx`:
   ```typescript
   import BottomSheet from '@gorhom/bottom-sheet';
   import DraggableFlatList from 'react-native-draggable-flatlist';
@@ -130,14 +130,14 @@ so that I can queue up articles for continuous listening.
     );
   }
   ```
-- [ ] 2.2 Install bottom sheet:
+- [x] 2.2 Install bottom sheet:
   ```bash
   npm install @gorhom/bottom-sheet
   npx expo install react-native-reanimated react-native-gesture-handler
   ```
 
 ### Task 3: Queue Hook (AC: all)
-- [ ] 3.1 Create `hooks/useQueue.ts`:
+- [x] 3.1 Create `hooks/useQueue.ts`:
   ```typescript
   import TrackPlayer, { useActiveTrack } from 'react-native-track-player';
 
@@ -221,7 +221,7 @@ so that I can queue up articles for continuous listening.
   ```
 
 ### Task 4: Add to Queue from Library (AC: 2)
-- [ ] 4.1 Update library item long-press menu:
+- [x] 4.1 Update library item long-press menu:
   ```typescript
   // In components/library/LibraryItemMenu.tsx
   interface LibraryItemMenuProps {
@@ -271,7 +271,7 @@ so that I can queue up articles for continuous listening.
   ```
 
 ### Task 5: Queue Item Component (AC: 1, 3)
-- [ ] 5.1 Create `components/player/QueueItem.tsx`:
+- [x] 5.1 Create `components/player/QueueItem.tsx`:
   ```typescript
   interface QueueItemProps {
     item: Track;
@@ -313,7 +313,7 @@ so that I can queue up articles for continuous listening.
   ```
 
 ### Task 6: Integrate Queue into Player (AC: 1)
-- [ ] 6.1 Update `app/player/[id].tsx`:
+- [x] 6.1 Update `app/player/[id].tsx`:
   ```typescript
   export default function PlayerScreen() {
     const { queueLength } = useQueue();
@@ -346,8 +346,8 @@ so that I can queue up articles for continuous listening.
   ```
 
 ### Task 7: Auto-Play & Queue End Handling (AC: 4, 5)
-- [ ] 7.1 Configure track-player for auto-advance (default behavior)
-- [ ] 7.2 Handle queue end in `services/playbackService.ts`:
+- [x] 7.1 Configure track-player for auto-advance (default behavior)
+- [x] 7.2 Handle queue end in `services/playbackService.ts`:
   ```typescript
   TrackPlayer.addEventListener(Event.PlaybackQueueEnded, async () => {
     // Queue is empty and current track finished
@@ -357,7 +357,7 @@ so that I can queue up articles for continuous listening.
   ```
 
 ### Task 8: Toast Notifications (AC: 2)
-- [ ] 8.1 Add toast for queue actions:
+- [x] 8.1 Add toast for queue actions:
   ```typescript
   import Toast from 'react-native-toast-message';
 
@@ -369,7 +369,7 @@ so that I can queue up articles for continuous listening.
     visibilityTime: 2000,
   });
   ```
-- [ ] 8.2 Install toast library:
+- [x] 8.2 Install toast library:
   ```bash
   npm install react-native-toast-message
   ```
@@ -437,14 +437,25 @@ apps/mobile/
 
 ### Agent Model Used
 
-(To be filled during implementation)
+Claude Opus 4.5
 
 ### Change Log
 
 | Date | Change | Author |
 |------|--------|--------|
 | 2026-01-20 | Story created | Claude Opus 4.5 |
+| 2026-01-21 | Implementation completed | Claude Opus 4.5 |
 
 ### File List
 
-(To be filled after implementation)
+**Created:**
+- `apps/mobile/hooks/useQueue.ts`
+- `apps/mobile/components/player/QueueButton.tsx`
+- `apps/mobile/components/player/QueueItem.tsx`
+- `apps/mobile/components/player/QueueSheet.tsx`
+
+**Modified:**
+- `apps/mobile/components/player/index.ts` (added queue exports)
+- `apps/mobile/app/player/[id].tsx` (integrated queue button and sheet)
+- `apps/mobile/components/library/AddToPlaylistMenu.tsx` (added Add to Queue option)
+- `apps/mobile/services/playbackService.ts` (PlaybackQueueEnded handler already existed)

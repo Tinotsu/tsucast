@@ -1,6 +1,6 @@
 # Story 4.3: Playlist Management
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 
@@ -62,7 +62,7 @@ so that I can group related articles for listening sessions.
 ## Tasks / Subtasks
 
 ### Task 1: Playlist Database Tables (AC: all)
-- [ ] 1.1 Create migration `supabase/migrations/005_playlists.sql`:
+- [x] 1.1 Create migration `supabase/migrations/005_playlists.sql`:
   ```sql
   -- Playlists
   CREATE TABLE playlists (
@@ -104,10 +104,10 @@ so that I can group related articles for listening sessions.
     BEFORE UPDATE ON playlists
     FOR EACH ROW EXECUTE FUNCTION update_updated_at();
   ```
-- [ ] 1.2 Run migration
+- [x] 1.2 Run migration
 
 ### Task 2: Playlist API Endpoints (AC: 1, 3, 5, 6)
-- [ ] 2.1 Create `apps/api/src/routes/playlists.ts`:
+- [x] 2.1 Create `apps/api/src/routes/playlists.ts`:
   ```typescript
   import { Hono } from 'hono';
   import { authMiddleware } from '../middleware/auth';
@@ -261,7 +261,7 @@ so that I can group related articles for listening sessions.
   ```
 
 ### Task 3: Playlist Hook (AC: all)
-- [ ] 3.1 Create `hooks/usePlaylists.ts`:
+- [x] 3.1 Create `hooks/usePlaylists.ts`:
   ```typescript
   import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
@@ -332,7 +332,7 @@ so that I can group related articles for listening sessions.
   ```
 
 ### Task 4: Playlist Card Component (AC: 3)
-- [ ] 4.1 Create `components/library/PlaylistCard.tsx`:
+- [x] 4.1 Create `components/library/PlaylistCard.tsx`:
   ```typescript
   interface PlaylistCardProps {
     playlist: Playlist;
@@ -362,7 +362,7 @@ so that I can group related articles for listening sessions.
   ```
 
 ### Task 5: Create Playlist Modal (AC: 1)
-- [ ] 5.1 Create `components/library/CreatePlaylistModal.tsx`:
+- [x] 5.1 Create `components/library/CreatePlaylistModal.tsx`:
   ```typescript
   interface CreatePlaylistModalProps {
     visible: boolean;
@@ -411,7 +411,7 @@ so that I can group related articles for listening sessions.
   ```
 
 ### Task 6: Playlist Detail Screen (AC: 3, 4, 7, 8)
-- [ ] 6.1 Create `app/playlist/[id].tsx`:
+- [x] 6.1 Create `app/playlist/[id].tsx`:
   ```typescript
   import DraggableFlatList from 'react-native-draggable-flatlist';
 
@@ -460,13 +460,13 @@ so that I can group related articles for listening sessions.
     );
   }
   ```
-- [ ] 6.2 Install draggable list:
+- [x] 6.2 Install draggable list:
   ```bash
   npm install react-native-draggable-flatlist
   ```
 
 ### Task 7: Add to Playlist Action (AC: 2)
-- [ ] 7.1 Add long-press menu to LibraryItem:
+- [x] 7.1 Add long-press menu to LibraryItem:
   ```typescript
   // In LibraryItem.tsx
   const [showMenu, setShowMenu] = useState(false);
@@ -487,7 +487,7 @@ so that I can group related articles for listening sessions.
   ```
 
 ### Task 8: Load Playlist to Queue (AC: 8)
-- [ ] 8.1 Update `hooks/useAudioPlayer.ts`:
+- [x] 8.1 Update `hooks/useAudioPlayer.ts`:
   ```typescript
   const loadPlaylistToQueue = async (items: PlaylistItem[]) => {
     await TrackPlayer.reset();
@@ -561,14 +561,30 @@ supabase/migrations/
 
 ### Agent Model Used
 
-(To be filled during implementation)
+Claude Opus 4.5
 
 ### Change Log
 
 | Date | Change | Author |
 |------|--------|--------|
 | 2026-01-20 | Story created | Claude Opus 4.5 |
+| 2026-01-21 | Implementation completed | Claude Opus 4.5 |
 
 ### File List
 
-(To be filled after implementation)
+**Created:**
+- `supabase/migrations/005_playlists.sql`
+- `apps/api/src/routes/playlists.ts`
+- `apps/mobile/hooks/usePlaylists.ts`
+- `apps/mobile/components/library/PlaylistCard.tsx`
+- `apps/mobile/components/library/CreatePlaylistModal.tsx`
+- `apps/mobile/components/library/AddToPlaylistMenu.tsx`
+- `apps/mobile/app/playlist/[id].tsx`
+
+**Modified:**
+- `apps/api/src/index.ts` (added playlists route)
+- `apps/mobile/services/api.ts` (added playlist API functions)
+- `apps/mobile/app/(tabs)/library.tsx` (integrated playlists section)
+- `apps/mobile/components/library/LibraryItem.tsx` (added onLongPress)
+- `apps/mobile/components/library/LibraryList.tsx` (added onLongPress prop)
+- `apps/mobile/hooks/useAudioPlayer.ts` (added loadPlaylistToQueue)

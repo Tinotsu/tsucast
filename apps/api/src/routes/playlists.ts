@@ -1,0 +1,403 @@
+/**
+ * Playlist Routes
+ *
+ * API endpoints for playlist management.
+ * Story: 4-3 Playlist Management
+ */
+
+import { Hono } from 'hono';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
+
+const playlists = new Hono();
+
+// Lazy initialize Supabase client
+let supabase: SupabaseClient | null = null;
+
+function getSupabase(): SupabaseClient | null {
+  if (supabase) return supabase;
+
+  const url = process.env.SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!url || !key) return null;
+
+  supabase = createClient(url, key);
+  return supabase;
+}
+
+/**
+ * Extract user ID from Supabase JWT token
+ */
+async function getUserFromToken(authHeader: string | undefined): Promise<string | null> {
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return null;
+  }
+
+  const token = authHeader.slice(7);
+  const client = getSupabase();
+  if (!client) {
+    return null;
+  }
+
+  try {
+    const { data: { user }, error } = await client.auth.getUser(token);
+    if (error || !user) {
+      return null;
+    }
+    return user.id;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * GET /api/playlists
+ * Get all playlists for the authenticated user
+ */
+playlists.get('/', async (c) => {
+  const userId = await getUserFromToken(c.req.header('Authorization'));
+  if (!userId) {
+    return c.json({ error: { code: 'UNAUTHORIZED', message: 'Authentication required' } }, 401);
+  }
+
+  const client = getSupabase();
+  if (!client) {
+    return c.json({ error: { code: 'SERVICE_UNAVAILABLE', message: 'Database not configured' } }, 503);
+  }
+
+  const { data, error } = await client
+    .from('playlists')
+    .select(`
+      id,
+      name,
+      created_at,
+      updated_at,
+      playlist_items(count)
+    `)
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    return c.json({ error: { code: 'FETCH_FAILED', message: 'Failed to fetch playlists' } }, 500);
+  }
+
+  // Transform the count structure
+  const playlistsWithCount = data?.map((playlist) => ({
+    ...playlist,
+    itemCount: playlist.playlist_items?.[0]?.count || 0,
+  }));
+
+  return c.json({ playlists: playlistsWithCount });
+});
+
+/**
+ * POST /api/playlists
+ * Create a new playlist
+ */
+playlists.post('/', async (c) => {
+  const userId = await getUserFromToken(c.req.header('Authorization'));
+  if (!userId) {
+    return c.json({ error: { code: 'UNAUTHORIZED', message: 'Authentication required' } }, 401);
+  }
+
+  const client = getSupabase();
+  if (!client) {
+    return c.json({ error: { code: 'SERVICE_UNAVAILABLE', message: 'Database not configured' } }, 503);
+  }
+
+  const body = await c.req.json();
+  const { name } = body;
+
+  if (!name || typeof name !== 'string' || name.trim().length === 0) {
+    return c.json({ error: { code: 'INVALID_INPUT', message: 'Playlist name is required' } }, 400);
+  }
+
+  const { data, error } = await client
+    .from('playlists')
+    .insert({ user_id: userId, name: name.trim() })
+    .select()
+    .single();
+
+  if (error) {
+    return c.json({ error: { code: 'CREATE_FAILED', message: 'Failed to create playlist' } }, 500);
+  }
+
+  return c.json({ playlist: data }, 201);
+});
+
+/**
+ * GET /api/playlists/:id
+ * Get a single playlist with its items
+ */
+playlists.get('/:id', async (c) => {
+  const userId = await getUserFromToken(c.req.header('Authorization'));
+  if (!userId) {
+    return c.json({ error: { code: 'UNAUTHORIZED', message: 'Authentication required' } }, 401);
+  }
+
+  const client = getSupabase();
+  if (!client) {
+    return c.json({ error: { code: 'SERVICE_UNAVAILABLE', message: 'Database not configured' } }, 503);
+  }
+  const playlistId = c.req.param('id');
+
+  const { data: playlist, error: playlistError } = await client
+    .from('playlists')
+    .select('id, name, created_at, updated_at')
+    .eq('id', playlistId)
+    .eq('user_id', userId)
+    .single();
+
+  if (playlistError || !playlist) {
+    return c.json({ error: { code: 'NOT_FOUND', message: 'Playlist not found' } }, 404);
+  }
+
+  const { data: items } = await client
+    .from('playlist_items')
+    .select(`
+      id,
+      position,
+      added_at,
+      audio:audio_cache (
+        id,
+        title,
+        audio_url,
+        duration_seconds,
+        original_url
+      )
+    `)
+    .eq('playlist_id', playlistId)
+    .order('position', { ascending: true });
+
+  return c.json({ playlist: { ...playlist, items: items || [] } });
+});
+
+/**
+ * PATCH /api/playlists/:id
+ * Rename a playlist
+ */
+playlists.patch('/:id', async (c) => {
+  const userId = await getUserFromToken(c.req.header('Authorization'));
+  if (!userId) {
+    return c.json({ error: { code: 'UNAUTHORIZED', message: 'Authentication required' } }, 401);
+  }
+
+  const client = getSupabase();
+  if (!client) {
+    return c.json({ error: { code: 'SERVICE_UNAVAILABLE', message: 'Database not configured' } }, 503);
+  }
+  const playlistId = c.req.param('id');
+  const body = await c.req.json();
+  const { name } = body;
+
+  if (!name || typeof name !== 'string' || name.trim().length === 0) {
+    return c.json({ error: { code: 'INVALID_INPUT', message: 'Playlist name is required' } }, 400);
+  }
+
+  const { error } = await client
+    .from('playlists')
+    .update({ name: name.trim() })
+    .eq('id', playlistId)
+    .eq('user_id', userId);
+
+  if (error) {
+    return c.json({ error: { code: 'UPDATE_FAILED', message: 'Failed to update playlist' } }, 500);
+  }
+
+  return c.json({ success: true });
+});
+
+/**
+ * DELETE /api/playlists/:id
+ * Delete a playlist (items remain in library)
+ */
+playlists.delete('/:id', async (c) => {
+  const userId = await getUserFromToken(c.req.header('Authorization'));
+  if (!userId) {
+    return c.json({ error: { code: 'UNAUTHORIZED', message: 'Authentication required' } }, 401);
+  }
+
+  const client = getSupabase();
+  if (!client) {
+    return c.json({ error: { code: 'SERVICE_UNAVAILABLE', message: 'Database not configured' } }, 503);
+  }
+  const playlistId = c.req.param('id');
+
+  const { error } = await client
+    .from('playlists')
+    .delete()
+    .eq('id', playlistId)
+    .eq('user_id', userId);
+
+  if (error) {
+    return c.json({ error: { code: 'DELETE_FAILED', message: 'Failed to delete playlist' } }, 500);
+  }
+
+  return c.json({ success: true });
+});
+
+/**
+ * POST /api/playlists/:id/items
+ * Add an audio item to a playlist
+ */
+playlists.post('/:id/items', async (c) => {
+  const userId = await getUserFromToken(c.req.header('Authorization'));
+  if (!userId) {
+    return c.json({ error: { code: 'UNAUTHORIZED', message: 'Authentication required' } }, 401);
+  }
+
+  const client = getSupabase();
+  if (!client) {
+    return c.json({ error: { code: 'SERVICE_UNAVAILABLE', message: 'Database not configured' } }, 503);
+  }
+  const playlistId = c.req.param('id');
+  const body = await c.req.json();
+  const { audioId } = body;
+
+  if (!audioId) {
+    return c.json({ error: { code: 'INVALID_INPUT', message: 'Audio ID is required' } }, 400);
+  }
+
+  // Verify playlist belongs to user
+  const { data: playlist } = await client
+    .from('playlists')
+    .select('id')
+    .eq('id', playlistId)
+    .eq('user_id', userId)
+    .single();
+
+  if (!playlist) {
+    return c.json({ error: { code: 'NOT_FOUND', message: 'Playlist not found' } }, 404);
+  }
+
+  // Get next position
+  const { data: existing } = await client
+    .from('playlist_items')
+    .select('position')
+    .eq('playlist_id', playlistId)
+    .order('position', { ascending: false })
+    .limit(1);
+
+  const nextPosition = (existing?.[0]?.position ?? -1) + 1;
+
+  const { error } = await client
+    .from('playlist_items')
+    .insert({
+      playlist_id: playlistId,
+      audio_id: audioId,
+      position: nextPosition,
+    });
+
+  if (error) {
+    if (error.code === '23505') {
+      return c.json({ error: { code: 'DUPLICATE', message: 'Item already in playlist' } }, 409);
+    }
+    return c.json({ error: { code: 'ADD_FAILED', message: 'Failed to add to playlist' } }, 500);
+  }
+
+  return c.json({ success: true }, 201);
+});
+
+/**
+ * DELETE /api/playlists/:id/items/:itemId
+ * Remove an item from a playlist
+ */
+playlists.delete('/:id/items/:itemId', async (c) => {
+  const userId = await getUserFromToken(c.req.header('Authorization'));
+  if (!userId) {
+    return c.json({ error: { code: 'UNAUTHORIZED', message: 'Authentication required' } }, 401);
+  }
+
+  const client = getSupabase();
+  if (!client) {
+    return c.json({ error: { code: 'SERVICE_UNAVAILABLE', message: 'Database not configured' } }, 503);
+  }
+  const playlistId = c.req.param('id');
+  const itemId = c.req.param('itemId');
+
+  // Verify playlist belongs to user
+  const { data: playlist } = await client
+    .from('playlists')
+    .select('id')
+    .eq('id', playlistId)
+    .eq('user_id', userId)
+    .single();
+
+  if (!playlist) {
+    return c.json({ error: { code: 'NOT_FOUND', message: 'Playlist not found' } }, 404);
+  }
+
+  const { error } = await client
+    .from('playlist_items')
+    .delete()
+    .eq('id', itemId)
+    .eq('playlist_id', playlistId);
+
+  if (error) {
+    return c.json({ error: { code: 'REMOVE_FAILED', message: 'Failed to remove from playlist' } }, 500);
+  }
+
+  return c.json({ success: true });
+});
+
+/**
+ * PUT /api/playlists/:id/reorder
+ * Reorder items in a playlist
+ */
+playlists.put('/:id/reorder', async (c) => {
+  const userId = await getUserFromToken(c.req.header('Authorization'));
+  if (!userId) {
+    return c.json({ error: { code: 'UNAUTHORIZED', message: 'Authentication required' } }, 401);
+  }
+
+  const client = getSupabase();
+  if (!client) {
+    return c.json({ error: { code: 'SERVICE_UNAVAILABLE', message: 'Database not configured' } }, 503);
+  }
+  const playlistId = c.req.param('id');
+  const body = await c.req.json();
+  const { itemIds } = body;
+
+  if (!Array.isArray(itemIds)) {
+    return c.json({ error: { code: 'INVALID_INPUT', message: 'Item IDs array is required' } }, 400);
+  }
+
+  // Verify playlist belongs to user
+  const { data: playlist } = await client
+    .from('playlists')
+    .select('id')
+    .eq('id', playlistId)
+    .eq('user_id', userId)
+    .single();
+
+  if (!playlist) {
+    return c.json({ error: { code: 'NOT_FOUND', message: 'Playlist not found' } }, 404);
+  }
+
+  // Update positions using upsert for better performance
+  // This reduces N sequential calls to a single batch operation
+  const updates = itemIds.map((id: string, index: number) => ({
+    id,
+    playlist_id: playlistId,
+    position: index,
+  }));
+
+  // Use Promise.all with chunking for large playlists
+  const CHUNK_SIZE = 50;
+  for (let i = 0; i < updates.length; i += CHUNK_SIZE) {
+    const chunk = updates.slice(i, i + CHUNK_SIZE);
+    await Promise.all(
+      chunk.map((update) =>
+        client
+          .from('playlist_items')
+          .update({ position: update.position })
+          .eq('id', update.id)
+          .eq('playlist_id', playlistId)
+      )
+    );
+  }
+
+  return c.json({ success: true });
+});
+
+export default playlists;
