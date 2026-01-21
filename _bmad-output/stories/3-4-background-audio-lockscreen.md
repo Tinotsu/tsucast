@@ -1,6 +1,6 @@
 # Story 3.4: Background Audio & Lock Screen
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 
@@ -281,14 +281,20 @@ apps/mobile/
 
 ### Agent Model Used
 
-(To be filled during implementation)
+Claude Opus 4.5
 
 ### Change Log
 
 | Date | Change | Author |
 |------|--------|--------|
 | 2026-01-20 | Story created | Claude Opus 4.5 |
+| 2026-01-21 | Implementation complete | Claude Opus 4.5 |
 
 ### File List
 
-(To be filled after implementation)
+| File | Action | Description |
+|------|--------|-------------|
+| `apps/mobile/app.json` | Modified | iOS UIBackgroundModes, Android permissions, disabled newArch |
+| `apps/mobile/services/playbackService.ts` | Modified | Remote duck event handlers for interruptions |
+| `apps/mobile/services/trackPlayer.ts` | Modified | AppKilledPlaybackBehavior configuration |
+| `apps/mobile/__tests__/support/setup.ts` | Modified | Track player mocks for testing |

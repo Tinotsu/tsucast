@@ -1,6 +1,6 @@
 # Story 3.5: Playback Speed Control
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 
@@ -258,14 +258,21 @@ apps/mobile/
 
 ### Agent Model Used
 
-(To be filled during implementation)
+Claude Opus 4.5
 
 ### Change Log
 
 | Date | Change | Author |
 |------|--------|--------|
 | 2026-01-20 | Story created | Claude Opus 4.5 |
+| 2026-01-21 | Implementation complete | Claude Opus 4.5 |
 
 ### File List
 
-(To be filled after implementation)
+| File | Action | Description |
+|------|--------|-------------|
+| `apps/mobile/hooks/usePlaybackSpeed.ts` | Created | Speed state with AsyncStorage persistence |
+| `apps/mobile/components/player/SpeedControl.tsx` | Created | Speed selector modal component |
+| `apps/mobile/app/player/[id].tsx` | Modified | Integrated speed control |
+| `apps/mobile/stores/playerStore.ts` | Modified | Added playbackSpeed state |
+| `apps/mobile/__tests__/unit/player/playbackSpeed.test.ts` | Created | Speed options tests |

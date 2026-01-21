@@ -1,6 +1,6 @@
 # Story 3.1: Voice Selection & Preview
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 
@@ -31,7 +31,7 @@ so that my listening experience is enjoyable.
 ## Tasks / Subtasks
 
 ### Task 1: Voice Constants Configuration (AC: 1)
-- [ ] 1.1 Create `constants/voices.ts`:
+- [x] 1.1 Create `constants/voices.ts`:
   ```typescript
   export interface Voice {
     id: string;
@@ -76,12 +76,12 @@ so that my listening experience is enjoyable.
 
   export const DEFAULT_VOICE_ID = 'narrator-alex';
   ```
-- [ ] 1.2 Research and select actual Fish Audio voice IDs
-- [ ] 1.3 Record or generate voice preview samples (< 5 seconds each)
+- [x] 1.2 Research and select actual Fish Audio voice IDs
+- [x] 1.3 Record or generate voice preview samples (< 5 seconds each)
 
 ### Task 2: Voice Preview Audio Files (AC: 2)
-- [ ] 2.1 Generate voice preview samples using Fish Audio API
-- [ ] 2.2 Upload previews to R2 at `/voices/{id}.mp3`:
+- [x] 2.1 Generate voice preview samples using Fish Audio API
+- [x] 2.2 Upload previews to R2 at `/voices/{id}.mp3`:
   ```
   tsucast-audio/
   └── voices/
@@ -90,11 +90,11 @@ so that my listening experience is enjoyable.
       ├── james.mp3
       └── ...
   ```
-- [ ] 2.3 Configure R2 public access for voice previews
-- [ ] 2.4 Test preview URLs are accessible
+- [x] 2.3 Configure R2 public access for voice previews
+- [x] 2.4 Test preview URLs are accessible
 
 ### Task 3: Voice Selector Component (AC: 1, 2, 3)
-- [ ] 3.1 Create `components/add/VoiceSelector.tsx`:
+- [x] 3.1 Create `components/add/VoiceSelector.tsx`:
   ```typescript
   import { VOICES, Voice } from '@/constants/voices';
 
@@ -135,7 +135,7 @@ so that my listening experience is enjoyable.
   ```
 
 ### Task 4: Voice Card Component (AC: 1, 2)
-- [ ] 4.1 Create `components/add/VoiceCard.tsx`:
+- [x] 4.1 Create `components/add/VoiceCard.tsx`:
   ```typescript
   interface VoiceCardProps {
     voice: Voice;
@@ -203,7 +203,7 @@ so that my listening experience is enjoyable.
   ```
 
 ### Task 5: Voice Preview Playback (AC: 2)
-- [ ] 5.1 Create `hooks/useVoicePreview.ts`:
+- [x] 5.1 Create `hooks/useVoicePreview.ts`:
   ```typescript
   import { Audio } from 'expo-av';
 
@@ -263,13 +263,13 @@ so that my listening experience is enjoyable.
     return { playPreview, stopPreview, playingId };
   }
   ```
-- [ ] 5.2 Install expo-av if not already installed:
+- [x] 5.2 Install expo-av if not already installed:
   ```bash
   npx expo install expo-av
   ```
 
 ### Task 6: Voice Selection Persistence (AC: 3)
-- [ ] 6.1 Create `hooks/useVoicePreference.ts`:
+- [x] 6.1 Create `hooks/useVoicePreference.ts`:
   ```typescript
   import AsyncStorage from '@react-native-async-storage/async-storage';
   import { DEFAULT_VOICE_ID } from '@/constants/voices';
@@ -298,10 +298,10 @@ so that my listening experience is enjoyable.
     return { selectedVoiceId, setSelectedVoiceId, isLoaded };
   }
   ```
-- [ ] 6.2 Export voice ID for use in generation request
+- [x] 6.2 Export voice ID for use in generation request
 
 ### Task 7: Integration with Add Screen (AC: all)
-- [ ] 7.1 Update `app/(tabs)/index.tsx` to include VoiceSelector:
+- [x] 7.1 Update `app/(tabs)/index.tsx` to include VoiceSelector:
   ```typescript
   const { selectedVoiceId, setSelectedVoiceId } = useVoicePreference();
 
@@ -320,8 +320,8 @@ so that my listening experience is enjoyable.
     </View>
   );
   ```
-- [ ] 7.2 Pass selected voice ID to generate function
-- [ ] 7.3 Stop voice preview when starting generation
+- [x] 7.2 Pass selected voice ID to generate function
+- [x] 7.3 Stop voice preview when starting generation
 
 ## Dev Notes
 
@@ -396,14 +396,23 @@ R2 Storage:
 
 ### Agent Model Used
 
-(To be filled during implementation)
+Claude Opus 4.5
 
 ### Change Log
 
 | Date | Change | Author |
 |------|--------|--------|
 | 2026-01-20 | Story created | Claude Opus 4.5 |
+| 2026-01-21 | Implementation complete | Claude Opus 4.5 |
 
 ### File List
 
-(To be filled after implementation)
+| File | Action | Description |
+|------|--------|-------------|
+| `apps/mobile/constants/voices.ts` | Created | Voice definitions with Fish Audio IDs |
+| `apps/mobile/components/add/VoiceSelector.tsx` | Created | Horizontal voice selector component |
+| `apps/mobile/components/add/VoiceCard.tsx` | Created | Individual voice card with preview |
+| `apps/mobile/hooks/useVoicePreview.ts` | Created | Voice preview playback using expo-av |
+| `apps/mobile/hooks/useVoicePreference.ts` | Created | Voice selection persistence |
+| `apps/mobile/app/(tabs)/index.tsx` | Modified | Integrated VoiceSelector component |
+| `apps/mobile/__tests__/unit/player/voices.test.ts` | Created | Voice constants tests |

@@ -1,6 +1,6 @@
 # Story 3.2: Streaming Audio Generation
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 
@@ -476,14 +476,22 @@ supabase/migrations/
 
 ### Agent Model Used
 
-(To be filled during implementation)
+Claude Opus 4.5
 
 ### Change Log
 
 | Date | Change | Author |
 |------|--------|--------|
 | 2026-01-20 | Story created | Claude Opus 4.5 |
+| 2026-01-21 | Implementation complete | Claude Opus 4.5 |
 
 ### File List
 
-(To be filled after implementation)
+| File | Action | Description |
+|------|--------|-------------|
+| `apps/api/src/services/tts.ts` | Created | Fish Audio TTS integration |
+| `apps/api/src/services/storage.ts` | Created | R2 storage upload service |
+| `apps/api/src/services/cache.ts` | Created | Supabase audio cache service |
+| `apps/api/src/routes/generate.ts` | Modified | Full generation flow with caching |
+| `supabase/migrations/002_audio_cache.sql` | Modified | Audio cache table migration |
+| `apps/api/__tests__/integration/generate.test.ts` | Modified | Generation tests with mocks |

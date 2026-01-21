@@ -1,6 +1,6 @@
 # Story 3.3: Player Screen & Controls
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 
@@ -490,14 +490,29 @@ apps/mobile/
 
 ### Agent Model Used
 
-(To be filled during implementation)
+Claude Opus 4.5
 
 ### Change Log
 
 | Date | Change | Author |
 |------|--------|--------|
 | 2026-01-20 | Story created | Claude Opus 4.5 |
+| 2026-01-21 | Implementation complete | Claude Opus 4.5 |
 
 ### File List
 
-(To be filled after implementation)
+| File | Action | Description |
+|------|--------|-------------|
+| `apps/mobile/services/trackPlayer.ts` | Created | Track player setup and configuration |
+| `apps/mobile/services/playbackService.ts` | Created | Background playback event handlers |
+| `apps/mobile/stores/playerStore.ts` | Modified | Zustand player state store |
+| `apps/mobile/hooks/useAudioPlayer.ts` | Created | Audio playback controls hook |
+| `apps/mobile/components/player/PlayButton.tsx` | Created | Play/pause toggle button |
+| `apps/mobile/components/player/SkipButton.tsx` | Created | Skip forward/backward buttons |
+| `apps/mobile/components/player/ProgressBar.tsx` | Created | Seekable progress slider |
+| `apps/mobile/components/player/index.ts` | Created | Component barrel export |
+| `apps/mobile/app/player/[id].tsx` | Created | Player screen route |
+| `apps/mobile/app/_layout.tsx` | Modified | Added player route and initialization |
+| `apps/mobile/index.js` | Created | App entry with playback service |
+| `apps/mobile/package.json` | Modified | Added track-player dependency |
+| `apps/mobile/__tests__/unit/player/playerStore.test.ts` | Created | Player store tests |
