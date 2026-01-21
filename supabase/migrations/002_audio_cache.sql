@@ -7,11 +7,15 @@ CREATE TABLE IF NOT EXISTS public.audio_cache (
   url_hash TEXT NOT NULL UNIQUE,
   original_url TEXT NOT NULL,
   normalized_url TEXT NOT NULL,
+  voice_id TEXT NOT NULL DEFAULT 'alex',
   title TEXT,
   audio_url TEXT,
   duration_seconds INTEGER,
+  word_count INTEGER,
+  file_size_bytes INTEGER,
   status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'processing', 'ready', 'failed')),
   error_message TEXT,
+  created_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
   created_at TIMESTAMPTZ DEFAULT now(),
   updated_at TIMESTAMPTZ DEFAULT now()
 );

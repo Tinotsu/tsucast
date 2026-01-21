@@ -2,6 +2,10 @@
 stepsCompleted: [step-01-init, step-02-discovery, step-03-success, step-04-journeys, step-05-domain-skipped, step-06-innovation, step-07-project-type, step-08-scoping, step-09-functional, step-10-nonfunctional, step-11-polish, step-12-complete]
 workflowCompleted: true
 completedDate: "2026-01-19"
+lastEdited: "2026-01-21"
+editHistory:
+  - date: "2026-01-21"
+    changes: "Added Next.js web app strategy for backend testing, marketing, and admin panel. Added FR48-FR62 for web platform. Clarified mobile as primary product, web as secondary."
 classification:
   projectType: mobile_app_crossplatform
   domain: general_consumer_content
@@ -78,6 +82,8 @@ The core "aha!" moment: **paste an article and it works from the first sentence.
 
 ### MVP - Minimum Viable Product
 
+**Mobile App (Primary Product):**
+
 | Feature | Details |
 |---------|---------|
 | Paste URL | HTML pages + PDF support |
@@ -85,9 +91,21 @@ The core "aha!" moment: **paste an article and it works from the first sentence.
 | Language selection | Multi-language output |
 | Streaming playback | Start in < 10s, buffer rest in background |
 | Player | Classic podcast controls (play, pause, skip, speed, sleep timer) |
+| Background audio | Continues when app backgrounded/locked |
+| Lock screen controls | Play/pause from lock screen |
 | Library | Playlist of generated podcasts |
 | Account | Basic login/sync |
-| Platforms | Web + iOS + Android |
+| Platforms | iOS + Android via EAS Build |
+
+**Web App (Secondary - Testing/Marketing/Admin):**
+
+| Feature | Details |
+|---------|---------|
+| Landing page | Marketing, SEO, app store links |
+| Basic playback | Test TTS/parsing without mobile builds |
+| Auth flow | Same Supabase auth as mobile |
+| Admin panel | User management, metrics, moderation |
+| Technology | Next.js + same API backend |
 
 ### Growth Features (Post-MVP)
 
@@ -229,13 +247,44 @@ Cross-platform mobile app (Expo/React Native) with web support, designed for pod
 
 ### Platform Strategy
 
-| Platform | Priority | Approach |
-|----------|----------|----------|
-| iOS | MVP | Expo + EAS Build (cloud, no Mac needed) |
-| Android | MVP | Expo + EAS Build |
-| Web | MVP | Expo Web or separate PWA |
+| Platform | Priority | Role | Approach |
+|----------|----------|------|----------|
+| iOS | MVP | Primary Product | Expo + EAS Build (cloud, no Mac needed) |
+| Android | MVP | Primary Product | Expo + EAS Build |
+| Web (Next.js) | MVP | Secondary | Backend testing, marketing, admin |
 
-**Development Environment:** Linux (no Mac) - EAS Build handles iOS compilation in cloud
+**Development Environment:** Linux (no Mac) - EAS Build handles iOS/Android compilation in cloud
+
+### Web App Strategy
+
+**Purpose:** The Next.js web app is NOT a consumer product - it's a multi-purpose tool:
+
+| Use Case | Description |
+|----------|-------------|
+| **Backend Testing** | Test API flows (auth, TTS, parsing) without mobile builds |
+| **Marketing Site** | Landing page, SEO, app store links |
+| **Admin Panel** | User management, usage monitoring, content moderation |
+| **Future Creator Features** | Dashboard for creators to manage their voices/content |
+
+**Boundaries (What Web Is NOT):**
+- NOT feature parity with mobile
+- NOT the primary user experience
+- NOT optimized for "listening while walking" (no background audio on web)
+- NOT a replacement for EAS Build testing before launch
+
+**Web Playback Limitations:**
+- No background audio when tab is hidden
+- No lock screen controls
+- No CarPlay/Android Auto integration
+- Basic HTML5 audio API (not podcast-optimized)
+
+**Why Still Build It:**
+1. Developer cannot run iOS locally (Linux + no Mac)
+2. Landing page needed for marketing/SEO
+3. Admin panel needed for operations
+4. Creator features planned for future
+
+**Time Investment:** Web basics should be minimal - focus remains on mobile app quality
 
 ### Device Features Required
 
@@ -312,11 +361,15 @@ No special compliance requirements - standard consumer audio app.
 
 | Layer | Choice | Rationale |
 |-------|--------|-----------|
-| Frontend | Expo (React Native) | JS knowledge, fast to MVP |
+| Mobile Frontend | Expo (React Native) | JS knowledge, fast to MVP |
+| Web Frontend | Next.js | Same JS/TS stack, SSR for marketing SEO |
 | iOS Build | EAS Build (cloud) | No Mac required |
 | Android Build | EAS Build (cloud) | Same pipeline |
-| Backend | TBD (Node.js?) | API for TTS, parsing, accounts |
-| AI/TTS | TBD | Research best provider |
+| Backend | Node.js + Hono (VPS) | API for TTS, parsing, audio streaming |
+| Database/Auth | Supabase | PostgreSQL + built-in auth |
+| AI/TTS | Fish Audio API | High-quality voice clones |
+| Storage | Cloudflare R2 | Audio file storage, S3-compatible |
+| Payments | RevenueCat | Cross-platform subscription management |
 
 ### Post-MVP Features
 
@@ -410,6 +463,38 @@ No special compliance requirements - standard consumer audio app.
 - **FR45:** System displays clear error message when URL parsing fails
 - **FR46:** User can report parsing failures for improvement
 - **FR47:** System handles network errors gracefully
+
+### Web App (Next.js) - Secondary Platform
+
+**Marketing & Landing:**
+- **FR48:** Web displays marketing landing page with app store links
+- **FR49:** Web shows product features and value proposition
+- **FR50:** Web includes SEO-optimized content for organic discovery
+
+**Backend Testing Interface:**
+- **FR51:** Web user can sign up and log in (same auth as mobile)
+- **FR52:** Web user can paste URL and generate audio
+- **FR53:** Web user can play generated audio with basic controls (play, pause, seek)
+- **FR54:** Web user can view their library of generated content
+- **FR55:** Web user can test subscription upgrade flow
+
+**Admin Panel (Authenticated Admin Only):**
+- **FR56:** Admin can view registered user list and usage statistics
+- **FR57:** Admin can view system health metrics (API latency, TTS queue, error rates)
+- **FR58:** Admin can review reported URL parsing failures
+- **FR59:** Admin can manage content moderation flags
+
+**Future: Creator Dashboard (Post-MVP):**
+- **FR60:** Creators can upload and manage custom voice models
+- **FR61:** Creators can view analytics on voice usage
+- **FR62:** Creators can manage voice monetization settings
+
+**Web Limitations (Explicitly NOT Supported):**
+- No background audio playback
+- No lock screen controls
+- No offline mode
+- No sleep timer with screen-off functionality
+- No CarPlay/Android Auto integration
 
 ## Non-Functional Requirements
 

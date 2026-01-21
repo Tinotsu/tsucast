@@ -435,3 +435,145 @@ _Source: [Spotify Design - Audio-Forward UX](https://spotify.design/article/audi
 - Dark theme reduces eye strain
 
 ---
+
+## Web Application Screens
+
+**Context:** The web app is secondary to mobile. It serves backend testing, marketing, and admin purposes. Web is NOT feature-parity with mobile and is NOT optimized for "listening while walking."
+
+**Design System:** Same monochrome dark theme as mobile (bg-black, text-white, zinc accents).
+
+### 1. Landing Page
+
+**Purpose:** Marketing page to drive app store downloads and establish product positioning.
+
+**Key Elements:**
+- Hero section with tagline: "Any article. Any voice. 10 seconds."
+- Demo video or animated illustration showing paste → listen flow
+- 3-4 feature highlights (voice quality, streaming speed, podcast controls)
+- App Store + Google Play download buttons (prominent)
+- "Try on Web" secondary CTA (links to dashboard)
+- Testimonials or social proof section (future)
+- Footer with links (Privacy, Terms, Contact)
+
+**Limitations vs Mobile:**
+- N/A - this is a marketing page, not a product feature
+
+---
+
+### 2. Web Auth
+
+**Purpose:** User authentication for web dashboard access using same Supabase auth as mobile.
+
+**Key Elements:**
+- Login form (email + password)
+- Sign up form (email + password + confirm)
+- "Forgot password" link
+- OAuth buttons (Google, Apple) - same providers as mobile
+- Link to app stores for mobile download
+- Minimal branding (logo + tagline)
+
+**Limitations vs Mobile:**
+- Same auth system, no feature differences
+
+---
+
+### 3. Web Dashboard
+
+**Purpose:** Simplified interface for testing URL-to-audio flow and viewing library.
+
+**Key Elements:**
+- URL paste input (prominent, same UX as mobile Add screen)
+- Voice selector dropdown
+- "Generate" button
+- Library list (table view with columns: Title, Date, Duration, Status)
+- Play button for each library item
+- Delete button for each library item
+- Usage meter (articles remaining today)
+- Upgrade CTA banner (for free users)
+
+**Limitations vs Mobile:**
+- No background audio when tab is hidden
+- No playback queue management
+- No playlist creation (library only)
+- Simplified single-column layout
+
+---
+
+### 4. Web Player
+
+**Purpose:** Basic audio playback for testing generated content without mobile device.
+
+**Key Elements:**
+- Article title and source URL
+- Voice name indicator
+- Play/Pause button (large, centered)
+- Progress bar with seek capability
+- Current time / Total duration display
+- Playback speed selector (0.5x, 1x, 1.25x, 1.5x, 2x)
+- Volume slider
+- "Download to Mobile" CTA (app store links)
+
+**Limitations vs Mobile:**
+- No background audio playback (audio stops when tab hidden)
+- No lock screen controls
+- No sleep timer functionality
+- No CarPlay/Android Auto integration
+- No Bluetooth control integration
+- HTML5 audio only (not podcast-optimized)
+- Disclaimer banner: "For best experience, use the mobile app"
+
+---
+
+### 5. Admin Panel
+
+**Purpose:** Internal tool for user management, system monitoring, and content moderation.
+
+**Key Elements:**
+- **User Management:**
+  - User list table (email, signup date, plan, usage count)
+  - Search/filter by email or plan type
+  - View user details (usage history, subscription status)
+
+- **System Metrics:**
+  - API latency charts (response times)
+  - TTS queue depth and processing times
+  - Error rate dashboard
+  - Active users (daily/weekly/monthly)
+
+- **Moderation Queue:**
+  - Reported URL parsing failures list
+  - URL, error type, report count, user who reported
+  - Actions: Mark fixed, Dismiss, Add to blocklist
+
+- **Content Flags:**
+  - Flagged content for review
+  - Approve/Remove actions
+
+**Access Control:**
+- Admin-only authentication (role-based)
+- Separate from regular user auth flow
+
+**Limitations vs Mobile:**
+- N/A - admin panel is web-only by design
+
+---
+
+### Web Design Guidelines
+
+**Layout:**
+- Max-width container (1200px) centered
+- Responsive breakpoints: Mobile (<640px), Tablet (640-1024px), Desktop (>1024px)
+- Single-column layout for dashboard/player
+- Multi-column tables for admin panel
+
+**Components:**
+- Use same design tokens as mobile (spacing, typography, colors)
+- Buttons: White text on zinc-800 background, hover state zinc-700
+- Inputs: Black background, zinc-700 border, white text
+- Tables: Zinc-900 background, zinc-800 borders, alternating row colors
+
+**Typography:**
+- Same scale as mobile (H1: 28px, H2: 22px, Body: 16px)
+- System fonts (Inter, SF Pro, Roboto, system-ui)
+
+---

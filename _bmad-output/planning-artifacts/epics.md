@@ -8,6 +8,10 @@ inputDocuments:
   - path: '_bmad-output/planning-artifacts/ux-design-specification.md'
     type: 'ux-design'
 date: 2026-01-20
+lastEdited: 2026-01-21
+editHistory:
+  - date: "2026-01-21"
+    changes: "Added Epic 7: Web Application (OPTIONAL) with 6 stories covering marketing landing page, web auth, audio playback, subscription testing, and admin panel"
 project: tsucast
 ---
 
@@ -146,6 +150,12 @@ This document provides the complete epic and story breakdown for tsucast, decomp
 | FR40, FR41 | Epic 5 | Story 5.2 (Limit Display & Upgrade) |
 | FR42, FR43, FR44 | Epic 5 | Story 5.3 (Payment Integration) |
 | FR45, FR46, FR47 | Epic 6 | Story 6.1 (Error Handling) |
+| FR48, FR49, FR50 | Epic 7 | Story 7.1 (Marketing Landing Page) |
+| FR51 | Epic 7 | Story 7.2 (Web Authentication Flow) |
+| FR52, FR53, FR54 | Epic 7 | Story 7.3 (Web Audio Generation & Playback) |
+| FR55 | Epic 7 | Story 7.4 (Web Subscription Testing) |
+| FR56, FR57 | Epic 7 | Story 7.5 (Admin Panel - User Management) |
+| FR58, FR59 | Epic 7 | Story 7.6 (Admin Panel - Content Moderation) |
 
 ## Epic List
 
@@ -157,9 +167,12 @@ This document provides the complete epic and story breakdown for tsucast, decomp
 | 4 | Library & Organization | Users have a personal podcast library with progress tracking | 4 |
 | 5 | Monetization & Subscriptions | Business model with free/paid tiers and App Store payments | 3 |
 | 6 | Production Readiness | App handles errors gracefully and meets launch quality standards | 4 |
+| 7 | Web Application (OPTIONAL) | Next.js web app for marketing, backend testing, and admin | 6 |
+| 8 | MVP Launch Preparation | Final App Store requirements and payment integration | 1 |
 
-**Implementation Order:** Epic 1 → Epic 2 → Epic 3 → Epic 4 → Epic 5 → Epic 6
-**MVP Milestone:** Epics 1-3 (13 stories) deliver core magic experience
+**Implementation Order:** Epic 1 → Epic 2 → Epic 3 → Epic 4 → Epic 5 → Epic 6 → Epic 8
+**MVP Milestone:** Epics 1-6 + Epic 8 required for launch
+**Optional Post-MVP:** Epic 7 (Web Application) - not blocking mobile launch
 
 ---
 
@@ -1088,4 +1101,310 @@ So that I can switch tabs without losing context.
 
 ---
 
+---
+
+## Epic 7: Web Application (OPTIONAL - Post-MVP)
+
+Next.js web app for marketing, backend testing without mobile builds, and admin panel. **Depends on Epic 2** (Content Ingestion backend).
+
+> **Note:** This epic is OPTIONAL for MVP. Mobile launch is not blocked by web app completion. Web is secondary platform for testing, marketing, and operations.
+
+### Story 7.1: Marketing Landing Page
+
+As a potential user discovering tsucast,
+I want to see a compelling landing page,
+So that I understand the value and download the mobile app.
+
+**Acceptance Criteria:**
+
+**Given** visitor navigates to tsucast website
+**When** landing page loads
+**Then** they see hero section with value proposition
+**And** feature highlights explaining the magic
+**And** app store download links (iOS/Android)
+**And** visual demos or screenshots of the app
+
+**Given** landing page is indexed
+**When** search engines crawl it
+**Then** SEO meta tags are properly configured
+**And** Open Graph tags enable social sharing previews
+**And** structured data helps search visibility
+
+**Given** visitor is on mobile device
+**When** they view the landing page
+**Then** layout is responsive and mobile-friendly
+**And** app store links are prominent
+
+**FR Mapping:** FR48, FR49, FR50
+
+**Dependencies:** None (can be built in parallel with mobile)
+
+**Technical Notes:**
+- Create Next.js app in `apps/web` within monorepo
+- Server-side rendering for SEO
+- Implement marketing pages: `/`, `/features`, `/pricing`
+- Configure meta tags and Open Graph in `app/layout.tsx`
+- Use same Autumn Magic design tokens from mobile
+
+---
+
+### Story 7.2: Web Authentication Flow
+
+As a user testing tsucast on web,
+I want to sign in with the same account as mobile,
+So that my library syncs across platforms.
+
+**Acceptance Criteria:**
+
+**Given** visitor is on web app
+**When** they click "Sign In"
+**Then** they see email/password login form
+**And** social login options (Google, Apple)
+
+**Given** user logs in on web
+**When** authentication succeeds
+**Then** session is established via Supabase
+**And** they can access their library
+**And** same data as mobile app
+
+**Given** user creates account on web
+**When** signup completes
+**Then** account works on mobile app too
+**And** user_profiles row is created
+
+**Given** user logs out on web
+**When** they click logout
+**Then** session is cleared
+**And** they return to landing page
+
+**FR Mapping:** FR51
+
+**Dependencies:** Epic 1 (User Authentication) backend complete
+
+**Technical Notes:**
+- Use `@supabase/auth-helpers-nextjs` for auth
+- Create `app/(auth)/login/page.tsx` and `app/(auth)/signup/page.tsx`
+- Share auth logic with mobile where possible
+- Implement protected route middleware
+
+---
+
+### Story 7.3: Web Audio Generation & Playback
+
+As a developer testing the backend,
+I want to generate and play audio via web,
+So that I can test TTS/parsing without mobile builds.
+
+**Acceptance Criteria:**
+
+**Given** authenticated user is on web app
+**When** they paste a URL
+**Then** content is extracted using same API as mobile
+**And** audio is generated using same TTS pipeline
+
+**Given** audio generation completes
+**When** user clicks play
+**Then** audio plays using HTML5 audio element
+**And** basic controls work (play, pause, seek)
+
+**Given** user views their library on web
+**When** library loads
+**Then** they see same items as mobile app
+**And** can play any item
+
+**Given** user is on web
+**When** they switch browser tabs
+**Then** audio may pause (browser limitation)
+**And** this is expected behavior (documented)
+
+**FR Mapping:** FR52, FR53, FR54
+
+**Dependencies:** Epic 2 (Content Ingestion), Epic 3 Story 3.2 (Audio Generation) backend
+
+**Technical Notes:**
+- Create `app/(app)/generate/page.tsx` for URL input
+- Create `app/(app)/library/page.tsx` for library view
+- Use HTML5 `<audio>` element for playback
+- Reuse same `/api/generate` endpoint as mobile
+- Document web playback limitations clearly
+
+---
+
+### Story 7.4: Web Subscription Testing
+
+As a developer testing payments,
+I want to test the subscription flow on web,
+So that I can verify RevenueCat integration without app store builds.
+
+**Acceptance Criteria:**
+
+**Given** authenticated user is on web
+**When** they view their subscription status
+**Then** they see current tier (free/pro)
+**And** remaining daily limit if free
+
+**Given** free user wants to upgrade
+**When** they click upgrade
+**Then** they see plan options and pricing
+**And** are directed to appropriate payment method
+
+**Given** subscription webhook fires
+**When** RevenueCat notifies backend
+**Then** user_profiles.subscription_tier updates
+**And** change reflects on web immediately
+
+**Given** user wants to manage subscription
+**When** they click "Manage"
+**Then** they're directed to appropriate portal
+**And** can view/cancel subscription
+
+**FR Mapping:** FR55
+
+**Dependencies:** Epic 5 (Monetization) backend complete
+
+**Technical Notes:**
+- Create `app/(app)/upgrade/page.tsx` for subscription UI
+- RevenueCat web SDK or Stripe direct for web payments
+- Display subscription status from user_profiles
+- Webhook already implemented in Epic 5
+
+---
+
+### Story 7.5: Admin Panel - User Management
+
+As an admin,
+I want to view user statistics and manage accounts,
+So that I can monitor the platform and help users.
+
+**Acceptance Criteria:**
+
+**Given** admin logs in
+**When** they access /admin
+**Then** they see admin dashboard
+**And** only users with admin role can access
+
+**Given** admin views users
+**When** user list loads
+**Then** they see registered users with: email, signup date, subscription tier, usage stats
+**And** can search and filter users
+
+**Given** admin views system health
+**When** metrics load
+**Then** they see: API latency, TTS queue depth, error rates
+**And** metrics update periodically
+
+**Given** admin wants to view user details
+**When** they click on a user
+**Then** they see full user profile
+**And** generation history
+**And** subscription details
+
+**FR Mapping:** FR56, FR57
+
+**Dependencies:** Epic 1 (Authentication), Admin role in user_profiles
+
+**Technical Notes:**
+- Create `app/admin/page.tsx` with admin check middleware
+- Add `is_admin` column to user_profiles
+- Create admin API endpoints with role verification
+- Implement `/api/admin/users` and `/api/admin/metrics`
+- Use charts library for metrics visualization
+
+---
+
+### Story 7.6: Admin Panel - Content Moderation
+
+As an admin,
+I want to review reported URLs and moderate content,
+So that I can improve parsing and handle problematic content.
+
+**Acceptance Criteria:**
+
+**Given** admin views reports
+**When** extraction_reports list loads
+**Then** they see failed URLs with: URL, error type, report date, user
+**And** can sort by date or frequency
+
+**Given** admin reviews a report
+**When** they click on a report
+**Then** they see full error details
+**And** can attempt to reproduce the extraction
+**And** can mark as: fixed, won't fix, duplicate
+
+**Given** admin wants to manage content flags
+**When** content is flagged
+**Then** they can review flagged items
+**And** take action: remove, approve, warn user
+
+**Given** multiple users report same URL
+**When** admin views reports
+**Then** duplicates are grouped
+**And** frequency count is shown
+
+**FR Mapping:** FR58, FR59
+
+**Dependencies:** Epic 2 Story 2.4 (Error Reporting), extraction_reports table
+
+**Technical Notes:**
+- Create `app/admin/reports/page.tsx` for report review
+- Create `app/admin/moderation/page.tsx` for content flags
+- Implement `/api/admin/reports` with CRUD operations
+- Add status field to extraction_reports (pending, fixed, wont_fix)
+- Group reports by normalized URL
+
+---
+
+## Epic 8: MVP Launch Preparation
+
+Final requirements for App Store submission including real payment integration, legal compliance, and account management.
+
+> **Note:** This epic contains **launch blockers** that must be completed before App Store submission. Epic 7 (Web) is optional, but Epic 8 is required.
+
+### Story 8.1: MVP Launch Blockers
+
+As a user preparing to use tsucast,
+I want working payments, clear legal terms, and account control,
+So that I can trust the app and use it confidently.
+
+**Acceptance Criteria:**
+
+**Given** user wants to purchase Pro subscription
+**When** they tap "Upgrade"
+**Then** real RevenueCat SDK processes payment via App Store/Play Store
+**And** subscription is activated immediately
+
+**Given** user wants to read Terms of Service
+**When** they tap Terms link in settings
+**Then** they are taken to tsucast.com/terms with actual legal content
+
+**Given** user wants to read Privacy Policy
+**When** they tap Privacy link in settings
+**Then** they are taken to tsucast.com/privacy with actual legal content
+
+**Given** user is on signup screen
+**When** they see terms text
+**Then** "Terms of Service" and "Privacy Policy" are tappable links
+
+**Given** user wants to delete their account
+**When** they tap "Delete Account" in settings
+**Then** they see confirmation dialog
+**And** on confirm, all user data is permanently deleted
+**And** they are logged out
+
+**Given** RevenueCat sends webhook
+**When** subscription status changes
+**Then** signature is verified correctly
+**And** user_profiles.subscription_tier is updated
+
+**Technical Notes:**
+- Replace stub in `services/purchases.ts` with real `react-native-purchases` SDK
+- Create terms and privacy pages on tsucast.com
+- Add account deletion UI to settings + API endpoint
+- Update signup.tsx to make terms links tappable
+- Verify webhook signature matches RevenueCat documentation
+
+---
+
 _Epics and Stories completed: 2026-01-20_
+_Epic 7 added: 2026-01-21_
+_Epic 8 added: 2026-01-21_

@@ -1,4 +1,5 @@
 import { Hono } from 'hono';
+import { createHash } from 'crypto';
 import { createClient } from '@supabase/supabase-js';
 import { logger } from '../lib/logger.js';
 
@@ -14,29 +15,43 @@ const supabase = supabaseUrl && supabaseServiceKey
   : null;
 
 /**
+ * Create URL hash for cache lookup (matches generate route)
+ */
+function createUrlHash(url: string, voiceId: string): string {
+  return createHash('sha256').update(`${url}:${voiceId}`).digest('hex');
+}
+
+/**
  * GET /api/cache/check
  *
- * Check if a URL (by hash) has cached audio available.
+ * Check if a URL has cached audio available.
  * This is a public endpoint - no auth required.
  *
  * Query params:
- * - hash: SHA256 hash of normalized URL
+ * - url: The URL to check (will be hashed internally)
+ * - voiceId: Optional voice ID (defaults to 'alloy')
  *
  * Returns:
  * - { cached: true, audioUrl, title, duration } if found
  * - { cached: false } if not found
  */
 app.get('/check', async (c) => {
-  const urlHash = c.req.query('hash');
+  const url = c.req.query('url');
+  const voiceId = c.req.query('voiceId') || 'alloy';
 
-  if (!urlHash) {
-    return c.json({ error: 'Missing hash parameter' }, 400);
+  if (!url) {
+    return c.json({ error: 'Missing url parameter' }, 400);
   }
 
-  // Validate hash format (should be 64 character hex string for SHA256)
-  if (!/^[a-f0-9]{64}$/i.test(urlHash)) {
-    return c.json({ error: 'Invalid hash format' }, 400);
+  // Validate URL format
+  try {
+    new URL(url);
+  } catch {
+    return c.json({ error: 'Invalid URL format' }, 400);
   }
+
+  // Create hash for lookup
+  const urlHash = createUrlHash(url, voiceId);
 
   // Check if Supabase is configured
   if (!supabase) {
@@ -49,7 +64,7 @@ app.get('/check', async (c) => {
     // Query audio_cache table for this URL hash
     const { data: cached, error } = await supabase
       .from('audio_cache')
-      .select('audio_url, title, duration_seconds, status')
+      .select('id, audio_url, title, duration_seconds, status')
       .eq('url_hash', urlHash)
       .single();
 
@@ -67,6 +82,7 @@ app.get('/check', async (c) => {
     if (cached && cached.status === 'ready') {
       return c.json({
         cached: true,
+        audioId: cached.id,
         audioUrl: cached.audio_url,
         title: cached.title,
         duration: cached.duration_seconds,

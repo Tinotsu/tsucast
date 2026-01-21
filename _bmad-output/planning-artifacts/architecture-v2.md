@@ -14,9 +14,13 @@ workflowType: 'architecture'
 project_name: 'tsucast'
 user_name: 'Tino'
 date: '2026-01-20'
+lastEdited: "2026-01-21"
+editHistory:
+  - date: "2026-01-21"
+    changes: "Added Next.js web app architecture (secondary platform for testing/marketing/admin)"
 ---
 
-# Architecture Decision Document: tsucast (v2.2)
+# Architecture Decision Document: tsucast (v2.3)
 
 _Hybrid architecture: Supabase (Auth + DB) + Hetzner VPS + Dokploy + Cloudflare R2_
 
@@ -117,7 +121,7 @@ TIER 3: Scale (5,000 - 50,000 users)
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                        Mobile App                                │
+│                    Mobile App (PRIMARY)                          │
 │              (Expo + React Native + NativeWind)                  │
 │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐              │
 │  │ Add Screen  │  │   Player    │  │   Library   │              │
@@ -126,6 +130,17 @@ TIER 3: Scale (5,000 - 50,000 users)
 │                          │                                       │
 │              react-native-track-player                           │
 └──────────────────────────┬───────────────────────────────────────┘
+                           │ HTTPS
+                           │
+┌──────────────────────────┼───────────────────────────────────────┐
+│             Web App (SECONDARY - Testing/Marketing/Admin)        │
+│                    (Next.js 14+ App Router)                      │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐              │
+│  │  Landing    │  │   Basic     │  │   Admin     │              │
+│  │   Page      │  │   Player    │  │   Panel     │              │
+│  └──────┬──────┘  └──────┬──────┘  └──────┬──────┘              │
+│         └────────────────┼────────────────┘                      │
+└──────────────────────────┼───────────────────────────────────────┘
                            │ HTTPS
            ┌───────────────┴───────────────┐
            ▼                               ▼
@@ -157,19 +172,23 @@ TIER 3: Scale (5,000 - 50,000 users)
 ### MVP Architecture (Simplified)
 
 ```
-┌───────────┐      ┌───────────┐      ┌───────────┐
-│  Mobile   │─────►│    VPS    │─────►│ Supabase  │
-│    App    │      │ (API+Cron)│      │ (Auth+DB) │
-└───────────┘      └─────┬─────┘      └───────────┘
-                         │
-         ┌───────────────┼───────────────┐
-         ▼               ▼               ▼
-    ┌─────────┐    ┌──────────┐    ┌───────────┐
-    │  Fish   │    │    R2    │    │RevenueCat │
-    │  Audio  │    │ (Storage)│    │ (Payments)│
-    └─────────┘    └──────────┘    └───────────┘
+┌───────────┐
+│  Mobile   │──────┐
+│   App     │      │
+└───────────┘      │
+                   │      ┌───────────┐      ┌───────────┐
+                   ├─────►│    VPS    │─────►│ Supabase  │
+                   │      │ (API+Cron)│      │ (Auth+DB) │
+┌───────────┐      │      └─────┬─────┘      └───────────┘
+│  Web App  │──────┘            │
+│(Secondary)│            ┌──────┼──────┐
+└───────────┘            ▼      ▼      ▼
+                    ┌─────────┐ ┌──────┐ ┌───────────┐
+                    │  Fish   │ │  R2  │ │RevenueCat │
+                    │  Audio  │ │      │ │ (Payments)│
+                    └─────────┘ └──────┘ └───────────┘
 
-No Redis, no Workers, no Axiom - add when scaling
+Both apps share: same API, same Supabase Auth, same database
 ```
 
 ---
@@ -181,6 +200,8 @@ No Redis, no Workers, no Axiom - add when scaling
 | Layer | Technology | MVP? | Rationale |
 |-------|------------|------|-----------|
 | **Mobile** | Expo SDK 53 + React Native | ✅ | Cross-platform, JS knowledge |
+| **Web** | Next.js 14+ (App Router) | ✅ | SSR for marketing, same JS/TS stack |
+| **Web Styling** | Tailwind CSS | ✅ | Consistent with NativeWind patterns |
 | **Styling** | NativeWind v4 | ✅ | Tailwind for RN, consistent styling |
 | **Navigation** | Expo Router | ✅ | File-based routing |
 | **Audio Player** | react-native-track-player | ✅ | Background playback, lock screen |
@@ -872,6 +893,23 @@ tsucast/
 │       ├── types/
 │       └── utils/
 │
+│   └── web/                      # Next.js web app (secondary)
+│       ├── app/                  # App Router pages
+│       │   ├── (marketing)/      # Landing, features, pricing
+│       │   ├── (app)/            # Authenticated app routes
+│       │   │   ├── dashboard/    # Basic playback testing
+│       │   │   └── library/      # View library
+│       │   ├── admin/            # Admin panel (protected)
+│       │   └── layout.tsx        # Root layout
+│       ├── components/
+│       │   ├── marketing/        # Landing page components
+│       │   ├── player/           # Basic web player
+│       │   └── admin/            # Admin components
+│       ├── lib/
+│       │   ├── supabase.ts       # Supabase client (browser)
+│       │   └── api.ts            # API client
+│       └── package.json
+│
 ├── supabase/
 │   ├── migrations/               # Database migrations
 │   └── config.toml               # Supabase local config
@@ -985,6 +1023,173 @@ npx supabase db push
 #    - Configure Apple OAuth
 ```
 
+### Web App Deployment
+
+> **Note:** Web app is SECONDARY to mobile. Deploy alongside API on same VPS via Dokploy.
+
+**Deployment Options:**
+
+| Option | Pros | Cons | Recommendation |
+|--------|------|------|----------------|
+| **Same VPS (Dokploy)** | Simple, cheap, single infra | Shares resources with API | ✅ MVP |
+| **Vercel** | Easy Next.js, auto-scaling | Extra cost, separate infra | Consider at scale |
+
+**MVP: Same VPS with Dokploy**
+
+```yaml
+# dokploy.yaml (web app)
+name: tsucast-web
+type: application
+
+build:
+  dockerfile: apps/web/Dockerfile
+
+deploy:
+  replicas: 1
+  healthCheck:
+    path: /api/health
+    interval: 30s
+
+domains:
+  - host: tsucast.com
+    https: true
+  - host: www.tsucast.com
+    https: true
+    redirect: tsucast.com
+
+resources:
+  memory: 256Mi
+  cpu: 0.25
+```
+
+**Web App Dockerfile:**
+
+```dockerfile
+# apps/web/Dockerfile
+FROM node:20-alpine AS builder
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci
+COPY . .
+RUN npm run build
+
+FROM node:20-alpine AS runner
+WORKDIR /app
+ENV NODE_ENV=production
+COPY --from=builder /app/.next/standalone ./
+COPY --from=builder /app/.next/static ./.next/static
+COPY --from=builder /app/public ./public
+EXPOSE 3000
+CMD ["node", "server.js"]
+```
+
+---
+
+## Web App Architecture (Secondary Platform)
+
+> **Purpose:** Testing, marketing, and admin - NOT a primary consumer product.
+
+### Why Build a Web App
+
+| Use Case | Description |
+|----------|-------------|
+| **Backend Testing** | Test API flows without mobile builds (critical on Linux dev) |
+| **Marketing Site** | Landing page, SEO, app store links |
+| **Admin Panel** | User management, metrics, content moderation |
+| **Future Creator Dashboard** | Voice management, analytics |
+
+### What Web Is NOT
+
+- NOT feature parity with mobile
+- NOT the primary user experience
+- NOT optimized for "listening while walking"
+- NOT a replacement for mobile app testing
+
+### Web Tech Stack
+
+| Layer | Technology | Rationale |
+|-------|------------|-----------|
+| **Framework** | Next.js 14+ | App Router, SSR for SEO |
+| **Styling** | Tailwind CSS | Consistent with NativeWind |
+| **Auth** | Supabase Auth | Same as mobile, SSR-compatible |
+| **API Client** | Same Hono backend | No separate API needed |
+| **State** | React Query | Same patterns as mobile |
+
+### Shared Authentication
+
+Both mobile and web use Supabase Auth with the same user accounts:
+
+```typescript
+// apps/web/lib/supabase.ts
+import { createBrowserClient } from '@supabase/ssr';
+
+export const supabase = createBrowserClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
+
+// Server-side (middleware, server components)
+import { createServerClient } from '@supabase/ssr';
+import { cookies } from 'next/headers';
+
+export async function createServerSupabase() {
+  const cookieStore = await cookies();
+  return createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        get: (name) => cookieStore.get(name)?.value,
+        set: (name, value, options) => cookieStore.set(name, value, options),
+        remove: (name, options) => cookieStore.set(name, '', options),
+      },
+    }
+  );
+}
+```
+
+### Web App Features (FR48-FR62)
+
+| Feature | Priority | Notes |
+|---------|----------|-------|
+| **Landing page (FR48-50)** | High | SEO, marketing, app store links |
+| **Basic auth (FR51)** | High | Same Supabase as mobile |
+| **Generate audio (FR52)** | High | Test API without mobile |
+| **Basic player (FR53)** | Medium | HTML5 audio, no background play |
+| **View library (FR54)** | Medium | Read-only library view |
+| **Admin: Users (FR56)** | Medium | User list, usage stats |
+| **Admin: Health (FR57)** | Medium | API metrics dashboard |
+| **Admin: Reports (FR58-59)** | Low | URL parsing reports |
+| **Creator dashboard (FR60-62)** | Post-MVP | Voice management |
+
+### Web Playback Limitations
+
+Unlike mobile, web has inherent limitations:
+
+| Feature | Mobile | Web |
+|---------|--------|-----|
+| Background audio | ✅ | ❌ Tab must stay open |
+| Lock screen controls | ✅ | ❌ |
+| Sleep timer (screen off) | ✅ | ❌ |
+| CarPlay/Android Auto | ✅ | ❌ |
+| Offline download | Future | ❌ |
+
+### Web Routes Structure
+
+```
+/                     # Landing page (marketing)
+/features             # Feature showcase
+/pricing              # Pricing page
+/login                # Auth (Supabase)
+/signup               # Auth (Supabase)
+/dashboard            # Basic playback interface
+/library              # View generated audio
+/admin                # Admin panel (role-protected)
+/admin/users          # User management
+/admin/health         # System health
+/admin/reports        # URL parsing reports
+```
+
 ---
 
 ## Environment Variables
@@ -1032,6 +1237,20 @@ EXPO_PUBLIC_API_URL=https://api.tsucast.com
 # RevenueCat
 REVENUECAT_API_KEY_IOS=xxx
 REVENUECAT_API_KEY_ANDROID=xxx
+```
+
+### Web App (.env.local)
+
+```bash
+# Supabase (same project as mobile)
+NEXT_PUBLIC_SUPABASE_URL=https://xxx.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=xxx
+
+# API Server (same as mobile)
+NEXT_PUBLIC_API_URL=https://api.tsucast.com
+
+# Admin access (list of admin user IDs)
+ADMIN_USER_IDS=uuid1,uuid2
 ```
 
 ---
@@ -1123,18 +1342,27 @@ REVENUECAT_API_KEY_ANDROID=xxx
 15. Implement Player screen (track-player)
 16. Implement Library screen
 
-### Phase 4: Polish & Launch
-17. Add playlists
-18. Add RevenueCat payments
-19. Add rate limiting middleware
-20. Set up Sentry error tracking
-21. App Store preparation and submission
+### Phase 4: Web App (Secondary Platform)
+17. Initialize Next.js app with App Router
+18. Set up Supabase SSR auth
+19. Create marketing landing page
+20. Implement basic web player (testing interface)
+21. Build admin panel (users, health, reports)
+22. Deploy web app via Dokploy
 
-### Phase 5: Scale (Post-Launch)
-22. Add Upstash Redis for job queue
-23. Add Axiom for logging
-24. Upgrade Supabase to Pro
-25. Add performance monitoring
+### Phase 5: Polish & Launch
+23. Add playlists (mobile)
+24. Add RevenueCat payments
+25. Add rate limiting middleware
+26. Set up Sentry error tracking
+27. App Store preparation and submission
+
+### Phase 6: Scale (Post-Launch)
+28. Add Upstash Redis for job queue
+29. Add Axiom for logging
+30. Upgrade Supabase to Pro
+31. Add performance monitoring
+32. Consider Vercel for web app if traffic warrants
 
 ---
 
@@ -1146,7 +1374,8 @@ REVENUECAT_API_KEY_ANDROID=xxx
 | v2 | 2026-01-20 | Revised to VPS-first after issues review |
 | v2.1 | 2026-01-20 | Hybrid architecture (Supabase Auth+DB, VPS API), MVP vs scale-later breakdown |
 | v2.2 | 2026-01-20 | Added Dokploy deployment, health endpoint, timeout middleware, structured logging (pino) |
+| v2.3 | 2026-01-21 | Added Next.js web app architecture (secondary platform for testing/marketing/admin) |
 
 ---
 
-_Architecture v2.2 completed: 2026-01-20_
+_Architecture v2.3 completed: 2026-01-21_

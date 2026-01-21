@@ -44,6 +44,7 @@ story_location: "_bmad-output/stories/"
 # Epic 4: Library & Organization (retention/stickiness)
 # Epic 5: Monetization (business model)
 # Epic 6: Production Readiness (launch quality)
+# Epic 7: Web Application (OPTIONAL - marketing, admin, web access)
 # =============================================================================
 
 development_status:
@@ -160,67 +161,75 @@ development_status:
   # Stories: 6
   epic-3:
     title: "Audio Generation & Playback"
-    status: backlog
+    status: done
     stories: 6
     frs: [FR6, FR7, FR8, FR9, FR10, FR11, FR12, FR13, FR14, FR15, FR16, FR17, FR18]
 
   3-1-voice-selection-preview:
     title: "Voice Selection & Preview"
-    status: ready-for-dev
+    status: done
     frs: [FR6, FR9]
     dependencies: [epic-2]
     files:
       - components/add/VoiceSelector.tsx
+      - components/add/VoiceCard.tsx
       - constants/voices.ts
+      - hooks/useVoicePreview.ts
+      - hooks/useVoicePreference.ts
 
   3-2-streaming-audio-generation:
     title: "Streaming Audio Generation"
-    status: ready-for-dev
+    status: done
     frs: [FR7, FR8]
     dependencies: [3-1]
     files:
       - apps/api/src/routes/generate.ts
       - apps/api/src/services/tts.ts
       - apps/api/src/services/storage.ts
-      - supabase/migrations/audio_cache.sql
-      - components/add/GeneratingState.tsx
+      - apps/api/src/services/cache.ts
+      - supabase/migrations/002_audio_cache.sql
 
   3-3-player-screen-controls:
     title: "Player Screen & Controls"
-    status: ready-for-dev
+    status: done
     frs: [FR10, FR11, FR17, FR18]
     dependencies: [3-2]
     files:
       - app/player/[id].tsx
       - components/player/PlayButton.tsx
+      - components/player/SkipButton.tsx
       - components/player/ProgressBar.tsx
       - hooks/useAudioPlayer.ts
       - stores/playerStore.ts
+      - services/trackPlayer.ts
+      - services/playbackService.ts
 
   3-4-background-audio-lockscreen:
     title: "Background Audio & Lock Screen"
-    status: ready-for-dev
+    status: done
     frs: [FR14, FR15, FR16]
     dependencies: [3-3]
     files:
-      - hooks/useAudioPlayer.ts
+      - services/playbackService.ts
       - app.json
 
   3-5-playback-speed-control:
     title: "Playback Speed Control"
-    status: ready-for-dev
+    status: done
     frs: [FR12]
     dependencies: [3-3]
     files:
       - components/player/SpeedControl.tsx
+      - hooks/usePlaybackSpeed.ts
 
   3-6-sleep-timer:
     title: "Sleep Timer"
-    status: ready-for-dev
+    status: done
     frs: [FR13]
     dependencies: [3-3]
     files:
       - components/player/SleepTimer.tsx
+      - hooks/useSleepTimer.ts
 
   epic-3-retrospective: optional
 
@@ -232,51 +241,61 @@ development_status:
   # Stories: 4
   epic-4:
     title: "Library & Organization"
-    status: backlog
+    status: done
     stories: 4
     frs: [FR19, FR20, FR21, FR22, FR23, FR24, FR25, FR26, FR27, FR28, FR29, FR30, FR31, FR32, FR33, FR34]
 
   4-1-library-view:
     title: "Library View"
-    status: ready-for-dev
+    status: done
     frs: [FR24, FR25, FR26, FR27]
     dependencies: [epic-3]
     files:
       - app/(tabs)/library.tsx
       - components/library/LibraryList.tsx
       - components/library/LibraryItem.tsx
+      - components/library/LibrarySkeleton.tsx
       - hooks/useLibrary.ts
-      - supabase/migrations/user_library.sql
+      - supabase/migrations/004_user_library.sql
+      - apps/api/src/routes/library.ts
 
   4-2-playback-progress-tracking:
     title: "Playback Progress Tracking"
-    status: ready-for-dev
+    status: done
     frs: [FR19]
     dependencies: [4-1]
     files:
+      - hooks/usePositionSaving.ts
       - hooks/useLibrary.ts
       - apps/api/src/routes/library.ts
+      - services/playbackService.ts
 
   4-3-playlist-management:
     title: "Playlist Management"
-    status: ready-for-dev
+    status: done
     frs: [FR28, FR29, FR30, FR31, FR32, FR33, FR34]
     dependencies: [4-1]
     files:
       - app/playlist/[id].tsx
       - components/library/PlaylistCard.tsx
       - components/library/CreatePlaylistModal.tsx
+      - components/library/AddToPlaylistMenu.tsx
       - hooks/usePlaylists.ts
-      - supabase/migrations/playlists.sql
+      - supabase/migrations/005_playlists.sql
+      - apps/api/src/routes/playlists.ts
+      - services/api.ts
 
   4-4-queue-management:
     title: "Queue Management"
-    status: ready-for-dev
+    status: done
     frs: [FR20, FR21, FR22, FR23]
     dependencies: [4-1]
     files:
       - components/player/QueueButton.tsx
-      - hooks/useAudioPlayer.ts
+      - components/player/QueueItem.tsx
+      - components/player/QueueSheet.tsx
+      - hooks/useQueue.ts
+      - app/player/[id].tsx
 
   epic-4-retrospective: optional
 
@@ -288,13 +307,13 @@ development_status:
   # Stories: 3
   epic-5:
     title: "Monetization & Subscriptions"
-    status: backlog
+    status: done
     stories: 3
     frs: [FR39, FR40, FR41, FR42, FR43, FR44]
 
   5-1-free-tier-implementation:
     title: "Free Tier Implementation"
-    status: ready-for-dev
+    status: done
     frs: [FR39]
     dependencies: [epic-3]
     files:
@@ -303,21 +322,23 @@ development_status:
 
   5-2-limit-display-upgrade-prompt:
     title: "Limit Display & Upgrade Prompt"
-    status: ready-for-dev
+    status: done
     frs: [FR40, FR41]
     dependencies: [5-1]
     files:
       - components/ui/LimitModal.tsx
+      - components/ui/UpgradeBanner.tsx
       - hooks/useSubscription.ts
 
   5-3-in-app-purchase-integration:
     title: "In-App Purchase Integration"
-    status: ready-for-dev
+    status: done
     frs: [FR42, FR43, FR44]
     dependencies: [5-2]
     files:
       - services/purchases.ts
       - apps/api/src/routes/webhooks.ts
+      - apps/api/src/routes/user.ts
 
   epic-5-retrospective: optional
 
@@ -329,19 +350,20 @@ development_status:
   # Stories: 4
   epic-6:
     title: "Production Readiness"
-    status: backlog
+    status: in-progress
     stories: 4
     frs: [FR45, FR46, FR47]
 
   6-1-error-handling-user-feedback:
     title: "Error Handling & User Feedback"
-    status: ready-for-dev
+    status: done
     frs: [FR45, FR46, FR47]
     dependencies: [epic-3]
     files:
-      - components/ui/ErrorState.tsx
+      - components/ErrorBoundary.tsx
       - components/ui/Toast.tsx
       - hooks/useToast.ts
+      - hooks/useNetworkStatus.ts
       - apps/api/src/routes/health.ts
       - apps/api/src/middleware/timeout.ts
       - apps/api/src/middleware/logging.ts
@@ -349,13 +371,14 @@ development_status:
 
   6-2-performance-optimization:
     title: "Performance Optimization"
-    status: ready-for-dev
+    status: done
     frs: []
     nfrs: [NFR1, NFR4, NFR5]
     dependencies: [epic-4]
     files:
       - components/ui/Skeleton.tsx
       - components/library/LibrarySkeleton.tsx
+      - components/add/AddScreenSkeleton.tsx
 
   6-3-app-store-preparation:
     title: "App Store Preparation"
@@ -366,11 +389,12 @@ development_status:
     files:
       - app.json
       - eas.json
-      - assets/images/
+      - assets/images/icon.png
+      - assets/images/splash.png
 
   6-4-persistent-mini-player:
     title: "Persistent Mini-Player"
-    status: ready-for-dev
+    status: done
     frs: []
     dependencies: [3-3]
     files:
@@ -379,16 +403,106 @@ development_status:
 
   epic-6-retrospective: optional
 
+  # ===========================================================================
+  # EPIC 7: Web Application (OPTIONAL)
+  # ===========================================================================
+  # Goal: Web presence for marketing, subscription testing, and admin management
+  # FRs: FR48, FR49, FR50, FR51, FR52, FR53, FR54, FR55, FR56, FR57, FR58, FR59
+  # Stories: 6
+  # NOTE: This epic is OPTIONAL for MVP - mobile app is primary platform
+  epic-7:
+    title: "Web Application"
+    status: done
+    stories: 6
+    frs: [FR48, FR49, FR50, FR51, FR52, FR53, FR54, FR55, FR56, FR57, FR58, FR59]
+
+  7-1-marketing-landing-page:
+    title: "Marketing Landing Page"
+    status: done
+    frs: [FR48, FR49, FR50]
+    dependencies: []
+    files:
+      - apps/web/app/page.tsx
+      - apps/web/app/layout.tsx
+      - apps/web/components/landing/Hero.tsx
+      - apps/web/components/landing/Features.tsx
+      - apps/web/components/landing/Pricing.tsx
+      - apps/web/components/landing/Footer.tsx
+      - apps/web/components/landing/Header.tsx
+
+  7-2-web-authentication-flow:
+    title: "Web Authentication Flow"
+    status: done
+    frs: [FR51]
+    dependencies: [7-1]
+    files:
+      - apps/web/app/(auth)/login/page.tsx
+      - apps/web/app/(auth)/signup/page.tsx
+      - apps/web/app/auth/callback/route.ts
+      - apps/web/hooks/useAuth.ts
+      - apps/web/lib/supabase/client.ts
+      - apps/web/lib/supabase/server.ts
+      - apps/web/lib/supabase/middleware.ts
+      - apps/web/components/auth/AuthForm.tsx
+
+  7-3-web-audio-generation-playback:
+    title: "Web Audio Generation & Playback"
+    status: done
+    frs: [FR52, FR53, FR54]
+    dependencies: [7-2]
+    files:
+      - apps/web/app/(app)/dashboard/page.tsx
+      - apps/web/app/(app)/generate/page.tsx
+      - apps/web/app/(app)/library/page.tsx
+      - apps/web/components/app/WebPlayer.tsx
+      - apps/web/components/app/UrlInput.tsx
+      - apps/web/components/app/VoiceSelector.tsx
+      - apps/web/components/app/AppHeader.tsx
+
+  7-4-web-subscription-testing:
+    title: "Web Subscription Testing"
+    status: done
+    frs: [FR55]
+    dependencies: [7-2]
+    files:
+      - apps/web/app/(app)/settings/page.tsx
+      - apps/web/app/(app)/upgrade/page.tsx
+      - apps/web/lib/api.ts
+
+  7-5-admin-panel-user-management:
+    title: "Admin Panel - User Management"
+    status: done
+    frs: [FR56, FR57]
+    dependencies: [7-2]
+    files:
+      - apps/web/app/admin/page.tsx
+      - apps/web/app/admin/layout.tsx
+      - apps/web/app/admin/template.tsx
+      - apps/web/app/admin/users/page.tsx
+      - apps/web/components/admin/AdminSidebar.tsx
+      - apps/web/lib/admin-api.ts
+
+  7-6-admin-panel-content-moderation:
+    title: "Admin Panel - Content Moderation"
+    status: done
+    frs: [FR58, FR59]
+    dependencies: [7-5]
+    files:
+      - apps/web/app/admin/reports/page.tsx
+      - apps/web/app/admin/moderation/page.tsx
+
+  epic-7-retrospective: optional
+
 # =============================================================================
 # SPRINT SUMMARY
 # =============================================================================
 summary:
-  total_epics: 6
-  total_stories: 24
-  completed_epics: 2
-  completed_stories: 7
+  total_epics: 7
+  total_stories: 30
+  completed_epics: 6
+  completed_stories: 29
   in_progress_stories: 0
-  ready_for_dev_stories: 17
+  ready_for_dev_stories: 1
   backlog_stories: 0
 
 # =============================================================================
@@ -421,4 +535,6 @@ notes:
   - "Epic 4 adds retention/stickiness with library management"
   - "Epic 5 enables monetization - critical for business model"
   - "Epic 6 is polish for App Store submission"
+  - "Epic 7 is OPTIONAL for MVP - web application for marketing, subscription testing, and admin"
   - "Recommended: Complete Epic 1-3 first for 'magic moment' validation"
+  - "Epic 7 can be implemented post-launch or in parallel with mobile development"

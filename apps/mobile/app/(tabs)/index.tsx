@@ -1,18 +1,30 @@
+/**
+ * Add Screen
+ *
+ * Main content generation screen.
+ * Stories: 5-1 Free Tier, 5-2 Limit Display & Upgrade Prompt
+ */
+
 import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View,
   Text,
-  SafeAreaView,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { router } from 'expo-router';
 import { PasteInput } from '../../components/add/PasteInput';
-import { VoiceSelector, DEFAULT_VOICE } from '../../components/add/VoiceSelector';
+import { VoiceSelector } from '../../components/add/VoiceSelector';
 import { GenerateButton } from '../../components/add/GenerateButton';
+import { LimitBanner } from '../../components/ui/LimitBanner';
+import { LimitModal } from '../../components/ui/LimitModal';
 import { isValidUrl, getUrlValidationError } from '../../utils/validation';
 import { normalizeAndHashUrl } from '../../utils/urlNormalization';
 import { checkCache, CacheResult } from '../../services/api';
+import { useVoicePreference } from '../../hooks/useVoicePreference';
+import { useSubscription } from '../../hooks/useSubscription';
 
 /**
  * Add Screen State Machine
@@ -35,6 +47,9 @@ const VALIDATION_DEBOUNCE_MS = 300;
 export default function AddScreen() {
   const [url, setUrl] = useState('');
   const [state, setState] = useState<AddScreenState>({ status: 'idle' });
+  const [showLimitModal, setShowLimitModal] = useState(false);
+  const { selectedVoiceId, setSelectedVoiceId } = useVoicePreference();
+  const { isPro, used, limit, remaining, resetAt } = useSubscription();
 
   // Ref to track validation timeout for debouncing
   const validationTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -134,6 +149,12 @@ export default function AddScreen() {
    * Handle generate button press
    */
   const handleGenerate = () => {
+    // Check limit before attempting generation (not cached content)
+    if (state.status === 'ready_to_generate' && !isPro && remaining <= 0) {
+      setShowLimitModal(true);
+      return;
+    }
+
     if (state.status === 'cached') {
       // Navigate to player with cached audio
       if (__DEV__) {
@@ -143,17 +164,26 @@ export default function AddScreen() {
     } else if (state.status === 'ready_to_generate') {
       // Navigate to generation flow
       if (__DEV__) {
-        console.log('Starting generation for:', state.normalizedUrl);
+        console.log('Starting generation for:', state.normalizedUrl, 'with voice:', selectedVoiceId);
       }
-      // TODO: Navigate to generation flow with normalizedUrl and urlHash
+      // TODO: Navigate to generation flow with normalizedUrl, urlHash, and selectedVoiceId
     }
+  };
+
+  /**
+   * Handle upgrade navigation from limit modal
+   */
+  const handleUpgrade = () => {
+    setShowLimitModal(false);
+    router.push('/upgrade');
   };
 
   // Derived state for UI
   const isLoading = state.status === 'validating' || state.status === 'checking_cache';
   const hasError = state.status === 'invalid';
   const isValid = state.status === 'ready_to_generate' || state.status === 'cached';
-  const canGenerate = isValid && !isLoading;
+  const isAtLimit = !isPro && remaining <= 0;
+  const canGenerate = isValid && !isLoading && !isAtLimit;
   const isCached = state.status === 'cached';
 
   return (
@@ -171,9 +201,14 @@ export default function AddScreen() {
             <Text className="text-2xl font-bold text-white mb-2">
               Add Content
             </Text>
-            <Text className="text-zinc-400 mb-6">
+            <Text className="text-zinc-400 mb-4">
               Paste any article URL to turn it into a podcast
             </Text>
+
+            {/* Limit Banner for free users */}
+            {!isPro && (
+              <LimitBanner used={used} limit={limit} />
+            )}
 
             {/* Paste Input Area - 60% of available space */}
             <View className="flex-[3]">
@@ -188,10 +223,11 @@ export default function AddScreen() {
             </View>
 
             {/* Voice Selector */}
-            <View className="flex-1 my-4">
+            <View className="my-4">
               <VoiceSelector
-                selectedVoice={DEFAULT_VOICE}
-                disabled={true}
+                selectedVoiceId={selectedVoiceId}
+                onVoiceSelect={setSelectedVoiceId}
+                disabled={isLoading}
               />
             </View>
 
@@ -207,6 +243,14 @@ export default function AddScreen() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {/* Limit Modal */}
+      <LimitModal
+        visible={showLimitModal}
+        onClose={() => setShowLimitModal(false)}
+        onUpgrade={handleUpgrade}
+        resetAt={resetAt}
+      />
     </SafeAreaView>
   );
 }

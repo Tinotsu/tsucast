@@ -8,12 +8,42 @@
 
 **Target:** 1,000 paid subscribers in 3 months (YC goal)
 
+## MANDATORY: Before ANY Code Task
+
+**This applies to ALL work - implementation, bug fixes, refactoring, testing, reviews.**
+
+### Step 1: Run the app FIRST
+```bash
+npm run mobile
+```
+- Wait for the app to bundle and load
+- Read ALL console warnings - **do not ignore them**
+- **STOP and fix any deprecation warnings immediately** before doing anything else
+- Common deprecations to watch for:
+  - `SafeAreaView` → use `react-native-safe-area-context`
+  - Deprecated props, APIs, or imports
+- Only proceed when console shows zero warnings
+
+### Step 2: Do your task
+- Implement, fix, refactor, or test as required
+
+### Step 3: Run the app AGAIN after changes
+```bash
+npm run mobile
+```
+- Verify no new warnings introduced
+- Check that your changes work correctly
+- Fix any issues before considering the task complete
+
+**NEVER skip these steps. NEVER trust that previous work is complete without verifying.**
+
 ## Tech Stack
 
 | Layer | Technology |
 |-------|------------|
 | Mobile | Expo SDK 54, React Native, expo-router v6 |
-| Styling | NativeWind v4 (Tailwind CSS) |
+| Web Frontend | Next.js 14+ (App Router) |
+| Styling | NativeWind v4 (mobile), Tailwind CSS (web) |
 | State | React Query (server), Zustand (client) |
 | Auth | Supabase Auth |
 | Database | Supabase PostgreSQL |
@@ -27,12 +57,16 @@
 ```
 tsucast/
 ├── apps/
-│   ├── mobile/          # Expo React Native app
+│   ├── mobile/          # Expo React Native app (PRIMARY)
 │   │   ├── app/         # expo-router pages
 │   │   ├── components/  # React components
 │   │   ├── hooks/       # Custom hooks
 │   │   ├── services/    # API clients
 │   │   └── stores/      # Zustand stores
+│   ├── web/             # Next.js web app (SECONDARY - testing/marketing/admin)
+│   │   ├── app/         # App Router pages
+│   │   ├── components/  # React components
+│   │   └── lib/         # Utilities
 │   └── api/             # Hono API server
 │       └── src/
 │           ├── routes/  # API endpoints
@@ -99,6 +133,8 @@ interface ApiResponse<T> {
 EXPO_PUBLIC_SUPABASE_URL=
 EXPO_PUBLIC_SUPABASE_ANON_KEY=
 EXPO_PUBLIC_API_URL=
+EXPO_PUBLIC_REVENUECAT_IOS=          # RevenueCat iOS API key
+EXPO_PUBLIC_REVENUECAT_ANDROID=      # RevenueCat Android API key
 ```
 
 ### API (`apps/api/.env`)
@@ -108,6 +144,14 @@ SUPABASE_SERVICE_ROLE_KEY=
 FISH_AUDIO_API_KEY=
 R2_ACCESS_KEY_ID=
 R2_SECRET_ACCESS_KEY=
+REVENUECAT_WEBHOOK_AUTH_KEY=         # RevenueCat webhook authentication key
+```
+
+### Web (`apps/web/.env.local`)
+```
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
+NEXT_PUBLIC_API_URL=
 ```
 
 ## Do NOT
@@ -118,6 +162,7 @@ R2_SECRET_ACCESS_KEY=
 - Use `any` type without justification
 - Create new files when editing existing ones suffices
 - Add features not in the current story scope
+- Add mobile-only features to web (background audio, lock screen controls, sleep timer with screen-off)
 
 ## Do
 
@@ -127,6 +172,64 @@ R2_SECRET_ACCESS_KEY=
 - Use meaningful variable names
 - Handle loading and error states in UI
 - Test on both iOS and Android
+
+## Code Review Checklist
+
+When performing a code review, ALWAYS complete these steps **in order**:
+
+### Step 1: Run the app and check for warnings (FIRST)
+```bash
+npm run mobile
+```
+- Read ALL console warnings - do not ignore them
+- **Fix any deprecation warnings immediately** before proceeding
+- Check for: deprecated APIs, deprecated imports, deprecated props
+- App must run with zero warnings before moving to step 2
+
+### Step 2: Verify functionality
+- Navigate to all affected screens
+- Test the features that were changed
+- Check for runtime errors and crashes
+
+### Step 3: Run tests and typecheck
+```bash
+npm run test:mobile
+npm run test:api
+npm run typecheck
+```
+
+### Step 4: API server (if API changes)
+```bash
+npm run api
+```
+- Test API endpoints manually or with integration tests
+
+### Step 5: Final verification
+- Confirm zero warnings in console
+- Confirm all tests pass
+- Document any issues found
+
+## MVP Launch Requirements
+
+### App Store Requirements (Implemented)
+- **Account Deletion**: `DELETE /api/user/account` + UI in Settings (Apple policy since June 2022)
+- **Restore Purchases**: Available in Settings screen
+- **Terms of Service**: Tappable link to tsucast.com/terms (signup + settings)
+- **Privacy Policy**: Tappable link to tsucast.com/privacy (signup + settings)
+
+### RevenueCat Integration
+- **SDK**: `react-native-purchases` installed
+- **Initialization**: Call `initializePurchases(userId)` after auth
+- **Stub Mode**: Returns mock data when API keys not configured (for dev)
+- **Webhook**: `POST /api/webhooks/revenuecat` with Bearer token auth
+
+### Remaining External Setup (Not Code)
+1. Create RevenueCat dashboard account
+2. Create products in App Store Connect / Play Console
+3. Link products in RevenueCat dashboard
+4. Set `EXPO_PUBLIC_REVENUECAT_IOS` and `EXPO_PUBLIC_REVENUECAT_ANDROID`
+5. Configure webhook URL and set `REVENUECAT_WEBHOOK_AUTH_KEY`
+6. Create actual Terms/Privacy pages at tsucast.com
 
 ## Current Sprint Status
 

@@ -23,6 +23,22 @@ vi.mock('../../src/lib/logger.js', () => ({
   },
 }));
 
+// Mock the cache service (not configured in tests)
+vi.mock('../../src/services/cache.js', () => ({
+  getCacheEntry: vi.fn().mockResolvedValue(null),
+  claimCacheEntry: vi.fn().mockResolvedValue(null),
+  updateCacheReady: vi.fn().mockResolvedValue(undefined),
+  updateCacheFailed: vi.fn().mockResolvedValue(undefined),
+  getCacheEntryById: vi.fn().mockResolvedValue(null),
+  isCacheConfigured: vi.fn().mockReturnValue(false),
+}));
+
+// Mock the storage service (not configured in tests)
+vi.mock('../../src/services/storage.js', () => ({
+  uploadAudio: vi.fn(),
+  isStorageConfigured: vi.fn().mockReturnValue(false),
+}));
+
 // Helper to create mock HTML response
 function createHtmlResponse(body: string, options: { ok?: boolean; status?: number } = {}) {
   return {
@@ -114,6 +130,8 @@ describe('POST /api/generate', () => {
       expect(json.title).toBeTruthy();
       expect(json.wordCount).toBeGreaterThan(0);
       expect(json.contentType).toBe('html');
+      // When TTS/storage not configured, returns extraction_only
+      expect(json.status).toBe('extraction_only');
     });
 
     it('should return PAYWALL_DETECTED for 403 response', async () => {
@@ -214,8 +232,11 @@ describe('POST /api/generate', () => {
       expect(json).toHaveProperty('title');
       expect(json).toHaveProperty('wordCount');
       expect(json).toHaveProperty('contentType');
+      expect(json).toHaveProperty('status');
       expect(typeof json.title).toBe('string');
       expect(typeof json.wordCount).toBe('number');
+      // When TTS/storage not configured, returns extraction_only
+      expect(json.status).toBe('extraction_only');
     });
   });
 
