@@ -1,0 +1,83 @@
+@import "tailwindcss";
+
+/* Monochrome Dark Theme - matches mobile app */
+:root {
+  /* Base Colors - Black & White with Zinc grays */
+  --color-black: #000000;
+  --color-white: #ffffff;
+  --color-zinc-900: #18181b;
+  --color-zinc-800: #27272a;
+  --color-zinc-700: #3f3f46;
+  --color-zinc-600: #52525b;
+  --color-zinc-500: #71717a;
+  --color-zinc-400: #a1a1aa;
+  --color-zinc-300: #d4d4d8;
+  --color-amber: #f59e0b;
+  --color-amber-light: #fbbf24;
+
+  /* Semantic Colors - Always Dark */
+  --background: var(--color-black);
+  --foreground: var(--color-white);
+  --primary: var(--color-amber);
+  --primary-foreground: var(--color-black);
+  --secondary: var(--color-zinc-900);
+  --secondary-foreground: var(--color-white);
+  --muted: var(--color-zinc-400);
+  --muted-foreground: var(--color-zinc-500);
+  --accent: var(--color-amber);
+  --accent-foreground: var(--color-black);
+  --destructive: #ef4444;
+  --destructive-foreground: var(--color-white);
+  --border: var(--color-zinc-800);
+  --ring: var(--color-amber);
+  --card: var(--color-zinc-900);
+  --card-foreground: var(--color-white);
+  --input: var(--color-zinc-800);
+}
+
+/* Dark class for compatibility - same values */
+.dark {
+  --background: var(--color-black);
+  --foreground: var(--color-white);
+  --primary: var(--color-amber);
+  --primary-foreground: var(--color-black);
+  --secondary: var(--color-zinc-900);
+  --secondary-foreground: var(--color-white);
+  --muted: var(--color-zinc-400);
+  --muted-foreground: var(--color-zinc-500);
+  --accent: var(--color-amber);
+  --accent-foreground: var(--color-black);
+  --border: var(--color-zinc-800);
+  --ring: var(--color-amber);
+  --card: var(--color-zinc-900);
+  --card-foreground: var(--color-white);
+}
+
+* {
+  border-color: var(--border);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-zinc-700);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-amber);
+}

@@ -1,0 +1,224 @@
+"use client";
+
+import { useState, useRef, useEffect } from "react";
+import {
+  Play,
+  Pause,
+  SkipBack,
+  SkipForward,
+  Volume2,
+  VolumeX,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
+
+interface WebPlayerProps {
+  audioUrl: string;
+  title: string;
+  onPositionChange?: (position: number) => void;
+  initialPosition?: number;
+}
+
+export function WebPlayer({
+  audioUrl,
+  title,
+  onPositionChange,
+  initialPosition = 0,
+}: WebPlayerProps) {
+  const audioRef = useRef<HTMLAudioElement>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(initialPosition);
+  const [duration, setDuration] = useState(0);
+  const [isMuted, setIsMuted] = useState(false);
+  const [playbackRate, setPlaybackRate] = useState(1);
+
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    const handleTimeUpdate = () => {
+      setCurrentTime(audio.currentTime);
+    };
+
+    const handleLoadedMetadata = () => {
+      setDuration(audio.duration);
+      if (initialPosition > 0) {
+        audio.currentTime = initialPosition;
+      }
+    };
+
+    const handleEnded = () => {
+      setIsPlaying(false);
+    };
+
+    audio.addEventListener("timeupdate", handleTimeUpdate);
+    audio.addEventListener("loadedmetadata", handleLoadedMetadata);
+    audio.addEventListener("ended", handleEnded);
+
+    return () => {
+      audio.removeEventListener("timeupdate", handleTimeUpdate);
+      audio.removeEventListener("loadedmetadata", handleLoadedMetadata);
+      audio.removeEventListener("ended", handleEnded);
+    };
+  }, [initialPosition]);
+
+  // Save position periodically
+  useEffect(() => {
+    if (!onPositionChange) return;
+
+    const interval = setInterval(() => {
+      if (audioRef.current && isPlaying) {
+        onPositionChange(audioRef.current.currentTime);
+      }
+    }, 30000); // Every 30 seconds
+
+    return () => clearInterval(interval);
+  }, [isPlaying, onPositionChange]);
+
+  const togglePlay = () => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    if (isPlaying) {
+      audio.pause();
+    } else {
+      audio.play();
+    }
+    setIsPlaying(!isPlaying);
+  };
+
+  const skip = (seconds: number) => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    audio.currentTime = Math.max(0, Math.min(duration, audio.currentTime + seconds));
+  };
+
+  const seek = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    const newTime = parseFloat(e.target.value);
+    audio.currentTime = newTime;
+    setCurrentTime(newTime);
+  };
+
+  const toggleMute = () => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    audio.muted = !isMuted;
+    setIsMuted(!isMuted);
+  };
+
+  const changeSpeed = () => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    const speeds = [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2];
+    const currentIndex = speeds.indexOf(playbackRate);
+    const nextIndex = (currentIndex + 1) % speeds.length;
+    const newSpeed = speeds[nextIndex];
+
+    audio.playbackRate = newSpeed;
+    setPlaybackRate(newSpeed);
+  };
+
+  const formatTime = (time: number) => {
+    if (isNaN(time)) return "0:00";
+    const minutes = Math.floor(time / 60);
+    const seconds = Math.floor(time % 60);
+    return `${minutes}:${seconds.toString().padStart(2, "0")}`;
+  };
+
+  return (
+    <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-6">
+      <audio ref={audioRef} src={audioUrl} preload="metadata" />
+
+      {/* Title */}
+      <h3 className="mb-6 line-clamp-2 text-lg font-semibold text-white">
+        {title}
+      </h3>
+
+      {/* Progress Bar */}
+      <div className="mb-4">
+        <input
+          type="range"
+          min={0}
+          max={duration || 100}
+          value={currentTime}
+          onChange={seek}
+          className="h-2 w-full cursor-pointer appearance-none rounded-full bg-zinc-700 accent-amber-500"
+        />
+        <div className="mt-2 flex justify-between text-xs text-zinc-400">
+          <span>{formatTime(currentTime)}</span>
+          <span>{formatTime(duration)}</span>
+        </div>
+      </div>
+
+      {/* Controls */}
+      <div className="flex items-center justify-center gap-4">
+        {/* Skip Back */}
+        <button
+          onClick={() => skip(-15)}
+          className="rounded-full p-3 text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-amber-500"
+        >
+          <SkipBack className="h-6 w-6" />
+        </button>
+
+        {/* Play/Pause */}
+        <button
+          onClick={togglePlay}
+          className="flex h-14 w-14 items-center justify-center rounded-full bg-amber-500 text-black transition-colors hover:bg-amber-400"
+        >
+          {isPlaying ? (
+            <Pause className="h-6 w-6" />
+          ) : (
+            <Play className="ml-1 h-6 w-6" />
+          )}
+        </button>
+
+        {/* Skip Forward */}
+        <button
+          onClick={() => skip(30)}
+          className="rounded-full p-3 text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-amber-500"
+        >
+          <SkipForward className="h-6 w-6" />
+        </button>
+      </div>
+
+      {/* Secondary Controls */}
+      <div className="mt-4 flex items-center justify-center gap-4">
+        {/* Speed */}
+        <button
+          onClick={changeSpeed}
+          className={cn(
+            "rounded-lg px-3 py-1 text-sm font-medium transition-colors",
+            playbackRate !== 1
+              ? "bg-amber-500/10 text-amber-500"
+              : "text-zinc-400 hover:bg-zinc-800 hover:text-amber-500"
+          )}
+        >
+          {playbackRate}x
+        </button>
+
+        {/* Mute */}
+        <button
+          onClick={toggleMute}
+          className="rounded-lg p-2 text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-amber-500"
+        >
+          {isMuted ? (
+            <VolumeX className="h-5 w-5" />
+          ) : (
+            <Volume2 className="h-5 w-5" />
+          )}
+        </button>
+      </div>
+
+      {/* Browser Limitation Notice */}
+      <p className="mt-6 text-center text-xs text-zinc-500">
+        Note: Audio may pause when switching browser tabs. For background
+        playback, use the mobile app.
+      </p>
+    </div>
+  );
+}
