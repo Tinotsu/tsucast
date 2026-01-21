@@ -100,14 +100,14 @@ so that I don't need to remember another password.
 
 ### Task 5: Social Button Component (AC: 1, 2)
 - [x] 5.1 Create `components/auth/SocialButton.tsx` wrapper:
-  - Consistent styling with Autumn Magic palette
+  - Consistent styling with monochrome B&W theme
   - Provider logo/icon display
   - Loading state during auth
   - Disabled state handling
 - [x] 5.2 Style buttons per UX spec:
-  - Apple: Black background, white text (Apple guidelines)
-  - Google: White background, dark text (Google guidelines)
-  - Rounded corners (8px)
+  - Apple: White background, black text (primary CTA on dark bg)
+  - Google: Dark background with border, white text (secondary)
+  - Rounded corners (12px)
   - Full width on mobile
 
 ### Task 6: Update Auth Screens (AC: 1, 2, 3)
@@ -209,6 +209,8 @@ Claude Opus 4.5
 | 2026-01-20 | Story created | Claude Opus 4.5 |
 | 2026-01-20 | Implementation completed | Claude Opus 4.5 |
 | 2026-01-20 | Code review fixes applied | Claude Opus 4.5 |
+| 2026-01-21 | Code review round 2: Added Google icon to GoogleSignInButton, fixed useEffect dependency array with useCallback | Claude Opus 4.5 |
+| 2026-01-21 | Code review round 3: Updated task descriptions from Autumn Magic to B&W monochrome theme | Claude Opus 4.5 |
 
 ### File List
 

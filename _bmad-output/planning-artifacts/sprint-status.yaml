@@ -100,47 +100,55 @@ development_status:
   # Stories: 4
   epic-2:
     title: "Content Ingestion"
-    status: backlog
+    status: done
     stories: 4
     frs: [FR1, FR2, FR3, FR4, FR5]
 
   2-1-url-input-validation:
     title: "URL Input & Validation"
-    status: ready-for-dev
+    status: done
     frs: [FR1]
     dependencies: [epic-1]
     files:
       - app/(tabs)/index.tsx
       - components/add/PasteInput.tsx
       - utils/validation.ts
+      - utils/urlNormalization.ts
       - apps/api/src/routes/cache.ts
+      - services/api.ts
 
   2-2-html-content-extraction:
     title: "HTML Content Extraction"
-    status: ready-for-dev
+    status: done
     frs: [FR3]
     dependencies: [2-1]
     files:
       - apps/api/src/routes/generate.ts
       - apps/api/src/services/parser.ts
+      - apps/api/src/services/fetcher.ts
+      - apps/api/src/utils/errors.ts
 
   2-3-pdf-content-extraction:
     title: "PDF Content Extraction"
-    status: ready-for-dev
+    status: done
     frs: [FR2, FR4]
     dependencies: [2-2]
     files:
-      - apps/api/src/services/parser.ts
+      - apps/api/src/services/pdfParser.ts
+      - apps/api/src/services/fetcher.ts
+      - apps/api/src/routes/generate.ts
 
   2-4-extraction-error-reporting:
     title: "Extraction Error Reporting"
-    status: ready-for-dev
+    status: done
     frs: [FR5]
     dependencies: [2-2]
     files:
       - components/ui/ErrorState.tsx
-      - supabase/migrations/extraction_reports.sql
+      - supabase/migrations/003_extraction_reports.sql
       - apps/api/src/routes/report.ts
+      - services/api.ts
+      - constants/errors.ts
 
   epic-2-retrospective: optional
 
@@ -377,10 +385,10 @@ development_status:
 summary:
   total_epics: 6
   total_stories: 24
-  completed_epics: 1
-  completed_stories: 3
+  completed_epics: 2
+  completed_stories: 7
   in_progress_stories: 0
-  ready_for_dev_stories: 21
+  ready_for_dev_stories: 17
   backlog_stories: 0
 
 # =============================================================================

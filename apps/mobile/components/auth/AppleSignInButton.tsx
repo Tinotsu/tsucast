@@ -40,13 +40,13 @@ export function AppleSignInButton({ disabled, onError }: AppleSignInButtonProps)
     <TouchableOpacity
       onPress={handlePress}
       disabled={disabled || isLoading}
-      className="bg-black py-4 rounded-xl flex-row justify-center items-center"
+      className="bg-white py-4 rounded-xl flex-row justify-center items-center"
       activeOpacity={0.8}
     >
       {isLoading ? (
-        <ActivityIndicator color="white" />
+        <ActivityIndicator color="black" />
       ) : (
-        <Text className="text-white font-semibold text-base">
+        <Text className="text-black font-semibold text-base">
            Continue with Apple
         </Text>
       )}

@@ -33,38 +33,36 @@ function SettingsItem({
   destructive = false,
   loading = false,
 }: SettingsItemProps) {
-  const textColor = destructive
-    ? 'text-red-600 dark:text-red-400'
-    : 'text-amber-900 dark:text-amber-100';
-
   return (
     <TouchableOpacity
       onPress={onPress}
       disabled={loading}
-      className="flex-row items-center bg-amber-100 dark:bg-amber-900 p-4 rounded-xl mb-3"
+      className="flex-row items-center bg-zinc-900 border border-zinc-800 p-4 rounded-xl mb-3"
       activeOpacity={0.7}
     >
-      <View className={`w-10 h-10 rounded-full items-center justify-center ${
-        destructive ? 'bg-red-100 dark:bg-red-900/30' : 'bg-amber-200 dark:bg-amber-800'
+      <View className={`w-10 h-10 rounded-full items-center justify-center border ${
+        destructive ? 'border-red-500/50' : 'border-zinc-700'
       }`}>
         <Ionicons
           name={icon}
           size={20}
-          color={destructive ? '#DC2626' : '#D97706'}
+          color={destructive ? '#ef4444' : '#ffffff'}
         />
       </View>
       <View className="flex-1 ml-3">
-        <Text className={`font-medium ${textColor}`}>{title}</Text>
+        <Text className={`font-medium ${destructive ? 'text-red-400' : 'text-white'}`}>
+          {title}
+        </Text>
         {subtitle && (
-          <Text className="text-sm text-amber-600 dark:text-amber-400 mt-0.5">
+          <Text className="text-sm text-zinc-500 mt-0.5">
             {subtitle}
           </Text>
         )}
       </View>
       {loading ? (
-        <ActivityIndicator size="small" color="#D97706" />
+        <ActivityIndicator size="small" color="#ffffff" />
       ) : showChevron ? (
-        <Ionicons name="chevron-forward" size={20} color="#D97706" />
+        <Ionicons name="chevron-forward" size={20} color="#71717a" />
       ) : null}
     </TouchableOpacity>
   );
@@ -124,39 +122,39 @@ export default function SettingsScreen() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-cream dark:bg-deep-brown">
+    <SafeAreaView className="flex-1 bg-black">
       <ScrollView className="flex-1 px-6 pt-4">
         {/* Header */}
-        <Text className="text-2xl font-bold text-amber-900 dark:text-amber-100 mb-6">
+        <Text className="text-2xl font-bold text-white mb-6">
           Settings
         </Text>
 
         {/* Account Section */}
-        <Text className="text-sm font-semibold text-amber-600 dark:text-amber-400 mb-3 uppercase tracking-wide">
+        <Text className="text-sm font-semibold text-zinc-500 mb-3 uppercase tracking-wide">
           Account
         </Text>
 
-        <View className="bg-amber-100 dark:bg-amber-900 p-4 rounded-xl mb-3">
+        <View className="bg-zinc-900 border border-zinc-800 p-4 rounded-xl mb-3">
           <View className="flex-row items-center">
-            <View className="w-12 h-12 bg-amber-200 dark:bg-amber-800 rounded-full items-center justify-center">
-              <Ionicons name="person" size={24} color="#D97706" />
+            <View className="w-12 h-12 border border-zinc-700 rounded-full items-center justify-center">
+              <Ionicons name="person" size={24} color="#ffffff" />
             </View>
             <View className="flex-1 ml-3">
-              <Text className="font-medium text-amber-900 dark:text-amber-100">
+              <Text className="font-medium text-white">
                 {user?.email || 'Not signed in'}
               </Text>
               <View className="flex-row items-center mt-1">
-                <View className={`px-2 py-0.5 rounded-full ${
-                  isPro ? 'bg-amber-500' : 'bg-amber-300 dark:bg-amber-700'
+                <View className={`px-2 py-0.5 rounded-full border ${
+                  isPro ? 'border-white bg-white' : 'border-zinc-600'
                 }`}>
                   <Text className={`text-xs font-semibold ${
-                    isPro ? 'text-white' : 'text-amber-800 dark:text-amber-200'
+                    isPro ? 'text-black' : 'text-zinc-400'
                   }`}>
                     {isPro ? 'PRO' : 'FREE'}
                   </Text>
                 </View>
                 {!isPro && profile && (
-                  <Text className="text-xs text-amber-600 dark:text-amber-400 ml-2">
+                  <Text className="text-xs text-zinc-500 ml-2">
                     {3 - (profile.daily_generations || 0)} articles left today
                   </Text>
                 )}
@@ -184,26 +182,26 @@ export default function SettingsScreen() {
         )}
 
         {/* Playback Section */}
-        <Text className="text-sm font-semibold text-amber-600 dark:text-amber-400 mb-3 mt-6 uppercase tracking-wide">
+        <Text className="text-sm font-semibold text-zinc-500 mb-3 mt-6 uppercase tracking-wide">
           Playback
         </Text>
 
         <SettingsItem
           icon="speedometer"
           title="Default Playback Speed"
-          subtitle="1.0x"
-          onPress={() => {}}
+          subtitle="1.0x (Coming soon)"
+          showChevron={false}
         />
 
         <SettingsItem
           icon="moon"
           title="Sleep Timer Default"
-          subtitle="Off"
-          onPress={() => {}}
+          subtitle="Off (Coming soon)"
+          showChevron={false}
         />
 
         {/* Support Section */}
-        <Text className="text-sm font-semibold text-amber-600 dark:text-amber-400 mb-3 mt-6 uppercase tracking-wide">
+        <Text className="text-sm font-semibold text-zinc-500 mb-3 mt-6 uppercase tracking-wide">
           Support
         </Text>
 
@@ -226,7 +224,7 @@ export default function SettingsScreen() {
         />
 
         {/* Sign Out */}
-        <Text className="text-sm font-semibold text-amber-600 dark:text-amber-400 mb-3 mt-6 uppercase tracking-wide">
+        <Text className="text-sm font-semibold text-zinc-500 mb-3 mt-6 uppercase tracking-wide">
           Account Actions
         </Text>
 
@@ -241,9 +239,9 @@ export default function SettingsScreen() {
 
         {/* App Version */}
         <View className="items-center mt-8 mb-6">
-          <Text className="text-amber-500 text-sm">tsucast v1.0.0</Text>
-          <Text className="text-amber-400 text-xs mt-1">
-            Made with  in San Francisco
+          <Text className="text-zinc-500 text-sm">tsucast v1.0.0</Text>
+          <Text className="text-zinc-600 text-xs mt-1">
+            Made with love
           </Text>
         </View>
       </ScrollView>

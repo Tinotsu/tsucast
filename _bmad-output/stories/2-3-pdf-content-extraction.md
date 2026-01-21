@@ -1,6 +1,7 @@
 # Story 2.3: PDF Content Extraction
 
-Status: ready-for-dev
+Status: done
+Last Updated: 2026-01-21
 
 ## Story
 
@@ -298,14 +299,24 @@ apps/api/
 
 ### Agent Model Used
 
-(To be filled during implementation)
+Claude Opus 4.5 (claude-opus-4-5-20251101)
 
 ### Change Log
 
 | Date | Change | Author |
 |------|--------|--------|
 | 2026-01-20 | Story created | Claude Opus 4.5 |
+| 2026-01-21 | All tasks implemented | Claude Opus 4.5 |
 
 ### File List
 
-(To be filled after implementation)
+**VPS API (apps/api/):**
+- `src/services/pdfParser.ts` - PDF parsing with pdf-parse
+- `src/services/fetcher.ts` - fetchPdf() and isPdfUrl() functions
+- `src/routes/generate.ts` - Integrated PDF parsing
+- `__tests__/unit/pdfParser.test.ts` - PDF parser tests
+
+**Mobile App (apps/mobile/):**
+- `utils/validation.ts` - Added getUrlType() function
+- `components/add/PasteInput.tsx` - Added PDF indicator badge
+- `__tests__/unit/validation.test.ts` - Added getUrlType tests

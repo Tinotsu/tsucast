@@ -16,12 +16,14 @@ CREATE TABLE IF NOT EXISTS public.user_profiles (
 ALTER TABLE public.user_profiles ENABLE ROW LEVEL SECURITY;
 
 -- RLS Policy: Users can only read their own profile
+DROP POLICY IF EXISTS "Users can view own profile" ON public.user_profiles;
 CREATE POLICY "Users can view own profile"
   ON public.user_profiles
   FOR SELECT
   USING (auth.uid() = id);
 
 -- RLS Policy: Users can update their own profile
+DROP POLICY IF EXISTS "Users can update own profile" ON public.user_profiles;
 CREATE POLICY "Users can update own profile"
   ON public.user_profiles
   FOR UPDATE

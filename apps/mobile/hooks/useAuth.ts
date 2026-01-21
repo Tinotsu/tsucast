@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Platform } from 'react-native';
 import { supabase } from '@/services/supabase';
+import { queryClient } from '@/services/queryClient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as AppleAuthentication from 'expo-apple-authentication';
 import type { User, Session, AuthError } from '@supabase/supabase-js';
@@ -66,14 +67,14 @@ export function useAuth() {
         .single();
 
       if (error) {
-        console.error('Error fetching profile:', error);
+        if (__DEV__) console.error('Error fetching profile:', error);
         return null;
       }
 
       setProfile(data);
       return data;
     } catch (err) {
-      console.error('Error in fetchProfile:', err);
+      if (__DEV__) console.error('Error in fetchProfile:', err);
       return null;
     }
   }, []);
@@ -88,7 +89,7 @@ export function useAuth() {
 
         if (!mounted) return;
 
-        if (error) {
+        if (error && __DEV__) {
           console.error('Error getting session:', error);
         }
 
@@ -99,7 +100,7 @@ export function useAuth() {
           await fetchProfile(session.user.id);
         }
       } catch (err) {
-        console.error('Error initializing auth:', err);
+        if (__DEV__) console.error('Error initializing auth:', err);
       } finally {
         if (mounted) {
           setIsLoading(false);
@@ -273,6 +274,9 @@ export function useAuth() {
       } catch (err) {
         // Non-critical error, continue with logout
       }
+
+      // Clear React Query cache to prevent stale data on re-login
+      queryClient.clear();
 
       // Sign out from Supabase (this clears secure store tokens)
       const { error } = await supabase.auth.signOut();

@@ -7,6 +7,8 @@ import { timeoutMiddleware } from './middleware/timeout.js';
 import healthRoutes from './routes/health.js';
 import generateRoutes from './routes/generate.js';
 import libraryRoutes from './routes/library.js';
+import cacheRoutes from './routes/cache.js';
+import reportRoutes from './routes/report.js';
 
 const app = new Hono();
 
@@ -19,6 +21,8 @@ app.use('*', timeoutMiddleware(120000)); // 120s default timeout
 app.route('/health', healthRoutes);
 app.route('/api/generate', generateRoutes);
 app.route('/api/library', libraryRoutes);
+app.route('/api/cache', cacheRoutes);
+app.route('/api/report', reportRoutes);
 
 // Root route
 app.get('/', (c) => {

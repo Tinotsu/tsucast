@@ -95,14 +95,14 @@ so that I can save my generated podcasts and access them across devices.
 - [x] 5.3 Create `app/(auth)/signup.tsx` signup screen:
   - Email input field with validation
   - Password input field (min 8 chars)
-  - Confirm password field
   - "Create Account" button
   - "Already have an account?" link to login
   - Error message display area
-- [x] 5.4 Style screens using NativeWind with Autumn Magic palette:
-  - Background: Cream `#FFFBEB` (light) / Deep Brown `#1C1410` (dark)
-  - Primary buttons: Amber `#F59E0B`
-  - Text: Deep Brown `#451A03` (light) / Warm Cream `#FEF3C7` (dark)
+- [x] 5.4 Style screens using NativeWind with monochrome dark theme:
+  - Background: Black `#000000`
+  - Surface/Inputs: Dark Gray `#1a1a1a` with border
+  - Primary buttons: White text on dark, bordered
+  - Text: White `#ffffff` (primary) / Gray `#888888` (secondary)
 - [x] 5.5 Implement form validation with clear error states
 - [x] 5.6 Show loading state during auth operations
 
@@ -139,8 +139,8 @@ so that I can save my generated podcasts and access them across devices.
 **From UX Design Specification:**
 - Zero onboarding - screens should be self-explanatory
 - Tom Bombadil energy - magic without explanation
-- Autumn Magic color palette (warm amber/brown tones)
-- Dark mode follows system preference
+- Monochrome dark theme (black/white/gray with borders)
+- Dark mode only for MVP
 - Minimal UI, no visual noise
 
 ### Source Tree Components
@@ -231,6 +231,8 @@ N/A - Clean implementation
 | 2026-01-20 | Story created | Claude Opus 4.5 |
 | 2026-01-20 | Implementation completed | Claude Opus 4.5 |
 | 2026-01-20 | Code review fixes applied | Claude Opus 4.5 |
+| 2026-01-21 | Code review round 2: Fixed console.log violations (wrapped in __DEV__), extracted queryClient to module for cache clearing on logout, fixed email validation trim inconsistency | Claude Opus 4.5 |
+| 2026-01-21 | Code review round 3: Updated _layout.tsx to B&W theme (bg-black, white spinner, light status bar), fixed console.warn __DEV__ wrapper | Claude Opus 4.5 |
 
 ### File List
 
@@ -243,6 +245,7 @@ N/A - Clean implementation
 - `apps/mobile/babel.config.js` - Babel configuration
 - `apps/mobile/metro.config.js` - Metro bundler configuration
 - `apps/mobile/services/supabase.ts` - Supabase client with SecureStore adapter
+- `apps/mobile/services/queryClient.ts` - React Query client (extracted for use in auth logout)
 - `apps/mobile/hooks/useAuth.ts` - Authentication hook with all auth methods
 - `apps/mobile/app/_layout.tsx` - Root layout with auth navigation handler
 - `apps/mobile/app/(auth)/_layout.tsx` - Auth group layout

@@ -1,6 +1,7 @@
 # Story 2.4: Extraction Error Reporting
 
-Status: ready-for-dev
+Status: done
+Last Updated: 2026-01-21
 
 ## Story
 
@@ -361,14 +362,26 @@ supabase/
 
 ### Agent Model Used
 
-(To be filled during implementation)
+Claude Opus 4.5 (claude-opus-4-5-20251101)
 
 ### Change Log
 
 | Date | Change | Author |
 |------|--------|--------|
 | 2026-01-20 | Story created | Claude Opus 4.5 |
+| 2026-01-21 | All tasks implemented | Claude Opus 4.5 |
 
 ### File List
 
-(To be filled after implementation)
+**Database (supabase/migrations/):**
+- `003_extraction_reports.sql` - extraction_reports table
+
+**VPS API (apps/api/):**
+- `src/routes/report.ts` - POST /api/report/extraction endpoint
+- `src/index.ts` - Registered report routes
+- `__tests__/integration/report.test.ts` - Report API tests
+
+**Mobile App (apps/mobile/):**
+- `components/ui/ErrorState.tsx` - Error display with report/dismiss
+- `services/api.ts` - reportExtractionFailure() function
+- `constants/errors.ts` - Error types and messages

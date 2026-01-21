@@ -81,10 +81,11 @@ interface ApiResponse<T> {
 
 ### 6. Styling (NativeWind)
 - Use Tailwind classes via `className` prop
-- Color palette: Autumn Magic (amber/brown tones)
-- Dark mode: Use `dark:` prefix for dark variants
-- Background: `bg-cream dark:bg-deep-brown`
-- Primary: `bg-amber-500`
+- Theme: Monochrome dark (black/white/gray only for MVP)
+- Background: `bg-black`
+- Surface/Cards: `bg-zinc-900` with `border border-zinc-800`
+- Text: `text-white` (primary) / `text-zinc-400` (secondary)
+- Buttons: `bg-white text-black` or `border border-white text-white`
 
 ### 7. State Management
 - Server state: React Query (`useQuery`, `useMutation`)

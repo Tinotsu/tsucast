@@ -71,9 +71,9 @@ so that I don't need to log in repeatedly.
   - User email display (from session)
   - Subscription tier display (from user_profiles)
   - "Log Out" button at bottom
-- [x] 3.2 Style settings screen with Autumn Magic palette:
-  - Section headers
-  - List items with chevrons
+- [x] 3.2 Style settings screen with monochrome B&W theme:
+  - Section headers (zinc-500 text)
+  - List items with borders and chevrons
   - Destructive red color for logout button
 - [x] 3.3 Add settings tab to tab navigation in `app/(tabs)/_layout.tsx`
 - [x] 3.4 Use appropriate icon for settings tab (gear/cog)
@@ -201,16 +201,19 @@ Claude Opus 4.5
 | 2026-01-20 | Story created | Claude Opus 4.5 |
 | 2026-01-20 | Implementation completed | Claude Opus 4.5 |
 | 2026-01-20 | Code review fixes applied | Claude Opus 4.5 |
+| 2026-01-21 | Code review round 2: Fixed placeholder buttons to show "Coming soon", restored missing heart emoji, added React Query cache clear on logout | Claude Opus 4.5 |
+| 2026-01-21 | Code review round 3: Updated tabs layout to B&W theme, updated task descriptions from Autumn Magic to B&W theme | Claude Opus 4.5 |
 
 ### File List
 
 **Created:**
 - `apps/mobile/app/(tabs)/settings.tsx` - Settings screen with logout
 - `apps/mobile/app/upgrade.tsx` - Upgrade to Pro screen
+- `apps/mobile/services/queryClient.ts` - React Query client (for cache clearing on logout)
 
 **Modified:**
-- `apps/mobile/hooks/useAuth.ts` - Enhanced signOut to preserve preferences, improved auth state listener
-- `apps/mobile/app/_layout.tsx` - Added loading state during auth initialization
-- `apps/mobile/app/(tabs)/_layout.tsx` - Added settings tab, dark mode support
+- `apps/mobile/hooks/useAuth.ts` - Enhanced signOut to preserve preferences, improved auth state listener, added queryClient.clear() on logout
+- `apps/mobile/app/_layout.tsx` - Added loading state during auth initialization, imports queryClient from module, B&W theme
+- `apps/mobile/app/(tabs)/_layout.tsx` - Added settings tab, B&W monochrome theme (dark only)
 - `apps/mobile/services/supabase.ts` - Added runtime env var validation
 - `supabase/migrations/001_user_profiles.sql` - Includes updated_at trigger

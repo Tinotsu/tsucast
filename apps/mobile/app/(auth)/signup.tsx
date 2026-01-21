@@ -19,7 +19,6 @@ export default function SignupScreen() {
   const { signUp, isLoading } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -38,10 +37,6 @@ export default function SignupScreen() {
     }
     if (password.length < 8) {
       setError('Password must be at least 8 characters');
-      return false;
-    }
-    if (password !== confirmPassword) {
-      setError('Passwords do not match');
       return false;
     }
     return true;
@@ -74,7 +69,7 @@ export default function SignupScreen() {
   const isFormDisabled = isSubmitting || isLoading;
 
   return (
-    <SafeAreaView className="flex-1 bg-cream dark:bg-deep-brown">
+    <SafeAreaView className="flex-1 bg-black">
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         className="flex-1"
@@ -86,10 +81,10 @@ export default function SignupScreen() {
           <View className="flex-1 justify-center px-6 py-10">
             {/* Header */}
             <View className="mb-10">
-              <Text className="text-4xl font-bold text-amber-900 dark:text-amber-100 text-center">
+              <Text className="text-4xl font-bold text-white text-center">
                 Create Account
               </Text>
-              <Text className="text-amber-600 dark:text-amber-400 text-center mt-2">
+              <Text className="text-zinc-400 text-center mt-2">
                 Start listening to articles today
               </Text>
             </View>
@@ -111,15 +106,15 @@ export default function SignupScreen() {
 
             {/* Divider */}
             <View className="flex-row items-center mb-6">
-              <View className="flex-1 h-px bg-amber-300 dark:bg-amber-700" />
-              <Text className="mx-4 text-amber-600 dark:text-amber-400">or</Text>
-              <View className="flex-1 h-px bg-amber-300 dark:bg-amber-700" />
+              <View className="flex-1 h-px bg-zinc-800" />
+              <Text className="mx-4 text-zinc-500">or</Text>
+              <View className="flex-1 h-px bg-zinc-800" />
             </View>
 
             {/* Error Message */}
             {error ? (
-              <View className="bg-red-100 dark:bg-red-900/30 p-3 rounded-xl mb-4">
-                <Text className="text-red-600 dark:text-red-400 text-center">
+              <View className="border border-red-500/50 bg-red-500/10 p-3 rounded-xl mb-4">
+                <Text className="text-red-400 text-center">
                   {error}
                 </Text>
               </View>
@@ -133,8 +128,8 @@ export default function SignupScreen() {
                 setEmail(text);
                 setError('');
               }}
-              className="bg-amber-100 dark:bg-amber-900 p-4 rounded-xl text-amber-900 dark:text-amber-100 mb-3"
-              placeholderTextColor="#92400E"
+              className="bg-zinc-900 border border-zinc-800 p-4 rounded-xl text-white mb-3"
+              placeholderTextColor="#71717a"
               keyboardType="email-address"
               autoCapitalize="none"
               autoCorrect={false}
@@ -150,24 +145,8 @@ export default function SignupScreen() {
                 setPassword(text);
                 setError('');
               }}
-              className="bg-amber-100 dark:bg-amber-900 p-4 rounded-xl text-amber-900 dark:text-amber-100 mb-3"
-              placeholderTextColor="#92400E"
-              secureTextEntry
-              autoCapitalize="none"
-              autoComplete="new-password"
-              editable={!isFormDisabled}
-            />
-
-            {/* Confirm Password Input */}
-            <TextInput
-              placeholder="Confirm password"
-              value={confirmPassword}
-              onChangeText={(text) => {
-                setConfirmPassword(text);
-                setError('');
-              }}
-              className="bg-amber-100 dark:bg-amber-900 p-4 rounded-xl text-amber-900 dark:text-amber-100 mb-4"
-              placeholderTextColor="#92400E"
+              className="bg-zinc-900 border border-zinc-800 p-4 rounded-xl text-white mb-4"
+              placeholderTextColor="#71717a"
               secureTextEntry
               autoCapitalize="none"
               autoComplete="new-password"
@@ -179,14 +158,16 @@ export default function SignupScreen() {
               onPress={handleSignUp}
               disabled={isFormDisabled}
               className={`py-4 rounded-xl mb-4 ${
-                isFormDisabled ? 'bg-amber-400' : 'bg-amber-500'
+                isFormDisabled ? 'bg-zinc-700' : 'bg-white'
               }`}
               activeOpacity={0.8}
             >
               {isSubmitting ? (
-                <ActivityIndicator color="white" />
+                <ActivityIndicator color="black" />
               ) : (
-                <Text className="text-white font-bold text-center text-lg">
+                <Text className={`font-bold text-center text-lg ${
+                  isFormDisabled ? 'text-zinc-400' : 'text-black'
+                }`}>
                   Create Account
                 </Text>
               )}
@@ -195,15 +176,15 @@ export default function SignupScreen() {
             {/* Sign In Link */}
             <Link href="/(auth)/login" asChild>
               <TouchableOpacity className="py-3" disabled={isFormDisabled}>
-                <Text className="text-amber-600 dark:text-amber-400 text-center">
+                <Text className="text-zinc-400 text-center">
                   Already have an account?{' '}
-                  <Text className="font-semibold">Sign in</Text>
+                  <Text className="font-semibold text-white">Sign in</Text>
                 </Text>
               </TouchableOpacity>
             </Link>
 
             {/* Terms */}
-            <Text className="text-xs text-amber-500 text-center mt-6">
+            <Text className="text-xs text-zinc-500 text-center mt-6">
               By creating an account, you agree to our Terms of Service and
               Privacy Policy.
             </Text>
