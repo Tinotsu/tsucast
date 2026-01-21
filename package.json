@@ -18,6 +18,7 @@
     "test": "npm run test --workspaces --if-present",
     "test:mobile": "npm run test --workspace=apps/mobile",
     "test:api": "npm run test --workspace=apps/api",
+    "test:e2e": "npm run test:e2e --workspace=apps/api",
     "test:coverage": "npm run test:coverage --workspaces --if-present"
   },
   "devDependencies": {
