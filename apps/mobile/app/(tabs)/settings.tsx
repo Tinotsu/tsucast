@@ -3,16 +3,18 @@ import {
   View,
   Text,
   TouchableOpacity,
-  SafeAreaView,
   ScrollView,
   Alert,
   ActivityIndicator,
   Linking,
   Platform,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useAuth } from '@/hooks/useAuth';
+import { deleteAccount } from '@/services/api';
+import { restorePurchases, isPro as checkIsPro, isPurchasesConfigured } from '@/services/purchases';
 
 interface SettingsItemProps {
   icon: keyof typeof Ionicons.glyphMap;
@@ -71,6 +73,8 @@ function SettingsItem({
 export default function SettingsScreen() {
   const { user, profile, signOut, isPro, isLoading } = useAuth();
   const [isSigningOut, setIsSigningOut] = useState(false);
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
+  const [isRestoring, setIsRestoring] = useState(false);
 
   const handleSignOut = () => {
     Alert.alert(
@@ -119,6 +123,75 @@ export default function SettingsScreen() {
 
   const handleSupport = () => {
     Linking.openURL('mailto:support@tsucast.com');
+  };
+
+  const handleRestorePurchases = async () => {
+    if (!isPurchasesConfigured()) {
+      Alert.alert(
+        'Coming Soon',
+        'Restore purchases will be available when the app is released on the App Store.',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+
+    setIsRestoring(true);
+    try {
+      const customerInfo = await restorePurchases();
+      if (customerInfo && checkIsPro(customerInfo)) {
+        Alert.alert(
+          'Subscription Restored!',
+          'Your Pro subscription has been restored.',
+          [{ text: 'OK' }]
+        );
+      } else {
+        Alert.alert(
+          'No Subscription Found',
+          "We couldn't find an active subscription for this account.",
+          [{ text: 'OK' }]
+        );
+      }
+    } catch (error) {
+      if (__DEV__) {
+        console.error('Restore error:', error);
+      }
+      Alert.alert(
+        'Restore Failed',
+        'Something went wrong. Please try again later.',
+        [{ text: 'OK' }]
+      );
+    } finally {
+      setIsRestoring(false);
+    }
+  };
+
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      'Delete Account',
+      'This will permanently delete your account and all your data. This action cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            setIsDeletingAccount(true);
+            try {
+              await deleteAccount();
+              await signOut();
+              // Navigation handled by auth state change in root layout
+            } catch (error) {
+              if (__DEV__) {
+                console.error('Delete account error:', error);
+              }
+              Alert.alert('Error', 'Failed to delete account. Please try again.');
+            } finally {
+              setIsDeletingAccount(false);
+            }
+          },
+        },
+      ]
+    );
   };
 
   return (
@@ -223,10 +296,19 @@ export default function SettingsScreen() {
           onPress={handleTermsOfService}
         />
 
-        {/* Sign Out */}
+        {/* Account Actions */}
         <Text className="text-sm font-semibold text-zinc-500 mb-3 mt-6 uppercase tracking-wide">
           Account Actions
         </Text>
+
+        <SettingsItem
+          icon="refresh"
+          title="Restore Purchases"
+          subtitle="Restore your Pro subscription"
+          onPress={handleRestorePurchases}
+          showChevron={false}
+          loading={isRestoring}
+        />
 
         <SettingsItem
           icon="log-out"
@@ -235,6 +317,16 @@ export default function SettingsScreen() {
           showChevron={false}
           destructive
           loading={isSigningOut}
+        />
+
+        <SettingsItem
+          icon="trash"
+          title="Delete Account"
+          subtitle="Permanently delete all your data"
+          onPress={handleDeleteAccount}
+          showChevron={false}
+          destructive
+          loading={isDeletingAccount}
         />
 
         {/* App Version */}

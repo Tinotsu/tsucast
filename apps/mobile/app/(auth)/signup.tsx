@@ -4,12 +4,13 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  SafeAreaView,
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
   ScrollView,
+  Linking,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Link } from 'expo-router';
 import { useAuth, getAuthErrorMessage } from '@/hooks/useAuth';
 import { AppleSignInButton } from '@/components/auth/AppleSignInButton';
@@ -185,8 +186,21 @@ export default function SignupScreen() {
 
             {/* Terms */}
             <Text className="text-xs text-zinc-500 text-center mt-6">
-              By creating an account, you agree to our Terms of Service and
-              Privacy Policy.
+              By creating an account, you agree to our{' '}
+              <Text
+                className="text-zinc-400 underline"
+                onPress={() => Linking.openURL('https://tsucast.com/terms')}
+              >
+                Terms of Service
+              </Text>
+              {' '}and{' '}
+              <Text
+                className="text-zinc-400 underline"
+                onPress={() => Linking.openURL('https://tsucast.com/privacy')}
+              >
+                Privacy Policy
+              </Text>
+              .
             </Text>
           </View>
         </ScrollView>
