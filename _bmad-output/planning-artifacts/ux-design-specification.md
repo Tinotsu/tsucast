@@ -304,19 +304,20 @@ _Source: [Spotify Design - Audio-Forward UX](https://spotify.design/article/audi
 
 ### Customization Strategy
 
-**Visual Direction:**
-- Colors: Warm, inviting (not sterile or corporate)
-- Typography: Friendly, readable
-- Borders: Soft, rounded corners
-- Animations: Subtle, smooth transitions
+**Visual Direction (MVP):**
+- Colors: Black & white only - no color palette needed for MVP
+- Typography: Clean, readable system fonts
+- Borders: Used to define surfaces (1px gray borders)
+- Animations: Minimal, only essential transitions
 - Spacing: Generous, uncluttered
 
-**Dark Mode:** Follow system preference, both modes feel equally warm
+**Theme:** Dark mode only for MVP - simpler to implement, modern look
 
 **What We're Avoiding:**
 - Pre-built component libraries
 - Complex form components
 - Modals and popovers
+- Multiple color themes
 - Anything not in the 3.5 screens
 
 ---
@@ -387,29 +388,27 @@ _Source: [Spotify Design - Audio-Forward UX](https://spotify.design/article/audi
 
 ### Color System
 
-**Theme:** Autumn Magic - warm, inviting, cozy
+**Theme:** Monochrome Dark - minimal, focused, distraction-free
 
-**Primary Colors:**
-- Amber `#F59E0B` - Primary actions, highlights
-- Burnt Orange `#EA580C` - Accent, hover states
-- Warm Brown `#78350F` - Deep accent
+**MVP Design Philosophy:** Colors are not important for MVP. Ship fast with a simple black & white design. Visual polish comes later.
 
-**Light Mode:**
-- Background: Cream `#FFFBEB`
-- Surface: Soft Tan `#FEF3C7`
-- Text Primary: Deep Brown `#451A03`
-- Text Secondary: Muted Amber `#92400E`
+**Dark Theme Only (MVP):**
+- Background: Black `#000000`
+- Surface: Dark Gray `#1a1a1a` (cards, inputs)
+- Border: Gray `#333333`
+- Text Primary: White `#ffffff`
+- Text Secondary: Gray `#888888`
+- Primary Action: White text on dark, or inverted for buttons
 
-**Dark Mode:**
-- Background: Deep Brown `#1C1410`
-- Surface: Warm Charcoal `#292118`
-- Text Primary: Warm Cream `#FEF3C7`
-- Text Secondary: Soft Amber `#D97706`
+**Semantic (minimal):**
+- Error: Red `#ef4444`
+- Success: Green `#22c55e`
 
-**Semantic:**
-- Success: `#059669`
-- Error: `#DC2626`
-- Warning: `#D97706`
+**Design Approach:**
+- Use borders to define surfaces instead of background colors
+- High contrast for readability
+- No gradients, no shadows, no complex color palette
+- Focus on typography and spacing
 
 ### Typography System
 
@@ -430,9 +429,9 @@ _Source: [Spotify Design - Audio-Forward UX](https://spotify.design/article/audi
 
 ### Accessibility Considerations
 
-- Contrast ratio: > 4.5:1 (AA compliant)
+- Contrast ratio: > 4.5:1 (AA compliant) - easily met with B&W
 - Touch targets: Minimum 44x44px
-- Focus states: Visible amber ring
-- Both light/dark modes tested for readability
+- Focus states: Visible white ring
+- Dark theme reduces eye strain
 
 ---

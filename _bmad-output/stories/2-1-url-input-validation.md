@@ -1,6 +1,7 @@
 # Story 2.1: URL Input & Validation
 
-Status: ready-for-dev
+Status: done
+Last Updated: 2026-01-21
 
 ## Story
 
@@ -39,167 +40,103 @@ so that the content can be extracted for audio generation.
 ## Tasks / Subtasks
 
 ### Task 1: Add Screen Structure (AC: 1)
-- [ ] 1.1 Create `app/(tabs)/index.tsx` as Add screen:
+- [x] 1.1 Create `app/(tabs)/index.tsx` as Add screen:
   - Large paste input area at top (60% of screen)
   - Voice selector component (placeholder for Story 3.1)
   - "Generate" button at bottom
-- [ ] 1.2 Style with Autumn Magic palette:
-  - Background: Cream `#FFFBEB` / Deep Brown `#1C1410`
-  - Input: Soft Tan `#FEF3C7` / Warm Charcoal `#292118`
-  - Button: Amber `#F59E0B`
-- [ ] 1.3 Implement responsive layout for various screen sizes
-- [ ] 1.4 Add keyboard-aware scrolling for input focus
+- [x] 1.2 Style with B&W monochrome theme:
+  - Background: `bg-black`
+  - Input: `bg-zinc-900 border border-zinc-800`
+  - Button: `bg-white text-black` (enabled) / `bg-zinc-800` (disabled)
+- [x] 1.3 Implement responsive layout for various screen sizes
+- [x] 1.4 Add keyboard-aware scrolling for input focus
 
 ### Task 2: Paste Input Component (AC: 1, 2, 3)
-- [ ] 2.1 Create `components/add/PasteInput.tsx`:
+- [x] 2.1 Create `components/add/PasteInput.tsx`:
   ```typescript
   interface PasteInputProps {
     value: string;
     onChangeText: (text: string) => void;
     error?: string;
     isLoading?: boolean;
+    isValid?: boolean;
+    isCached?: boolean;
   }
   ```
-- [ ] 2.2 Implement large, tappable input area:
+- [x] 2.2 Implement large, tappable input area:
   - Placeholder: "Paste article URL here..."
   - Multi-line capable but single URL expected
-  - Auto-focus on screen mount (optional)
-- [ ] 2.3 Add paste button/icon for quick paste from clipboard
-- [ ] 2.4 Show validation error state (red border, error message below)
-- [ ] 2.5 Show success state when URL is valid
+- [x] 2.3 Add paste button/icon for quick paste from clipboard
+- [x] 2.4 Show validation error state (red border, error message below)
+- [x] 2.5 Show success state when URL is valid
 
 ### Task 3: URL Validation (AC: 2, 3)
-- [ ] 3.1 Create `utils/validation.ts` with URL validation:
-  ```typescript
-  export function isValidUrl(text: string): boolean {
-    try {
-      const url = new URL(text.trim());
-      return url.protocol === 'http:' || url.protocol === 'https:';
-    } catch {
-      return false;
-    }
-  }
-  ```
-- [ ] 3.2 Implement real-time validation on text change
-- [ ] 3.3 Debounce validation (300ms) to avoid excessive checks
-- [ ] 3.4 Handle edge cases:
+- [x] 3.1 Create `utils/validation.ts` with URL validation:
+  - `isValidUrl(text)` - validates http/https URLs
+  - `isPdfUrl(text)` - checks for PDF URLs
+  - `getUrlValidationError(text)` - returns user-friendly error messages
+- [x] 3.2 Implement real-time validation on text change
+- [x] 3.3 Debounce validation (300ms) to avoid excessive checks
+- [x] 3.4 Handle edge cases:
   - Whitespace trimming
   - URL with/without www
   - URLs with query params
   - PDF URLs (*.pdf)
 
 ### Task 4: URL Normalization (AC: 2)
-- [ ] 4.1 Create `utils/urlNormalization.ts`:
-  ```typescript
-  export function normalizeUrl(url: string): string {
-    const parsed = new URL(url.trim());
-
-    // Lowercase hostname
-    parsed.hostname = parsed.hostname.toLowerCase();
-
-    // Remove www
-    parsed.hostname = parsed.hostname.replace(/^www\./, '');
-
-    // Remove trailing slash
-    parsed.pathname = parsed.pathname.replace(/\/$/, '') || '/';
-
-    // Remove tracking params
-    const trackingParams = [
-      'utm_source', 'utm_medium', 'utm_campaign',
-      'utm_term', 'utm_content', 'ref', 'fbclid',
-      'gclid', 'mc_cid', 'mc_eid'
-    ];
-    trackingParams.forEach(p => parsed.searchParams.delete(p));
-
-    // Sort remaining params
-    parsed.searchParams.sort();
-
-    // Remove fragment
-    parsed.hash = '';
-
-    return parsed.toString();
-  }
-  ```
-- [ ] 4.2 Generate URL hash for cache lookup:
-  ```typescript
-  import * as Crypto from 'expo-crypto';
-
-  export async function hashUrl(normalizedUrl: string): Promise<string> {
-    return await Crypto.digestStringAsync(
-      Crypto.CryptoDigestAlgorithm.SHA256,
-      normalizedUrl
-    );
-  }
-  ```
+- [x] 4.1 Create `utils/urlNormalization.ts`:
+  - `normalizeUrl(url)` - normalizes URL (lowercase, remove www, tracking params, etc.)
+  - Removes 40+ common tracking parameters (UTM, Facebook, Google, etc.)
+  - Sorts remaining query params for consistency
+- [x] 4.2 Generate URL hash for cache lookup:
+  - `hashUrl(normalizedUrl)` - SHA256 hash using expo-crypto
+  - `normalizeAndHashUrl(url)` - convenience function for both operations
 
 ### Task 5: Cache Check API (AC: 2, 4)
-- [ ] 5.1 Create VPS endpoint `GET /api/cache/check`:
-  ```typescript
-  // apps/api/src/routes/cache.ts
-  app.get('/api/cache/check', async (c) => {
-    const urlHash = c.req.query('hash');
-
-    const cached = await db.query.audioCache.findFirst({
-      where: eq(audioCache.urlHash, urlHash),
-    });
-
-    if (cached && cached.status === 'ready') {
-      return c.json({
-        cached: true,
-        audioUrl: cached.audioUrl,
-        title: cached.title,
-        duration: cached.durationSeconds
-      });
-    }
-
-    return c.json({ cached: false });
-  });
-  ```
-- [ ] 5.2 Create mobile API client in `services/api.ts`:
-  ```typescript
-  export async function checkCache(urlHash: string): Promise<CacheResult> {
-    const response = await fetch(
-      `${API_URL}/api/cache/check?hash=${urlHash}`
-    );
-    return response.json();
-  }
-  ```
-- [ ] 5.3 Call cache check after URL validation
-- [ ] 5.4 Show "Ready to play" UI if cached
+- [x] 5.1 Create VPS endpoint `GET /api/cache/check`:
+  - Created `apps/api/src/routes/cache.ts`
+  - Validates SHA256 hash format
+  - Returns `{ cached: true, audioUrl, title, duration }` if found
+  - Returns `{ cached: false }` if not found
+- [x] 5.2 Create mobile API client in `services/api.ts`:
+  - `checkCache(urlHash)` - checks cache via VPS API
+  - Handles network errors gracefully
+- [x] 5.3 Call cache check after URL validation
+- [x] 5.4 Show "Ready to play" UI if cached
 
 ### Task 6: Add Screen State Management (AC: all)
-- [ ] 6.1 Implement screen state with useState/useReducer:
+- [x] 6.1 Implement screen state with useState:
   ```typescript
   type AddScreenState =
     | { status: 'idle' }
     | { status: 'validating' }
     | { status: 'invalid'; error: string }
     | { status: 'checking_cache' }
-    | { status: 'cached'; audioUrl: string; title: string }
-    | { status: 'ready_to_generate' };
+    | { status: 'cached'; audioUrl: string; title: string; duration?: number }
+    | { status: 'ready_to_generate'; normalizedUrl: string; urlHash: string };
   ```
-- [ ] 6.2 Handle all state transitions:
-  - idle → validating (on paste)
+- [x] 6.2 Handle all state transitions:
+  - idle → validating (on input change, debounced)
   - validating → invalid OR checking_cache
   - checking_cache → cached OR ready_to_generate
-- [ ] 6.3 Show appropriate UI for each state
+- [x] 6.3 Show appropriate UI for each state
 
 ### Task 7: Voice Selector Placeholder (AC: 1)
-- [ ] 7.1 Create placeholder `components/add/VoiceSelector.tsx`:
+- [x] 7.1 Create placeholder `components/add/VoiceSelector.tsx`:
   - Show single default voice option
   - Disabled state (fully implemented in Story 3.1)
-  - Styled to match design
-- [ ] 7.2 Export selected voice for generation (default value)
+  - Styled with B&W theme
+- [x] 7.2 Export selected voice for generation (`DEFAULT_VOICE`)
 
 ### Task 8: Generate Button (AC: 4)
-- [ ] 8.1 Create Generate button component:
+- [x] 8.1 Create `components/add/GenerateButton.tsx`:
   - Disabled when URL invalid or checking cache
   - Enabled when ready_to_generate
   - Shows "Play Now" when cached
-- [ ] 8.2 Handle button tap:
-  - If cached → navigate to player with audio
-  - If not cached → proceed to generation (Story 3.2)
-- [ ] 8.3 Add loading spinner during operations
+- [x] 8.2 Handle button tap:
+  - If cached → logs for navigation to player (TODO in Story 3.2)
+  - If not cached → logs for generation flow (TODO in Story 3.2)
+- [x] 8.3 Add loading spinner during operations
 
 ## Dev Notes
 
@@ -271,14 +208,37 @@ apps/api/
 
 ### Agent Model Used
 
-(To be filled during implementation)
+Claude Opus 4.5 (claude-opus-4-5-20251101)
 
 ### Change Log
 
 | Date | Change | Author |
 |------|--------|--------|
 | 2026-01-20 | Story created | Claude Opus 4.5 |
+| 2026-01-21 | All tasks implemented | Claude Opus 4.5 |
+| 2026-01-21 | Code review: Added git tracking, created audio_cache migration, fixed Supabase singleton | Claude Opus 4.5 |
 
 ### File List
 
-(To be filled after implementation)
+**Mobile App (apps/mobile/):**
+- `app/(tabs)/index.tsx` - Add screen with state management
+- `components/add/PasteInput.tsx` - URL paste input component
+- `components/add/VoiceSelector.tsx` - Voice selector placeholder
+- `components/add/GenerateButton.tsx` - Generate/Play button
+- `utils/validation.ts` - URL validation utilities
+- `utils/urlNormalization.ts` - URL normalization and hashing
+- `services/api.ts` - VPS API client
+
+**VPS API (apps/api/):**
+- `src/routes/cache.ts` - GET /api/cache/check endpoint (uses Supabase singleton)
+- `src/index.ts` - Added cache route registration
+
+**Database (supabase/migrations/):**
+- `002_audio_cache.sql` - audio_cache table for URL-based caching
+
+### Review Follow-ups (Deferred)
+
+- [ ] [LOW] Unit tests for validation.ts functions
+- [ ] [LOW] Unit tests for urlNormalization.ts functions
+- [ ] [LOW] Integration tests for Add screen state machine
+- [ ] [LOW] Remove unused exports (SUPPORTED_CONTENT_TYPES, KNOWN_SUPPORTED_DOMAINS, extractDomain, extractPath) if not needed in future stories

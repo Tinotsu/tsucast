@@ -3,28 +3,16 @@ import { useEffect, useState } from 'react';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClientProvider } from '@tanstack/react-query';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 import { View, ActivityIndicator } from 'react-native';
 import { useAuth } from '@/hooks/useAuth';
+import { queryClient } from '@/services/queryClient';
 
 // Prevent splash screen from auto-hiding
 SplashScreen.preventAutoHideAsync();
-
-// Create QueryClient with optimized defaults
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 1000 * 60 * 5, // 5 minutes
-      gcTime: 1000 * 60 * 30, // 30 minutes
-      retry: 2,
-      refetchOnWindowFocus: false,
-      refetchOnReconnect: true,
-    },
-  },
-});
 
 // Auth navigation handler component
 function AuthNavigationHandler({ children }: { children: React.ReactNode }) {
@@ -49,8 +37,8 @@ function AuthNavigationHandler({ children }: { children: React.ReactNode }) {
   // Show loading spinner while checking auth state
   if (!isInitialized) {
     return (
-      <View className="flex-1 bg-cream dark:bg-deep-brown justify-center items-center">
-        <ActivityIndicator size="large" color="#F59E0B" />
+      <View className="flex-1 bg-black justify-center items-center">
+        <ActivityIndicator size="large" color="#ffffff" />
       </View>
     );
   }
@@ -68,7 +56,7 @@ export default function RootLayout() {
         // await loadFonts();
         // await setupPlayer();
       } catch (e) {
-        console.warn('Error during app initialization:', e);
+        if (__DEV__) console.warn('Error during app initialization:', e);
       } finally {
         setAppIsReady(true);
       }
@@ -91,28 +79,21 @@ export default function RootLayout() {
       <GestureHandlerRootView style={{ flex: 1 }}>
         <SafeAreaProvider>
           <AuthNavigationHandler>
-            <View className="flex-1 bg-cream dark:bg-deep-brown">
+            <View className="flex-1 bg-black">
               <Stack screenOptions={{ headerShown: false }}>
                 <Stack.Screen name="(auth)" />
                 <Stack.Screen name="(tabs)" />
-                <Stack.Screen
-                  name="player/[id]"
-                  options={{
-                    presentation: 'modal',
-                    animation: 'slide_from_bottom',
-                  }}
-                />
                 <Stack.Screen
                   name="upgrade"
                   options={{
                     headerShown: true,
                     title: 'Upgrade to Pro',
-                    headerStyle: { backgroundColor: '#FFFBEB' },
-                    headerTintColor: '#78350F',
+                    headerStyle: { backgroundColor: '#000000' },
+                    headerTintColor: '#ffffff',
                   }}
                 />
               </Stack>
-              <StatusBar style="auto" />
+              <StatusBar style="light" />
             </View>
           </AuthNavigationHandler>
           <Toast />

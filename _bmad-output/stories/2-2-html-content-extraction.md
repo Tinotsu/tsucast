@@ -1,6 +1,7 @@
 # Story 2.2: HTML Content Extraction
 
-Status: ready-for-dev
+Status: done
+Last Updated: 2026-01-21
 
 ## Story
 
@@ -325,14 +326,22 @@ apps/api/
 
 ### Agent Model Used
 
-(To be filled during implementation)
+Claude Opus 4.5 (claude-opus-4-5-20251101)
 
 ### Change Log
 
 | Date | Change | Author |
 |------|--------|--------|
 | 2026-01-20 | Story created | Claude Opus 4.5 |
+| 2026-01-21 | All tasks implemented | Claude Opus 4.5 |
 
 ### File List
 
-(To be filled after implementation)
+**VPS API (apps/api/):**
+- `src/services/parser.ts` - HTML parsing with Mozilla Readability
+- `src/services/fetcher.ts` - URL fetching with paywall detection
+- `src/utils/errors.ts` - Error codes and messages
+- `src/routes/generate.ts` - Updated with content extraction
+- `__tests__/unit/parser.test.ts` - Parser tests
+- `__tests__/unit/fetcher.test.ts` - Fetcher tests
+- `__tests__/unit/errors.test.ts` - Error utilities tests

@@ -8,23 +8,12 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        // Autumn Magic palette
-        cream: '#FFFBEB',
-        'warm-white': '#FEF3C7',
-        'light-amber': '#FDE68A',
-        amber: {
-          100: '#FEF3C7',
-          200: '#FDE68A',
-          300: '#FCD34D',
-          400: '#FBBF24',
-          500: '#F59E0B',
-          600: '#D97706',
-          700: '#B45309',
-          800: '#92400E',
-          900: '#78350F',
-        },
-        'deep-brown': '#1C1917',
-        'warm-gray': '#78716C',
+        // Monochrome dark theme - MVP simplicity
+        // Using Tailwind's built-in zinc scale + black/white
+
+        // Semantic only
+        error: '#ef4444',
+        success: '#22c55e',
       },
       fontFamily: {
         sans: ['System'],
