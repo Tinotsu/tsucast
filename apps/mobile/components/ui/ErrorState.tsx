@@ -13,11 +13,7 @@ interface ErrorStateProps {
   title: string;
   /** Detailed error message */
   message: string;
-  /** Error type code for reporting */
-  errorType: string;
-  /** URL that failed */
-  url: string;
-  /** Callback when user taps Report */
+  /** Callback when user taps Report (parent should handle the actual reporting) */
   onReport: () => void;
   /** Callback when user taps Try Another */
   onDismiss: () => void;

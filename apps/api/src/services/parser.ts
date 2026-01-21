@@ -8,6 +8,7 @@ import { Readability } from '@mozilla/readability';
 import { parseHTML } from 'linkedom';
 import { logger } from '../lib/logger.js';
 import { ErrorCodes } from '../utils/errors.js';
+import { countWords } from '../utils/text.js';
 
 export interface ParseResult {
   title: string;
@@ -17,16 +18,6 @@ export interface ParseResult {
   excerpt?: string;
   byline?: string;
   siteName?: string;
-}
-
-/**
- * Count words in text content
- */
-function countWords(text: string): number {
-  return text
-    .trim()
-    .split(/\s+/)
-    .filter((word) => word.length > 0).length;
 }
 
 /**

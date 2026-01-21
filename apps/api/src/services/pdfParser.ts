@@ -7,22 +7,13 @@
 import pdf from 'pdf-parse';
 import { logger } from '../lib/logger.js';
 import { ErrorCodes } from '../utils/errors.js';
+import { countWords } from '../utils/text.js';
 
 export interface PdfParseResult {
   title: string;
   textContent: string;
   wordCount: number;
   pageCount: number;
-}
-
-/**
- * Count words in text content
- */
-function countWords(text: string): number {
-  return text
-    .trim()
-    .split(/\s+/)
-    .filter((word) => word.length > 0).length;
 }
 
 /**

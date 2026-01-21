@@ -149,8 +149,6 @@ app.post('/', async (c) => {
       title,
       wordCount,
       contentType: isPdf ? 'pdf' : 'html',
-      // textContent included for debugging/testing (remove in production)
-      textPreview: textContent.substring(0, 500) + '...',
       // audioUrl will be added in Story 3.2
     });
   } catch (error) {

@@ -40,11 +40,11 @@ function detectPaywall(html: string): boolean {
     }
   }
 
-  // Check for common paywall meta tags
+  // Check for common paywall meta tags (all lowercase since we're checking lowerHtml)
   if (
     lowerHtml.includes('meta name="paywall"') ||
-    lowerHtml.includes('isAccessibleForFree": false') ||
-    lowerHtml.includes('isPaidContent": true')
+    lowerHtml.includes('isaccessibleforfree": false') ||
+    lowerHtml.includes('ispaidcontent": true')
   ) {
     return true;
   }
