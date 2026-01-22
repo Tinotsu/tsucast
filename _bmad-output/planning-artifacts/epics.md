@@ -1405,6 +1405,133 @@ So that I can trust the app and use it confidently.
 
 ---
 
+## Epic 9: Web Application Deployment
+
+Production deployment of the tsucast web application with all required legal, compliance, and feature completeness.
+
+> **Note:** This epic addresses web-specific deployment requirements. While Epic 7 built the web application features, Epic 9 ensures it's production-ready with legal compliance, account management UI, and external service configuration.
+
+### Story 9.1: Account Deletion UI (Web)
+
+As a web user who wants to delete my account,
+I want a clear deletion option in settings with confirmation,
+So that I can permanently remove my data per GDPR/App Store requirements.
+
+**Acceptance Criteria:**
+
+**Given** user is on settings page
+**When** they view the Account section
+**Then** they see "Delete Account" button styled as destructive action
+
+**Given** user clicks "Delete Account"
+**When** confirmation dialog appears
+**Then** it requires typing "DELETE" to confirm
+
+**Given** user confirms deletion
+**When** API call succeeds
+**Then** user is signed out and redirected to home
+
+**Technical Notes:**
+- Location: `apps/web/app/(app)/settings/page.tsx`
+- API endpoint exists: `DELETE /api/user/account`
+- Add confirmation dialog with warning text
+
+### Story 9.2: Terms of Service Page
+
+As a visitor or user,
+I want to read the Terms of Service,
+So that I understand the rules for using tsucast.
+
+**Acceptance Criteria:**
+
+**Given** visitor navigates to /terms
+**When** page loads
+**Then** Terms of Service content is displayed
+**And** last updated date is visible
+**And** link to Privacy Policy is included
+
+**Technical Notes:**
+- Location: `apps/web/app/(public)/terms/page.tsx`
+- Must be accessible without authentication
+- Content requires legal review
+
+### Story 9.3: Privacy Policy Page
+
+As a visitor or user,
+I want to read the Privacy Policy,
+So that I understand how my data is handled (GDPR/CCPA compliance).
+
+**Acceptance Criteria:**
+
+**Given** visitor navigates to /privacy
+**When** page loads
+**Then** Privacy Policy content is displayed with GDPR sections
+**And** data collection practices are documented
+**And** user rights (deletion, export) are explained
+
+**Technical Notes:**
+- Location: `apps/web/app/(public)/privacy/page.tsx`
+- Must include: data collection, third-party services, user rights, cookies
+- Content requires legal review
+
+### Story 9.4: RevenueCat Configuration
+
+As the system processing payments,
+I need RevenueCat configured with real products,
+So that subscription purchases work correctly.
+
+**Acceptance Criteria:**
+
+**Given** RevenueCat project is created
+**When** products are configured
+**Then** `tsucast_pro_monthly` product exists
+
+**Given** webhook URL is configured
+**When** subscription event occurs
+**Then** API receives webhook at `/api/webhooks/revenuecat`
+**And** user's subscription_tier is updated
+
+**Technical Notes:**
+- External configuration in RevenueCat dashboard
+- Set `REVENUECAT_WEBHOOK_AUTH_KEY` in production env
+- Test in sandbox before production
+
+### Story 9.5: Pre-Deployment Verification
+
+As the release manager,
+I want all tests passing and features verified,
+So that we can deploy with confidence.
+
+**Acceptance Criteria:**
+
+**Given** all code is merged
+**When** CI pipeline runs
+**Then** all E2E tests pass
+**And** all unit tests pass
+**And** build succeeds
+**And** typecheck passes
+
+**Given** staging deployment
+**When** smoke tests run
+**Then** critical flows work (login, generate, library, delete account)
+
+### Story 9.6: Production Deployment
+
+As the system administrator,
+I want the web app deployed to production,
+So that users can access tsucast on the web.
+
+**Acceptance Criteria:**
+
+**Given** all verification passes
+**When** deployment runs
+**Then** DNS is configured
+**And** SSL certificate is active
+**And** /health returns 200
+**And** zero-downtime deployment succeeds
+
+---
+
 _Epics and Stories completed: 2026-01-20_
 _Epic 7 added: 2026-01-21_
 _Epic 8 added: 2026-01-21_
