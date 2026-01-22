@@ -6,20 +6,12 @@
  */
 
 import { Hono } from 'hono';
-import { createClient } from '@supabase/supabase-js';
 import { z } from 'zod';
 import { logger } from '../lib/logger.js';
+import { getSupabase } from '../lib/supabase.js';
+import { normalizeUrl } from '../utils/url.js';
 
 const app = new Hono();
-
-// Initialize Supabase client (singleton)
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-const supabase =
-  supabaseUrl && supabaseServiceKey
-    ? createClient(supabaseUrl, supabaseServiceKey)
-    : null;
 
 // Request schema
 const reportSchema = z.object({
@@ -29,42 +21,6 @@ const reportSchema = z.object({
   notes: z.string().optional(),
 });
 
-/**
- * Normalize URL for deduplication (simple version for server-side)
- */
-function normalizeUrl(url: string): string | null {
-  try {
-    const parsed = new URL(url.trim());
-
-    // Lowercase hostname and remove www
-    parsed.hostname = parsed.hostname.toLowerCase().replace(/^www\./, '');
-
-    // Remove trailing slash (except root)
-    if (parsed.pathname !== '/') {
-      parsed.pathname = parsed.pathname.replace(/\/+$/, '');
-    }
-
-    // Remove common tracking params
-    const trackingParams = [
-      'utm_source',
-      'utm_medium',
-      'utm_campaign',
-      'utm_term',
-      'utm_content',
-      'fbclid',
-      'gclid',
-      'ref',
-    ];
-    trackingParams.forEach((param) => parsed.searchParams.delete(param));
-
-    // Remove fragment
-    parsed.hash = '';
-
-    return parsed.toString();
-  } catch {
-    return null;
-  }
-}
 
 /**
  * POST /api/report/extraction
@@ -89,11 +45,24 @@ app.post('/extraction', async (c) => {
 
   const { url, errorType, errorMessage, notes } = parsed.data;
 
+  // Get centralized Supabase client
+  const supabase = getSupabase();
+
+  // Check if Supabase is configured
+  if (!supabase) {
+    logger.warn('Supabase not configured, report not stored');
+    // Still return success to not frustrate user
+    return c.json({
+      success: true,
+      message: "Thanks! We'll work on improving this.",
+    });
+  }
+
   // Try to get user from auth header (optional)
   let userId: string | null = null;
   const authHeader = c.req.header('Authorization');
 
-  if (supabase && authHeader?.startsWith('Bearer ')) {
+  if (authHeader?.startsWith('Bearer ')) {
     try {
       const token = authHeader.slice(7);
       const {
@@ -110,16 +79,6 @@ app.post('/extraction', async (c) => {
 
   // Get user agent
   const userAgent = c.req.header('User-Agent') || null;
-
-  // Check if Supabase is configured
-  if (!supabase) {
-    logger.warn('Supabase not configured, report not stored');
-    // Still return success to not frustrate user
-    return c.json({
-      success: true,
-      message: "Thanks! We'll work on improving this.",
-    });
-  }
 
   try {
     // Insert report

@@ -23,6 +23,22 @@ vi.mock('../../src/lib/logger.js', () => ({
   },
 }));
 
+// Mock auth middleware to bypass authentication in tests
+vi.mock('../../src/middleware/auth.js', () => ({
+  getUserFromToken: vi.fn().mockResolvedValue('test-user-id'),
+}));
+
+// Mock Supabase client - return null to skip database operations
+vi.mock('../../src/lib/supabase.js', () => ({
+  getSupabase: vi.fn().mockReturnValue(null),
+}));
+
+// Mock rate limit service - always allow
+vi.mock('../../src/services/rate-limit.js', () => ({
+  checkRateLimit: vi.fn().mockResolvedValue({ allowed: true, remaining: 3, resetAt: null, isPro: false }),
+  incrementGenerationCount: vi.fn().mockResolvedValue(2),
+}));
+
 // Mock the cache service (not configured in tests)
 vi.mock('../../src/services/cache.js', () => ({
   getCacheEntry: vi.fn().mockResolvedValue(null),

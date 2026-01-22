@@ -7,8 +7,8 @@
 
 import { Hono } from 'hono';
 import { z } from 'zod';
-import { createHash } from 'crypto';
 import { logger } from '../lib/logger.js';
+import { normalizeUrl, hashUrlWithVoice } from '../utils/url.js';
 import { fetchUrl, isPdfUrl, fetchPdf } from '../services/fetcher.js';
 import { parseHtmlContent } from '../services/parser.js';
 import { parsePdfContent, isImageOnlyPdf } from '../services/pdfParser.js';
@@ -21,28 +21,13 @@ import {
   updateCacheFailed,
   getCacheEntryById,
   isCacheConfigured,
+  isStaleEntry,
+  deleteCacheEntry,
 } from '../services/cache.js';
 import { ErrorCodes, createApiError, LIMITS } from '../utils/errors.js';
-import { createClient } from '@supabase/supabase-js';
-
-// Initialize Supabase client (lazy loaded for rate limiting)
-let supabaseClient: ReturnType<typeof createClient> | null = null;
-
-function getSupabase(): ReturnType<typeof createClient> | null {
-  if (supabaseClient) {
-    return supabaseClient;
-  }
-
-  const url = process.env.SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-  if (!url || !key) {
-    return null;
-  }
-
-  supabaseClient = createClient(url, key);
-  return supabaseClient;
-}
+import { getSupabase } from '../lib/supabase.js';
+import { getUserFromToken } from '../middleware/auth.js';
+import { checkRateLimit, incrementGenerationCount } from '../services/rate-limit.js';
 
 const app = new Hono();
 
@@ -51,144 +36,6 @@ const generateSchema = z.object({
   voiceId: z.string(),
 });
 
-const FREE_TIER_LIMIT = 3;
-
-/**
- * Get user ID from auth token
- */
-async function getUserFromToken(authHeader: string | undefined, supabase: ReturnType<typeof import('@supabase/supabase-js').createClient>): Promise<string | null> {
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return null;
-  }
-
-  const token = authHeader.slice(7);
-  try {
-    const { data: { user }, error } = await supabase.auth.getUser(token);
-    if (error || !user) {
-      return null;
-    }
-    return user.id;
-  } catch {
-    return null;
-  }
-}
-
-interface UserProfile {
-  subscription_tier: string;
-  daily_generations: number;
-  daily_generations_reset_at: string | null;
-}
-
-/**
- * Check and update rate limit for user
- * Returns { allowed: boolean, remaining: number, resetAt: string | null }
- */
-async function checkRateLimit(userId: string, supabase: ReturnType<typeof createClient>): Promise<{
-  allowed: boolean;
-  remaining: number;
-  resetAt: string | null;
-  isPro: boolean;
-}> {
-  const { data: profile } = await supabase
-    .from('user_profiles')
-    .select('subscription_tier, daily_generations, daily_generations_reset_at')
-    .eq('id', userId)
-    .single() as { data: UserProfile | null };
-
-  // Pro users have no limit
-  if (profile?.subscription_tier === 'pro') {
-    return { allowed: true, remaining: -1, resetAt: null, isPro: true };
-  }
-
-  const now = new Date();
-  const resetAt = profile?.daily_generations_reset_at
-    ? new Date(profile.daily_generations_reset_at)
-    : null;
-
-  let generations = profile?.daily_generations || 0;
-
-  // Check if reset needed (new day)
-  if (!resetAt || resetAt <= now) {
-    generations = 0;
-
-    // Calculate next midnight UTC
-    const tomorrow = new Date(now);
-    tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
-    tomorrow.setUTCHours(0, 0, 0, 0);
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (supabase as any)
-      .from('user_profiles')
-      .update({
-        daily_generations: 0,
-        daily_generations_reset_at: tomorrow.toISOString(),
-      })
-      .eq('id', userId);
-  }
-
-  return {
-    allowed: generations < FREE_TIER_LIMIT,
-    remaining: Math.max(0, FREE_TIER_LIMIT - generations),
-    resetAt: profile?.daily_generations_reset_at || null,
-    isPro: false,
-  };
-}
-
-/**
- * Increment generation counter after successful generation
- */
-async function incrementGenerationCount(userId: string, supabase: ReturnType<typeof createClient>): Promise<void> {
-  // Get current count and increment
-  const { data } = await supabase
-    .from('user_profiles')
-    .select('daily_generations')
-    .eq('id', userId)
-    .single() as { data: { daily_generations: number } | null };
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  await (supabase as any)
-    .from('user_profiles')
-    .update({ daily_generations: (data?.daily_generations || 0) + 1 })
-    .eq('id', userId);
-}
-
-/**
- * Normalize URL for caching
- */
-function normalizeUrl(url: string): string {
-  try {
-    const parsed = new URL(url.trim());
-
-    // Lowercase hostname and remove www
-    parsed.hostname = parsed.hostname.toLowerCase().replace(/^www\./, '');
-
-    // Remove trailing slash (except root)
-    if (parsed.pathname !== '/') {
-      parsed.pathname = parsed.pathname.replace(/\/+$/, '');
-    }
-
-    // Remove common tracking params
-    const trackingParams = [
-      'utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content',
-      'fbclid', 'gclid', 'ref',
-    ];
-    trackingParams.forEach((param) => parsed.searchParams.delete(param));
-
-    // Remove fragment
-    parsed.hash = '';
-
-    return parsed.toString();
-  } catch {
-    return url;
-  }
-}
-
-/**
- * Generate SHA256 hash for URL + voice combination
- */
-function hashUrl(url: string, voiceId: string): string {
-  return createHash('sha256').update(`${url}:${voiceId}`).digest('hex');
-}
 
 // Check if audio exists in cache (legacy endpoint - use /api/cache/check instead)
 app.get('/cache', async (c) => {
@@ -253,28 +100,36 @@ app.post('/', async (c) => {
 
     const { url, voiceId } = parsed.data;
 
-    // Rate limiting check
+    // Authentication check - require login to generate
     const supabase = getSupabase();
     let userId: string | null = null;
     let rateLimit: { allowed: boolean; remaining: number; resetAt: string | null; isPro: boolean } | null = null;
 
     if (supabase) {
-      userId = await getUserFromToken(c.req.header('Authorization'), supabase);
+      userId = await getUserFromToken(c.req.header('Authorization'));
 
-      if (userId) {
-        rateLimit = await checkRateLimit(userId, supabase);
+      if (!userId) {
+        logger.info('Unauthenticated request to generate');
+        return c.json({
+          error: {
+            code: 'UNAUTHORIZED',
+            message: 'Please sign in to generate audio.',
+          },
+        }, 401);
+      }
 
-        if (!rateLimit.allowed) {
-          logger.info({ userId }, 'Rate limit exceeded');
-          return c.json({
-            error: {
-              code: 'RATE_LIMITED',
-              message: "You've reached your daily limit of 3 articles. Upgrade to Pro for unlimited access.",
-            },
-            remaining: 0,
-            resetAt: rateLimit.resetAt,
-          }, 429);
-        }
+      rateLimit = await checkRateLimit(userId, supabase);
+
+      if (!rateLimit.allowed) {
+        logger.info({ userId }, 'Rate limit exceeded');
+        return c.json({
+          error: {
+            code: 'RATE_LIMITED',
+            message: "You've reached your daily limit of 3 articles. Upgrade to Pro for unlimited access.",
+          },
+          remaining: 0,
+          resetAt: rateLimit.resetAt,
+        }, 429);
       }
     }
 
@@ -282,7 +137,7 @@ app.post('/', async (c) => {
 
     // Normalize URL and generate hash
     const normalizedUrl = normalizeUrl(url);
-    const urlHash = hashUrl(normalizedUrl, voiceId);
+    const urlHash = hashUrlWithVoice(normalizedUrl, voiceId);
 
     // Check cache first
     if (isCacheConfigured()) {
@@ -291,6 +146,23 @@ app.post('/', async (c) => {
       if (existing) {
         if (existing.status === 'ready' && existing.audio_url) {
           logger.info({ urlHash }, 'Cache hit - returning cached audio');
+
+          // Add to user's library on cache hit too
+          if (supabase && userId) {
+            const { error: libraryError } = await supabase
+              .from('user_library')
+              .upsert(
+                { user_id: userId, audio_id: existing.id },
+                { onConflict: 'user_id,audio_id' }
+              );
+
+            if (libraryError) {
+              logger.error({ error: libraryError, userId, cacheEntryId: existing.id }, 'Failed to add to library');
+            } else {
+              logger.info({ userId, cacheEntryId: existing.id }, 'Added to user library (cache hit)');
+            }
+          }
+
           return c.json({
             status: 'ready',
             audioUrl: existing.audio_url,
@@ -302,20 +174,28 @@ app.post('/', async (c) => {
         }
 
         if (existing.status === 'processing') {
-          logger.info({ urlHash }, 'Generation in progress - return polling response');
-          return c.json(
-            {
-              status: 'processing',
-              cacheId: existing.id,
-              message: 'Audio is being generated. Poll /api/generate/status/:id for updates.',
-            },
-            202
-          );
+          // Check if entry is stale (stuck for > 5 minutes)
+          if (isStaleEntry(existing)) {
+            logger.info({ urlHash, updatedAt: existing.updated_at }, 'Stale processing entry detected - cleaning up');
+            await deleteCacheEntry(urlHash);
+            // Continue to create new entry below
+          } else {
+            logger.info({ urlHash }, 'Generation in progress - return polling response');
+            return c.json(
+              {
+                status: 'processing',
+                cacheId: existing.id,
+                message: 'Audio is being generated. Poll /api/generate/status/:id for updates.',
+              },
+              202
+            );
+          }
         }
 
         if (existing.status === 'failed') {
-          // Previous attempt failed - try again by continuing below
-          logger.info({ urlHash }, 'Previous attempt failed - retrying');
+          // Previous attempt failed - delete and retry
+          logger.info({ urlHash }, 'Previous attempt failed - deleting and retrying');
+          await deleteCacheEntry(urlHash);
         }
       }
 
@@ -468,6 +348,7 @@ app.post('/', async (c) => {
     }
 
     // Update cache with success
+    let cacheEntryId: string | null = null;
     if (isCacheConfigured()) {
       await updateCacheReady({
         urlHash,
@@ -477,6 +358,26 @@ app.post('/', async (c) => {
         wordCount,
         fileSizeBytes: uploadResult.size,
       });
+
+      // Get the cache entry ID to add to user's library
+      const cacheEntry = await getCacheEntry(urlHash);
+      cacheEntryId = cacheEntry?.id || null;
+    }
+
+    // Add to user's library
+    if (supabase && userId && cacheEntryId) {
+      const { error: libraryError } = await supabase
+        .from('user_library')
+        .upsert(
+          { user_id: userId, audio_id: cacheEntryId },
+          { onConflict: 'user_id,audio_id' }
+        );
+
+      if (libraryError) {
+        logger.error({ error: libraryError, userId, cacheEntryId }, 'Failed to add to library');
+      } else {
+        logger.info({ userId, cacheEntryId }, 'Added to user library');
+      }
     }
 
     // Increment generation counter for free users

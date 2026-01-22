@@ -7,54 +7,11 @@
 
 import { Hono } from 'hono';
 import { z } from 'zod';
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { logger } from '../lib/logger.js';
+import { getSupabase } from '../lib/supabase.js';
+import { getUserFromToken } from '../middleware/auth.js';
 
 const app = new Hono();
-
-// Initialize Supabase client (lazy loaded)
-let supabase: SupabaseClient | null = null;
-
-function getSupabase(): SupabaseClient | null {
-  if (supabase) {
-    return supabase;
-  }
-
-  const url = process.env.SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-  if (!url || !key) {
-    return null;
-  }
-
-  supabase = createClient(url, key);
-  return supabase;
-}
-
-/**
- * Extract user ID from Supabase JWT token
- */
-async function getUserFromToken(authHeader: string | undefined): Promise<string | null> {
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return null;
-  }
-
-  const token = authHeader.slice(7);
-  const client = getSupabase();
-  if (!client) {
-    return null;
-  }
-
-  try {
-    const { data: { user }, error } = await client.auth.getUser(token);
-    if (error || !user) {
-      return null;
-    }
-    return user.id;
-  } catch {
-    return null;
-  }
-}
 
 // Schema validation
 const addToLibrarySchema = z.object({
@@ -106,15 +63,19 @@ app.get('/', async (c) => {
   }
 
   // Flatten the nested audio data for client consumption
+  type AudioData = {
+    id: string;
+    title: string;
+    audio_url: string;
+    duration_seconds: number;
+    word_count: number;
+    original_url: string;
+  };
+
   const items = (data || []).map((item) => {
-    const audio = item.audio as {
-      id: string;
-      title: string;
-      audio_url: string;
-      duration_seconds: number;
-      word_count: number;
-      original_url: string;
-    } | null;
+    // Supabase returns relations as arrays, get first element
+    const audioRaw = item.audio as AudioData | AudioData[] | null;
+    const audio = Array.isArray(audioRaw) ? audioRaw[0] : audioRaw;
 
     return {
       id: item.id,
@@ -195,6 +156,19 @@ app.patch('/:id/position', async (c) => {
 
   const { position, isPlayed } = parsed.data;
   logger.info({ userId, id, position }, 'Updating playback position');
+
+  // First verify the item exists and belongs to the user
+  const { data: existingItem, error: fetchError } = await client
+    .from('user_library')
+    .select('id')
+    .eq('id', id)
+    .eq('user_id', userId)
+    .single();
+
+  if (fetchError || !existingItem) {
+    logger.warn({ userId, id }, 'Library item not found or unauthorized');
+    return c.json({ error: { code: 'NOT_FOUND', message: 'Library item not found' } }, 404);
+  }
 
   const updateData: Record<string, unknown> = { playback_position: position };
   if (isPlayed !== undefined) {

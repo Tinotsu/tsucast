@@ -1,49 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect } from "react";
 import { Volume2, Check } from "lucide-react";
-import { cn } from "@/lib/utils";
 
-interface Voice {
-  id: string;
-  name: string;
-  gender: "male" | "female";
-  accent: string;
-  previewUrl?: string;
-}
-
-const voices: Voice[] = [
-  {
-    id: "alloy",
-    name: "Alloy",
-    gender: "female",
-    accent: "American",
-  },
-  {
-    id: "echo",
-    name: "Echo",
-    gender: "male",
-    accent: "American",
-  },
-  {
-    id: "fable",
-    name: "Fable",
-    gender: "male",
-    accent: "British",
-  },
-  {
-    id: "onyx",
-    name: "Onyx",
-    gender: "male",
-    accent: "American",
-  },
-  {
-    id: "nova",
-    name: "Nova",
-    gender: "female",
-    accent: "American",
-  },
-];
+// MVP: Single default voice only
+// TODO: Add multiple voices when Fish Audio voice IDs are configured
+const DEFAULT_VOICE = {
+  id: "default",
+  name: "Default",
+  gender: "female" as const,
+  accent: "American",
+};
 
 interface VoiceSelectorProps {
   value: string;
@@ -52,95 +19,38 @@ interface VoiceSelectorProps {
 }
 
 export function VoiceSelector({ value, onChange, disabled }: VoiceSelectorProps) {
-  const [playingVoice, setPlayingVoice] = useState<string | null>(null);
-
-  const handlePreview = async (voice: Voice) => {
-    if (!voice.previewUrl) return;
-
-    setPlayingVoice(voice.id);
-    const audio = new Audio(voice.previewUrl);
-    audio.onended = () => setPlayingVoice(null);
-    audio.play();
-  };
+  // Auto-select default voice if not already selected
+  // Must be in useEffect to avoid calling onChange during render
+  useEffect(() => {
+    if (value !== DEFAULT_VOICE.id) {
+      onChange(DEFAULT_VOICE.id);
+    }
+  }, [value, onChange]);
 
   return (
     <div className="space-y-3">
       <label className="block text-sm font-medium text-white">
-        Select Voice
+        Voice
       </label>
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {voices.map((voice) => {
-          const isSelected = value === voice.id;
-          const isPlaying = playingVoice === voice.id;
-
-          return (
-            <button
-              key={voice.id}
-              type="button"
-              onClick={() => onChange(voice.id)}
-              disabled={disabled}
-              className={cn(
-                "relative flex items-center gap-3 rounded-xl border p-4 text-left transition-all",
-                "disabled:cursor-not-allowed disabled:opacity-50",
-                isSelected
-                  ? "border-amber-500 bg-amber-500/5"
-                  : "border-zinc-800 bg-zinc-900 hover:border-amber-500/50"
-              )}
-            >
-              {isSelected && (
-                <div className="absolute right-3 top-3">
-                  <Check className="h-4 w-4 text-amber-500" />
-                </div>
-              )}
-
-              <div
-                className={cn(
-                  "flex h-10 w-10 items-center justify-center rounded-full",
-                  isSelected
-                    ? "bg-amber-500 text-black"
-                    : "bg-amber-500/10 text-amber-500"
-                )}
-              >
-                <Volume2 className="h-5 w-5" />
-              </div>
-
-              <div className="flex-1">
-                <p
-                  className={cn(
-                    "font-medium",
-                    isSelected
-                      ? "text-amber-500"
-                      : "text-white"
-                  )}
-                >
-                  {voice.name}
-                </p>
-                <p className="text-xs text-zinc-400">
-                  {voice.gender === "female" ? "Female" : "Male"} • {voice.accent}
-                </p>
-              </div>
-
-              {voice.previewUrl && (
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handlePreview(voice);
-                  }}
-                  disabled={disabled || isPlaying}
-                  className="rounded-lg p-2 text-zinc-400 hover:bg-zinc-800 hover:text-amber-500"
-                >
-                  {isPlaying ? (
-                    <span className="h-4 w-4 animate-pulse">...</span>
-                  ) : (
-                    <Volume2 className="h-4 w-4" />
-                  )}
-                </button>
-              )}
-            </button>
-          );
-        })}
+      <div className="rounded-xl border border-amber-500 bg-amber-500/5 p-4">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-amber-500 text-black">
+            <Volume2 className="h-5 w-5" />
+          </div>
+          <div className="flex-1">
+            <p className="font-medium text-amber-500">
+              {DEFAULT_VOICE.name}
+            </p>
+            <p className="text-xs text-zinc-400">
+              {DEFAULT_VOICE.gender === "female" ? "Female" : "Male"} • {DEFAULT_VOICE.accent}
+            </p>
+          </div>
+          <Check className="h-4 w-4 text-amber-500" />
+        </div>
       </div>
+      <p className="text-xs text-zinc-500">
+        More voices coming soon
+      </p>
     </div>
   );
 }

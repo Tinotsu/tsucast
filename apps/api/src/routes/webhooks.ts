@@ -6,29 +6,34 @@
  */
 
 import { Hono } from 'hono';
-import { createClient } from '@supabase/supabase-js';
+import { timingSafeEqual } from 'crypto';
 import { logger } from '../lib/logger.js';
+import { getSupabase } from '../lib/supabase.js';
+
+/**
+ * Timing-safe string comparison to prevent timing attacks.
+ * Returns true if strings are equal, false otherwise.
+ */
+function secureCompare(a: string, b: string): boolean {
+  try {
+    const bufA = Buffer.from(a, 'utf8');
+    const bufB = Buffer.from(b, 'utf8');
+
+    // timingSafeEqual requires equal length buffers
+    if (bufA.length !== bufB.length) {
+      // Still do a comparison to maintain constant time
+      const padded = Buffer.alloc(bufA.length);
+      timingSafeEqual(bufA, padded);
+      return false;
+    }
+
+    return timingSafeEqual(bufA, bufB);
+  } catch {
+    return false;
+  }
+}
 
 const webhooks = new Hono();
-
-// Initialize Supabase client (lazy loaded)
-let supabaseClient: ReturnType<typeof createClient> | null = null;
-
-function getSupabase(): ReturnType<typeof createClient> | null {
-  if (supabaseClient) {
-    return supabaseClient;
-  }
-
-  const url = process.env.SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-  if (!url || !key) {
-    return null;
-  }
-
-  supabaseClient = createClient(url, key);
-  return supabaseClient;
-}
 
 /**
  * RevenueCat Webhook
@@ -62,7 +67,8 @@ webhooks.post('/revenuecat', async (c) => {
   // RevenueCat sends: Authorization: Bearer <your_auth_key>
   const expectedAuth = `Bearer ${webhookAuthKey}`;
 
-  if (authHeader !== expectedAuth) {
+  // Use timing-safe comparison to prevent timing attacks
+  if (!secureCompare(authHeader, expectedAuth)) {
     logger.warn('RevenueCat webhook invalid authorization');
     return c.json({ error: 'Invalid authorization' }, 401);
   }
@@ -98,26 +104,32 @@ webhooks.post('/revenuecat', async (c) => {
     case 'INITIAL_PURCHASE':
     case 'RENEWAL':
     case 'PRODUCT_CHANGE':
-    case 'UNCANCELLATION':
+    case 'UNCANCELLATION': {
       // User subscribed or renewed - upgrade to pro
       logger.info({ appUserId, eventType }, 'Upgrading user to pro');
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await (supabase as any)
+      const { error: upgradeError } = await supabase
         .from('user_profiles')
         .update({ subscription_tier: 'pro' })
         .eq('id', appUserId);
+      if (upgradeError) {
+        logger.error({ error: upgradeError, appUserId }, 'Failed to upgrade user to pro');
+      }
       break;
+    }
 
     case 'CANCELLATION':
-    case 'EXPIRATION':
+    case 'EXPIRATION': {
       // Subscription ended - downgrade to free
       logger.info({ appUserId, eventType }, 'Downgrading user to free');
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await (supabase as any)
+      const { error: downgradeError } = await supabase
         .from('user_profiles')
         .update({ subscription_tier: 'free' })
         .eq('id', appUserId);
+      if (downgradeError) {
+        logger.error({ error: downgradeError, appUserId }, 'Failed to downgrade user to free');
+      }
       break;
+    }
 
     case 'BILLING_ISSUE':
       // Billing issue detected - log but don't immediately downgrade

@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { clearAuthCookies } from "@/lib/cookies";
 import type { User, Session, SupabaseClient } from "@supabase/supabase-js";
 
 export interface UserProfile {
@@ -14,24 +15,13 @@ export interface UserProfile {
   created_at: string;
 }
 
-// Helper to check if error is an AbortError
-function isAbortError(err: unknown): boolean {
-  if (err instanceof Error) {
-    return err.name === "AbortError" || err.message === "signal is aborted without reason";
-  }
-  if (typeof err === "object" && err !== null) {
-    const e = err as { name?: string; message?: string };
-    return e.name === "AbortError" || e.message === "signal is aborted without reason";
-  }
-  return false;
-}
-
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const supabaseRef = useRef<SupabaseClient | null>(null);
+  const initializedRef = useRef(false);
 
   // Get or create supabase client
   const getSupabase = useCallback(() => {
@@ -41,17 +31,26 @@ export function useAuth() {
     return supabaseRef.current;
   }, []);
 
-  // Fetch user profile
+  // Fetch user profile - logs errors instead of silently failing
   const fetchProfile = useCallback(async (userId: string) => {
     const supabase = getSupabase();
-    const { data, error } = await supabase
-      .from("user_profiles")
-      .select("*")
-      .eq("id", userId)
-      .single();
+    try {
+      const { data, error } = await supabase
+        .from("user_profiles")
+        .select("*")
+        .eq("id", userId)
+        .single();
 
-    if (data && !error) {
-      setProfile(data as UserProfile);
+      if (error) {
+        console.error("[useAuth] Failed to fetch profile:", error.message);
+        return;
+      }
+
+      if (data) {
+        setProfile(data as UserProfile);
+      }
+    } catch (err) {
+      console.error("[useAuth] Profile fetch error:", err);
     }
   }, [getSupabase]);
 
@@ -59,57 +58,53 @@ export function useAuth() {
     let mounted = true;
     const supabase = getSupabase();
 
-    // Get initial session
-    const getSession = async () => {
+    // Initialize auth state deterministically by checking session first
+    const initializeAuth = async () => {
       try {
-        const {
-          data: { session },
-          error,
-        } = await supabase.auth.getSession();
+        const { data: { session: currentSession } } = await supabase.auth.getSession();
 
         if (!mounted) return;
 
-        if (error) {
-          if (!isAbortError(error)) {
-            console.error("Failed to get session:", error);
-          }
-          setIsLoading(false);
-          return;
+        setSession(currentSession);
+        setUser(currentSession?.user ?? null);
+
+        if (currentSession?.user) {
+          await fetchProfile(currentSession.user.id);
         }
 
-        setSession(session);
-        setUser(session?.user ?? null);
-
-        if (session?.user) {
-          await fetchProfile(session.user.id);
-        }
+        initializedRef.current = true;
+        setIsLoading(false);
       } catch (err) {
-        if (isAbortError(err)) return;
-        console.error("Error getting session:", err);
-      } finally {
+        console.error("[useAuth] Failed to initialize auth:", err);
         if (mounted) {
+          initializedRef.current = true;
           setIsLoading(false);
         }
       }
     };
 
-    getSession();
-
-    // Listen for auth changes
+    // Listen for auth changes after initial load
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
+    } = supabase.auth.onAuthStateChange(async (event, newSession) => {
       if (!mounted) return;
 
-      setSession(session);
-      setUser(session?.user ?? null);
+      // Skip INITIAL_SESSION event - we handle it explicitly above
+      if (event === "INITIAL_SESSION") return;
 
-      if (session?.user) {
-        await fetchProfile(session.user.id);
+      // Set session and user
+      setSession(newSession);
+      setUser(newSession?.user ?? null);
+
+      // Fetch profile if user is logged in
+      if (newSession?.user) {
+        await fetchProfile(newSession.user.id);
       } else {
         setProfile(null);
       }
     });
+
+    initializeAuth();
 
     return () => {
       mounted = false;
@@ -167,11 +162,25 @@ export function useAuth() {
 
   const signOut = useCallback(async () => {
     const supabase = getSupabase();
-    const { error } = await supabase.auth.signOut();
-    if (error) throw error;
+
+    // Clear local state immediately
     setUser(null);
     setSession(null);
     setProfile(null);
+
+    // Clear Supabase auth cookies using shared utility
+    clearAuthCookies();
+
+    // signOut can also hang due to Supabase SSR bug - add timeout
+    try {
+      const timeoutPromise = new Promise<{ error: Error }>((resolve) => {
+        setTimeout(() => resolve({ error: new Error("signOut timeout") }), 3000);
+      });
+      const signOutPromise = supabase.auth.signOut();
+      await Promise.race([signOutPromise, timeoutPromise]);
+    } catch {
+      // Ignore errors - we've already cleared local state and cookies
+    }
   }, [getSupabase]);
 
   return {

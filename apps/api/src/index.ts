@@ -2,6 +2,7 @@ import { serve } from '@hono/node-server';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { logger as honoLogger } from 'hono/logger';
+import { bodyLimit } from 'hono/body-limit';
 import { logger } from './lib/logger.js';
 import { timeoutMiddleware } from './middleware/timeout.js';
 import { loggingMiddleware } from './middleware/logging.js';
@@ -21,6 +22,10 @@ app.use('*', cors());
 app.use('*', honoLogger()); // Console logging for dev
 app.use('*', loggingMiddleware); // Structured logging with request IDs
 app.use('*', timeoutMiddleware(120000)); // 120s default timeout
+app.use('*', bodyLimit({
+  maxSize: 1024 * 1024, // 1MB limit to prevent DoS
+  onError: (c) => c.json({ error: { code: 'PAYLOAD_TOO_LARGE', message: 'Request body too large' } }, 413),
+}));
 
 // Routes
 app.route('/health', healthRoutes);

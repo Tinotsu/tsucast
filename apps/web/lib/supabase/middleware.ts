@@ -30,9 +30,30 @@ export async function updateSession(request: NextRequest) {
   );
 
   // Refreshing the auth token
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  let user = null;
+  const hasAuthCookies = request.cookies.getAll().some(c => c.name.startsWith('sb-'));
+
+  try {
+    const { data, error } = await supabase.auth.getUser();
+
+    if (error || !data.user) {
+      // Auth failed - clear stale cookies if they exist
+      if (hasAuthCookies) {
+        request.cookies.getAll()
+          .filter(c => c.name.startsWith('sb-'))
+          .forEach(c => {
+            supabaseResponse.cookies.delete(c.name);
+          });
+      }
+      user = null;
+    } else {
+      user = data.user;
+    }
+  } catch (error) {
+    // If Supabase is unreachable, treat as unauthenticated
+    console.error("Middleware auth check failed:", error);
+    user = null;
+  }
 
   // Protected routes - redirect to login if not authenticated
   const protectedPaths = ["/dashboard", "/library", "/generate", "/upgrade", "/settings"];
@@ -73,7 +94,16 @@ export async function updateSession(request: NextRequest) {
   if (isAuthRoute && user) {
     const url = request.nextUrl.clone();
     const redirect = url.searchParams.get("redirect");
-    url.pathname = redirect || "/dashboard";
+
+    // Validate redirect to prevent open redirect attacks
+    // Must be a relative path starting with / and within allowed routes
+    const allowedRedirects = ["/dashboard", "/library", "/generate", "/upgrade", "/settings"];
+    const isValidRedirect = redirect &&
+      redirect.startsWith("/") &&
+      !redirect.startsWith("//") &&
+      allowedRedirects.some((path) => redirect.startsWith(path));
+
+    url.pathname = isValidRedirect ? redirect : "/dashboard";
     url.searchParams.delete("redirect");
     return NextResponse.redirect(url);
   }

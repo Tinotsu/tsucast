@@ -6,56 +6,12 @@
  */
 
 import { Hono } from 'hono';
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { logger } from '../lib/logger.js';
+import { getSupabase } from '../lib/supabase.js';
+import { getUserFromToken } from '../middleware/auth.js';
+import { getRateLimitStatus } from '../services/rate-limit.js';
 
 const app = new Hono();
-
-// Initialize Supabase client (lazy loaded)
-let supabase: SupabaseClient | null = null;
-
-function getSupabase(): SupabaseClient | null {
-  if (supabase) {
-    return supabase;
-  }
-
-  const url = process.env.SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-  if (!url || !key) {
-    return null;
-  }
-
-  supabase = createClient(url, key);
-  return supabase;
-}
-
-/**
- * Extract user ID from Supabase JWT token
- */
-async function getUserFromToken(authHeader: string | undefined): Promise<string | null> {
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return null;
-  }
-
-  const token = authHeader.slice(7);
-  const client = getSupabase();
-  if (!client) {
-    return null;
-  }
-
-  try {
-    const { data: { user }, error } = await client.auth.getUser(token);
-    if (error || !user) {
-      return null;
-    }
-    return user.id;
-  } catch {
-    return null;
-  }
-}
-
-const FREE_TIER_LIMIT = 3;
 
 // Get user's limit status
 app.get('/limit', async (c) => {
@@ -72,52 +28,20 @@ app.get('/limit', async (c) => {
 
   logger.info({ userId }, 'Getting limit status');
 
-  const { data: profile, error } = await client
-    .from('user_profiles')
-    .select('subscription_tier, daily_generations, daily_generations_reset_at')
-    .eq('id', userId)
-    .single();
+  try {
+    const status = await getRateLimitStatus(userId, client);
 
-  if (error) {
-    logger.error({ error, userId }, 'Failed to get user profile');
-    return c.json({ error: { code: 'FETCH_FAILED', message: 'Failed to get profile' } }, 500);
+    return c.json({
+      tier: status.tier,
+      used: status.used,
+      limit: status.limit,
+      remaining: status.remaining,
+      resetAt: status.resetAt,
+    });
+  } catch (error) {
+    logger.error({ error, userId }, 'Failed to get rate limit status');
+    return c.json({ error: { code: 'FETCH_FAILED', message: 'Failed to get limit status' } }, 500);
   }
-
-  // Check if reset needed (new day)
-  const now = new Date();
-  const resetAt = profile?.daily_generations_reset_at
-    ? new Date(profile.daily_generations_reset_at)
-    : null;
-
-  let generations = profile?.daily_generations || 0;
-
-  // If reset_at is in the past or doesn't exist, reset counter
-  if (!resetAt || resetAt <= now) {
-    generations = 0;
-
-    // Calculate next midnight UTC
-    const tomorrow = new Date(now);
-    tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
-    tomorrow.setUTCHours(0, 0, 0, 0);
-
-    await client
-      .from('user_profiles')
-      .update({
-        daily_generations: 0,
-        daily_generations_reset_at: tomorrow.toISOString(),
-      })
-      .eq('id', userId);
-  }
-
-  const isPro = profile?.subscription_tier === 'pro';
-
-  return c.json({
-    tier: profile?.subscription_tier || 'free',
-    used: isPro ? 0 : generations,
-    limit: isPro ? null : FREE_TIER_LIMIT,
-    remaining: isPro ? null : Math.max(0, FREE_TIER_LIMIT - generations),
-    resetAt: isPro ? null : profile?.daily_generations_reset_at,
-  });
 });
 
 // Get user profile

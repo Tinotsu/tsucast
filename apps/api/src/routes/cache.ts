@@ -1,25 +1,16 @@
 import { Hono } from 'hono';
-import { createHash } from 'crypto';
-import { createClient } from '@supabase/supabase-js';
+import { z } from 'zod';
 import { logger } from '../lib/logger.js';
+import { normalizeUrl, hashUrlWithVoice } from '../utils/url.js';
+import { getSupabase } from '../lib/supabase.js';
 
 const app = new Hono();
 
-// Initialize Supabase client for cache lookups (singleton)
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-// Create singleton client if configured
-const supabase = supabaseUrl && supabaseServiceKey
-  ? createClient(supabaseUrl, supabaseServiceKey)
-  : null;
-
-/**
- * Create URL hash for cache lookup (matches generate route)
- */
-function createUrlHash(url: string, voiceId: string): string {
-  return createHash('sha256').update(`${url}:${voiceId}`).digest('hex');
-}
+// Valid voice ID pattern - alphanumeric with optional hyphens/underscores, max 64 chars
+const voiceIdSchema = z.string()
+  .regex(/^[a-zA-Z0-9_-]+$/, 'Voice ID must be alphanumeric')
+  .max(64, 'Voice ID too long')
+  .default('default');
 
 /**
  * GET /api/cache/check
@@ -29,7 +20,7 @@ function createUrlHash(url: string, voiceId: string): string {
  *
  * Query params:
  * - url: The URL to check (will be hashed internally)
- * - voiceId: Optional voice ID (defaults to 'alloy')
+ * - voiceId: Optional voice ID (defaults to 'default')
  *
  * Returns:
  * - { cached: true, audioUrl, title, duration } if found
@@ -37,7 +28,14 @@ function createUrlHash(url: string, voiceId: string): string {
  */
 app.get('/check', async (c) => {
   const url = c.req.query('url');
-  const voiceId = c.req.query('voiceId') || 'alloy';
+  const voiceIdRaw = c.req.query('voiceId') || 'default';
+
+  // Validate voiceId
+  const voiceIdResult = voiceIdSchema.safeParse(voiceIdRaw);
+  if (!voiceIdResult.success) {
+    return c.json({ error: 'Invalid voiceId parameter' }, 400);
+  }
+  const voiceId = voiceIdResult.data;
 
   if (!url) {
     return c.json({ error: 'Missing url parameter' }, 400);
@@ -50,17 +48,18 @@ app.get('/check', async (c) => {
     return c.json({ error: 'Invalid URL format' }, 400);
   }
 
-  // Create hash for lookup
-  const urlHash = createUrlHash(url, voiceId);
+  // Normalize URL and create hash for lookup (must match generate route)
+  const normalizedUrl = normalizeUrl(url);
+  const urlHash = hashUrlWithVoice(normalizedUrl, voiceId);
 
   // Check if Supabase is configured
+  const supabase = getSupabase();
   if (!supabase) {
     logger.warn('Supabase not configured, cache check disabled');
     return c.json({ cached: false });
   }
 
   try {
-
     // Query audio_cache table for this URL hash
     const { data: cached, error } = await supabase
       .from('audio_cache')

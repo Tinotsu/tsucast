@@ -6,49 +6,18 @@
  */
 
 import { Hono } from 'hono';
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { z } from 'zod';
+import { getSupabase } from '../lib/supabase.js';
+import { getUserFromToken } from '../middleware/auth.js';
+import { logger } from '../lib/logger.js';
+
+// Validation schemas
+const playlistNameSchema = z.string()
+  .trim()
+  .min(1, 'Playlist name is required')
+  .max(255, 'Playlist name too long (max 255 characters)');
 
 const playlists = new Hono();
-
-// Lazy initialize Supabase client
-let supabase: SupabaseClient | null = null;
-
-function getSupabase(): SupabaseClient | null {
-  if (supabase) return supabase;
-
-  const url = process.env.SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-  if (!url || !key) return null;
-
-  supabase = createClient(url, key);
-  return supabase;
-}
-
-/**
- * Extract user ID from Supabase JWT token
- */
-async function getUserFromToken(authHeader: string | undefined): Promise<string | null> {
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return null;
-  }
-
-  const token = authHeader.slice(7);
-  const client = getSupabase();
-  if (!client) {
-    return null;
-  }
-
-  try {
-    const { data: { user }, error } = await client.auth.getUser(token);
-    if (error || !user) {
-      return null;
-    }
-    return user.id;
-  } catch {
-    return null;
-  }
-}
 
 /**
  * GET /api/playlists
@@ -106,15 +75,16 @@ playlists.post('/', async (c) => {
   }
 
   const body = await c.req.json();
-  const { name } = body;
+  const nameResult = playlistNameSchema.safeParse(body?.name);
 
-  if (!name || typeof name !== 'string' || name.trim().length === 0) {
-    return c.json({ error: { code: 'INVALID_INPUT', message: 'Playlist name is required' } }, 400);
+  if (!nameResult.success) {
+    const message = nameResult.error.errors[0]?.message || 'Invalid playlist name';
+    return c.json({ error: { code: 'INVALID_INPUT', message } }, 400);
   }
 
   const { data, error } = await client
     .from('playlists')
-    .insert({ user_id: userId, name: name.trim() })
+    .insert({ user_id: userId, name: nameResult.data })
     .select()
     .single();
 
@@ -188,15 +158,16 @@ playlists.patch('/:id', async (c) => {
   }
   const playlistId = c.req.param('id');
   const body = await c.req.json();
-  const { name } = body;
+  const nameResult = playlistNameSchema.safeParse(body?.name);
 
-  if (!name || typeof name !== 'string' || name.trim().length === 0) {
-    return c.json({ error: { code: 'INVALID_INPUT', message: 'Playlist name is required' } }, 400);
+  if (!nameResult.success) {
+    const message = nameResult.error.errors[0]?.message || 'Invalid playlist name';
+    return c.json({ error: { code: 'INVALID_INPUT', message } }, 400);
   }
 
   const { error } = await client
     .from('playlists')
-    .update({ name: name.trim() })
+    .update({ name: nameResult.data })
     .eq('id', playlistId)
     .eq('user_id', userId);
 
@@ -374,27 +345,46 @@ playlists.put('/:id/reorder', async (c) => {
     return c.json({ error: { code: 'NOT_FOUND', message: 'Playlist not found' } }, 404);
   }
 
-  // Update positions using upsert for better performance
-  // This reduces N sequential calls to a single batch operation
-  const updates = itemIds.map((id: string, index: number) => ({
+  // Fetch existing items to get audio_id for upsert (needed for batch update)
+  const { data: existingItems, error: fetchError } = await client
+    .from('playlist_items')
+    .select('id, audio_id')
+    .eq('playlist_id', playlistId)
+    .in('id', itemIds);
+
+  if (fetchError) {
+    logger.error({ error: fetchError, playlistId }, 'Failed to fetch playlist items for reorder');
+    return c.json({ error: { code: 'REORDER_FAILED', message: 'Failed to reorder playlist' } }, 500);
+  }
+
+  // Create a map for quick lookup
+  const itemMap = new Map(existingItems?.map((item) => [item.id, item.audio_id]) || []);
+
+  // Validate all itemIds exist in playlist
+  const missingIds = itemIds.filter((id: string) => !itemMap.has(id));
+  if (missingIds.length > 0) {
+    return c.json({
+      error: { code: 'INVALID_INPUT', message: 'Some item IDs not found in playlist' },
+      missingItems: missingIds,
+    }, 400);
+  }
+
+  // Build batch upsert data with new positions
+  const upsertData = itemIds.map((id: string, index: number) => ({
     id,
     playlist_id: playlistId,
+    audio_id: itemMap.get(id),
     position: index,
   }));
 
-  // Use Promise.all with chunking for large playlists
-  const CHUNK_SIZE = 50;
-  for (let i = 0; i < updates.length; i += CHUNK_SIZE) {
-    const chunk = updates.slice(i, i + CHUNK_SIZE);
-    await Promise.all(
-      chunk.map((update) =>
-        client
-          .from('playlist_items')
-          .update({ position: update.position })
-          .eq('id', update.id)
-          .eq('playlist_id', playlistId)
-      )
-    );
+  // Single batch upsert - much more efficient than N individual updates
+  const { error: upsertError } = await client
+    .from('playlist_items')
+    .upsert(upsertData, { onConflict: 'id' });
+
+  if (upsertError) {
+    logger.error({ error: upsertError, playlistId }, 'Failed to reorder playlist items');
+    return c.json({ error: { code: 'REORDER_FAILED', message: 'Failed to reorder playlist' } }, 500);
   }
 
   return c.json({ success: true });
