@@ -300,25 +300,18 @@ test.describe("Library Journey", () => {
 
       await page.goto("/library");
 
-      // Wait for items
-      await page.waitForTimeout(1000);
-
-      // THEN: Delete button exists (may be in hover state)
-      // Hover over item to reveal delete button
+      // Wait for library items to load (deterministic wait)
       const item = page.locator("[data-testid='library-item']").first();
-      if (await item.isVisible()) {
-        await item.hover();
-      }
+      await expect(item).toBeVisible({ timeout: 10000 });
 
-      // Look for delete/trash button
-      const deleteButton = page.getByRole("button", { name: /delete|remove/i }).first();
-      // May need to check aria-label for trash icon
-      const trashButton = page.locator("[aria-label*='delete'], [aria-label*='remove'], button:has(svg)").first();
+      // THEN: Delete button exists (hover to reveal if needed)
+      await item.hover();
 
-      const hasDeleteButton = await deleteButton.isVisible().catch(() => false);
-      const hasTrashButton = await trashButton.isVisible().catch(() => false);
-
-      expect(hasDeleteButton || hasTrashButton).toBe(true);
+      // Look for delete/trash button - use combined selector
+      const deleteButton = page.locator(
+        "button[aria-label*='delete'], button[aria-label*='remove'], [data-testid='delete-button'], button:has(svg.lucide-trash)"
+      ).first();
+      await expect(deleteButton).toBeVisible({ timeout: 5000 });
     });
 
     test("should remove item from list when deleted", async ({ page, context }) => {

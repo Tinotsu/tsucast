@@ -295,15 +295,12 @@ test.describe("Authentication Journey", () => {
       // Wait for page to load
       await page.waitForLoadState("networkidle");
 
-      // WHEN: User clicks logout
-      const logoutButton = page.getByRole("button", { name: /logout|sign out/i });
-      if (await logoutButton.isVisible()) {
-        await logoutButton.click();
-      } else {
-        // Try settings page
-        await page.goto("/settings");
-        await page.getByRole("button", { name: /logout|sign out/i }).click();
-      }
+      // WHEN: User clicks logout (find button in nav or user menu)
+      const logoutButton = page.getByRole("button", { name: /logout|sign out/i }).or(
+        page.locator("[data-testid='logout-button']")
+      );
+      await expect(logoutButton).toBeVisible({ timeout: 10000 });
+      await logoutButton.click();
 
       // THEN: They are redirected to landing page or login
       await expect(page).toHaveURL(/^\/$|\/login/, { timeout: 10000 });
