@@ -58,15 +58,25 @@ async function getAuthToken(): Promise<string | null> {
     // Import dynamically to avoid SSR issues
     const { createClient } = await import("@/lib/supabase/client");
     const supabase = createClient();
-    const { data, error } = await supabase.auth.getSession();
-    if (error) {
-      // Ignore AbortError - happens during fast navigation/remounts
-      if (error.name !== "AbortError" && error.message !== "signal is aborted without reason") {
-        console.error("Failed to get session:", error);
+
+    // getSession() can hang indefinitely due to Supabase SSR bug
+    // Add timeout to prevent blocking forever
+    const timeoutPromise = new Promise<null>((resolve) => {
+      setTimeout(() => resolve(null), 2000);
+    });
+
+    const sessionPromise = supabase.auth.getSession().then(({ data, error }) => {
+      if (error) {
+        // Ignore AbortError - happens during fast navigation/remounts
+        if (error.name !== "AbortError" && error.message !== "signal is aborted without reason") {
+          console.error("Failed to get session:", error);
+        }
+        return null;
       }
-      return null;
-    }
-    return data.session?.access_token || null;
+      return data.session?.access_token || null;
+    });
+
+    return await Promise.race([sessionPromise, timeoutPromise]);
   } catch (err) {
     // Ignore AbortError - happens during fast navigation/remounts
     if (err instanceof Error && (err.name === "AbortError" || err.message === "signal is aborted without reason")) {
@@ -74,6 +84,19 @@ async function getAuthToken(): Promise<string | null> {
     }
     console.error("Error getting auth token:", err);
     return null;
+  }
+}
+
+// Clear auth cookies when session is invalid
+function clearAuthCookies() {
+  if (typeof document !== 'undefined') {
+    const cookies = document.cookie.split(';');
+    for (const cookie of cookies) {
+      const [name] = cookie.trim().split('=');
+      if (name.startsWith('sb-')) {
+        document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/`;
+      }
+    }
   }
 }
 
@@ -102,6 +125,11 @@ async function fetchApi<T>(
     const data = await response.json();
 
     if (!response.ok) {
+      // Auto-clear stale cookies on auth errors
+      if (response.status === 401) {
+        clearAuthCookies();
+      }
+
       throw new ApiError(
         data.error?.message || "An error occurred",
         data.error?.code || "UNKNOWN_ERROR",
@@ -125,13 +153,125 @@ export async function checkCache(url: string): Promise<CacheCheckResponse> {
   );
 }
 
+interface GenerateStatusResponse {
+  status: "processing" | "ready" | "failed";
+  cacheId?: string;
+  audioUrl?: string;
+  title?: string;
+  duration?: number;
+  wordCount?: number;
+  error?: { message: string };
+  message?: string;
+  cached?: boolean;
+  remaining?: number;
+}
+
+async function pollGenerationStatus(
+  cacheId: string,
+  maxAttempts = 60, // 2 minutes max (60 * 2s)
+  intervalMs = 2000
+): Promise<GenerateResponse> {
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    const status = await fetchApi<GenerateStatusResponse>(
+      `/api/generate/status/${cacheId}`
+    );
+
+    if (status.status === "ready" && status.audioUrl) {
+      return {
+        audioId: cacheId,
+        audioUrl: status.audioUrl,
+        title: status.title || "Untitled",
+        duration: status.duration || 0,
+        wordCount: status.wordCount || 0,
+      };
+    }
+
+    if (status.status === "failed") {
+      throw new ApiError(
+        status.error?.message || "Generation failed",
+        "GENERATION_FAILED",
+        500
+      );
+    }
+
+    // Still processing - wait and retry
+    await new Promise((resolve) => setTimeout(resolve, intervalMs));
+  }
+
+  throw new ApiError("Generation timed out", "TIMEOUT", 408);
+}
+
 export async function generateAudio(
   request: GenerateRequest
 ): Promise<GenerateResponse> {
-  return fetchApi<GenerateResponse>("/api/generate", {
-    method: "POST",
-    body: JSON.stringify(request),
-  });
+  const token = await getAuthToken();
+
+  // Use longer timeout for initial request (30s) since it may complete synchronously
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 30000);
+
+  try {
+    const response = await fetch(`${API_URL}/api/generate`, {
+      method: "POST",
+      signal: controller.signal,
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify(request),
+    });
+
+    clearTimeout(timeoutId);
+
+    const data = await response.json();
+
+    // Handle rate limiting
+    if (response.status === 429) {
+      throw new ApiError(
+        data.error?.message || "Rate limited",
+        data.error?.code || "RATE_LIMITED",
+        429
+      );
+    }
+
+    // Handle 202 - generation in progress, need to poll
+    if (response.status === 202 && data.cacheId) {
+      return pollGenerationStatus(data.cacheId);
+    }
+
+    // Handle errors
+    if (!response.ok) {
+      throw new ApiError(
+        data.error?.message || "An error occurred",
+        data.error?.code || "UNKNOWN_ERROR",
+        response.status
+      );
+    }
+
+    // Handle immediate success (cached or fast generation)
+    if (data.status === "ready" && data.audioUrl) {
+      return {
+        audioId: data.cacheId || data.audioUrl.split("/").pop() || "unknown",
+        audioUrl: data.audioUrl,
+        title: data.title || "Untitled",
+        duration: data.duration || 0,
+        wordCount: data.wordCount || 0,
+        remaining: data.remaining,
+      };
+    }
+
+    // Fallback - shouldn't reach here normally
+    throw new ApiError("Unexpected response format", "UNKNOWN_ERROR", 500);
+  } catch (err) {
+    clearTimeout(timeoutId);
+    if (err instanceof ApiError) {
+      throw err;
+    }
+    if (err instanceof Error && err.name === "AbortError") {
+      throw new ApiError("Request timed out", "TIMEOUT", 408);
+    }
+    throw err;
+  }
 }
 
 export async function getLimitStatus(): Promise<LimitStatusResponse> {
@@ -155,6 +295,12 @@ export async function updatePlaybackPosition(
 
 export async function deleteLibraryItem(audioId: string): Promise<void> {
   await fetchApi(`/api/library/${audioId}`, {
+    method: "DELETE",
+  });
+}
+
+export async function deleteAccount(): Promise<void> {
+  await fetchApi("/api/user/account", {
     method: "DELETE",
   });
 }
