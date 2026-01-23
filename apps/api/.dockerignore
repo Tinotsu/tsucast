@@ -1,0 +1,37 @@
+# Dependencies
+node_modules
+
+# Build output (rebuilt in Docker)
+dist
+
+# Development files
+.env
+.env.*
+*.log
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# Test files
+__tests__
+*.test.ts
+*.spec.ts
+coverage
+.nyc_output
+
+# Git
+.git
+.gitignore
+
+# Docker
+Dockerfile
+.dockerignore
+docker-compose*.yml
+
+# Docs
+README.md
+CHANGELOG.md
+docs

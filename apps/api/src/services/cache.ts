@@ -5,27 +5,8 @@
  * Story: 3-2 Streaming Audio Generation
  */
 
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { logger } from '../lib/logger.js';
-
-// Initialize Supabase client (lazy loaded)
-let supabase: SupabaseClient | null = null;
-
-function getSupabase(): SupabaseClient | null {
-  if (supabase) {
-    return supabase;
-  }
-
-  const url = process.env.SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-  if (!url || !key) {
-    return null;
-  }
-
-  supabase = createClient(url, key);
-  return supabase;
-}
+import { getSupabase, isSupabaseConfigured } from '../lib/supabase.js';
 
 export interface CacheEntry {
   id: string;
@@ -197,5 +178,43 @@ export async function getCacheEntryById(id: string): Promise<CacheEntry | null> 
  * Check if cache service is configured
  */
 export function isCacheConfigured(): boolean {
-  return !!(process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY);
+  return isSupabaseConfigured();
+}
+
+/**
+ * Check if a cache entry is stale (stuck in processing for too long)
+ * Default timeout: 5 minutes
+ */
+export function isStaleEntry(entry: CacheEntry, timeoutMs: number = 5 * 60 * 1000): boolean {
+  if (entry.status !== 'processing') {
+    return false;
+  }
+
+  const updatedAt = new Date(entry.updated_at).getTime();
+  const now = Date.now();
+
+  return now - updatedAt > timeoutMs;
+}
+
+/**
+ * Delete a cache entry by url_hash (for cleaning up stale entries)
+ */
+export async function deleteCacheEntry(urlHash: string): Promise<boolean> {
+  const client = getSupabase();
+  if (!client) {
+    return false;
+  }
+
+  const { error } = await client
+    .from('audio_cache')
+    .delete()
+    .eq('url_hash', urlHash);
+
+  if (error) {
+    logger.error({ error, urlHash }, 'Failed to delete cache entry');
+    return false;
+  }
+
+  logger.info({ urlHash }, 'Deleted stale cache entry');
+  return true;
 }

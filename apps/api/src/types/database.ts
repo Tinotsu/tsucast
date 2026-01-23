@@ -111,29 +111,29 @@ export interface Database {
         Row: {
           id: string;
           user_id: string;
-          cache_id: string;
-          progress_seconds: number;
-          completed: boolean;
+          audio_id: string;
+          playback_position: number;
+          is_played: boolean;
           added_at: string;
-          last_played_at: string | null;
+          updated_at: string;
         };
         Insert: {
           id?: string;
           user_id: string;
-          cache_id: string;
-          progress_seconds?: number;
-          completed?: boolean;
+          audio_id: string;
+          playback_position?: number;
+          is_played?: boolean;
           added_at?: string;
-          last_played_at?: string | null;
+          updated_at?: string;
         };
         Update: {
           id?: string;
           user_id?: string;
-          cache_id?: string;
-          progress_seconds?: number;
-          completed?: boolean;
+          audio_id?: string;
+          playback_position?: number;
+          is_played?: boolean;
           added_at?: string;
-          last_played_at?: string | null;
+          updated_at?: string;
         };
       };
     };

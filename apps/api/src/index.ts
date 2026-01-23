@@ -18,7 +18,22 @@ import playlistRoutes from './routes/playlists.js';
 const app = new Hono();
 
 // Global middleware
-app.use('*', cors());
+// CORS: Restrict to allowed origins in production
+const allowedOrigins = process.env.NODE_ENV === 'production'
+  ? [
+      'https://tsucast.app',
+      'https://www.tsucast.app',
+      'https://tsucast.com',
+      'https://www.tsucast.com',
+    ]
+  : ['http://localhost:3000', 'http://localhost:8081']; // Dev: Next.js + Expo
+
+app.use('*', cors({
+  origin: allowedOrigins,
+  allowMethods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowHeaders: ['Content-Type', 'Authorization'],
+  credentials: true,
+}));
 app.use('*', honoLogger()); // Console logging for dev
 app.use('*', loggingMiddleware); // Structured logging with request IDs
 app.use('*', timeoutMiddleware(120000)); // 120s default timeout
@@ -57,7 +72,7 @@ app.onError((err, c) => {
   return c.json({ error: 'Internal Server Error' }, 500);
 });
 
-const port = parseInt(process.env.PORT || '3000', 10);
+const port = parseInt(process.env.PORT || '3001', 10);
 
 logger.info({ port }, 'Starting tsucast API server');
 

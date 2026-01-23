@@ -47,6 +47,7 @@ playlists.get('/', async (c) => {
     .order('created_at', { ascending: false });
 
   if (error) {
+    logger.error({ error, userId }, 'Failed to fetch playlists');
     return c.json({ error: { code: 'FETCH_FAILED', message: 'Failed to fetch playlists' } }, 500);
   }
 
@@ -89,6 +90,7 @@ playlists.post('/', async (c) => {
     .single();
 
   if (error) {
+    logger.error({ error, userId }, 'Failed to create playlist');
     return c.json({ error: { code: 'CREATE_FAILED', message: 'Failed to create playlist' } }, 500);
   }
 
@@ -172,6 +174,7 @@ playlists.patch('/:id', async (c) => {
     .eq('user_id', userId);
 
   if (error) {
+    logger.error({ error, userId, playlistId }, 'Failed to update playlist');
     return c.json({ error: { code: 'UPDATE_FAILED', message: 'Failed to update playlist' } }, 500);
   }
 
@@ -201,6 +204,7 @@ playlists.delete('/:id', async (c) => {
     .eq('user_id', userId);
 
   if (error) {
+    logger.error({ error, userId, playlistId }, 'Failed to delete playlist');
     return c.json({ error: { code: 'DELETE_FAILED', message: 'Failed to delete playlist' } }, 500);
   }
 
@@ -263,6 +267,7 @@ playlists.post('/:id/items', async (c) => {
     if (error.code === '23505') {
       return c.json({ error: { code: 'DUPLICATE', message: 'Item already in playlist' } }, 409);
     }
+    logger.error({ error, userId, playlistId, audioId }, 'Failed to add to playlist');
     return c.json({ error: { code: 'ADD_FAILED', message: 'Failed to add to playlist' } }, 500);
   }
 
@@ -305,6 +310,7 @@ playlists.delete('/:id/items/:itemId', async (c) => {
     .eq('playlist_id', playlistId);
 
   if (error) {
+    logger.error({ error, userId, playlistId, itemId }, 'Failed to remove from playlist');
     return c.json({ error: { code: 'REMOVE_FAILED', message: 'Failed to remove from playlist' } }, 500);
   }
 
