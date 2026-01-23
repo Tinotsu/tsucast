@@ -7,7 +7,8 @@ import { UrlInput } from "@/components/app/UrlInput";
 import { VoiceSelector } from "@/components/app/VoiceSelector";
 import { WebPlayer } from "@/components/app/WebPlayer";
 import { generateAudio, ApiError } from "@/lib/api";
-import { Loader2, Sparkles, AlertCircle } from "lucide-react";
+import { isValidUrl } from "@/lib/utils";
+import { Loader2, Sparkles, AlertCircle, RotateCcw } from "lucide-react";
 import Link from "next/link";
 
 interface GenerationResult {
@@ -22,13 +23,14 @@ export default function GeneratePage() {
   const router = useRouter();
 
   const [url, setUrl] = useState("");
-  const [voiceId, setVoiceId] = useState("alloy");
+  const [voiceId, setVoiceId] = useState("default");
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<GenerationResult | null>(null);
   const [cachedResult, setCachedResult] = useState<{
     audioId: string;
     audioUrl: string;
+    title?: string;
   } | null>(null);
 
   // Redirect to login if not authenticated
@@ -37,6 +39,11 @@ export default function GeneratePage() {
       router.push("/login?redirect=/generate");
     }
   }, [isLoading, isAuthenticated, router]);
+
+  // useCallback MUST be before any conditional returns (React hooks rule)
+  const handleCacheHit = useCallback((audioId: string, audioUrl: string, title?: string) => {
+    setCachedResult({ audioId, audioUrl, title });
+  }, []);
 
   // Show loading while checking auth
   if (isLoading) {
@@ -57,10 +64,6 @@ export default function GeneratePage() {
     : 3 - (profile?.daily_generations || 0);
   const isAtLimit = !isPro && remainingGenerations !== null && remainingGenerations <= 0;
 
-  const handleCacheHit = useCallback((audioId: string, audioUrl: string) => {
-    setCachedResult({ audioId, audioUrl });
-  }, []);
-
   const handleGenerate = async () => {
     if (!url || isGenerating || isAtLimit) return;
 
@@ -79,7 +82,11 @@ export default function GeneratePage() {
       });
     } catch (err) {
       if (err instanceof ApiError) {
-        if (err.code === "RATE_LIMITED") {
+        if (err.code === "UNAUTHORIZED" || err.status === 401) {
+          // Session expired or not authenticated - redirect to login
+          router.push("/login?redirect=/generate");
+          return;
+        } else if (err.code === "RATE_LIMITED") {
           setError("You've reached your daily limit. Upgrade to Pro for unlimited generations.");
         } else {
           setError(err.message);
@@ -92,16 +99,17 @@ export default function GeneratePage() {
     }
   };
 
-  const isValidUrl = (testUrl: string) => {
-    try {
-      const parsed = new URL(testUrl);
-      return parsed.protocol === "http:" || parsed.protocol === "https:";
-    } catch {
-      return false;
-    }
-  };
-
   const canGenerate = url && isValidUrl(url) && !isGenerating && !isAtLimit;
+
+  const handlePlayCached = () => {
+    if (!cachedResult) return;
+    setResult({
+      audioId: cachedResult.audioId,
+      audioUrl: cachedResult.audioUrl,
+      title: cachedResult.title || "Cached Audio",
+      duration: 0,
+    });
+  };
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-12 sm:px-6 lg:px-8">
@@ -181,7 +189,7 @@ export default function GeneratePage() {
               Generate Another
             </button>
             <Link
-              href="/library"
+              href={`/library?highlight=${result.audioId}`}
               className="rounded-lg bg-amber-500 px-6 py-2 font-medium text-black hover:bg-amber-400"
             >
               View in Library
@@ -207,32 +215,41 @@ export default function GeneratePage() {
           />
 
           {error && (
-            <div className="rounded-lg bg-red-500/10 p-4 text-sm text-red-400">
-              {error}
+            <div className="rounded-lg bg-red-500/10 p-4">
+              <p className="text-sm text-red-400">{error}</p>
+              <button
+                onClick={handleGenerate}
+                disabled={!canGenerate}
+                className="mt-3 flex items-center gap-2 rounded-lg bg-red-500/20 px-4 py-2 text-sm font-medium text-red-400 transition-colors hover:bg-red-500/30 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <RotateCcw className="h-4 w-4" />
+                Try Again
+              </button>
             </div>
           )}
 
-          <button
-            onClick={handleGenerate}
-            disabled={!canGenerate}
-            className="flex w-full items-center justify-center gap-2 rounded-xl bg-amber-500 py-4 font-semibold text-black transition-colors hover:bg-amber-400 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {isGenerating ? (
-              <>
-                <Loader2 className="h-5 w-5 animate-spin" />
-                Generating...
-              </>
-            ) : cachedResult ? (
-              "Play Cached Audio"
-            ) : (
-              "Generate Podcast"
-            )}
-          </button>
-
-          {cachedResult && (
-            <p className="text-center text-sm text-green-400">
-              This article is already in our cache. Click to play instantly!
-            </p>
+          {cachedResult ? (
+            <button
+              onClick={handlePlayCached}
+              className="flex w-full items-center justify-center gap-2 rounded-xl bg-green-600 py-4 font-semibold text-white transition-colors hover:bg-green-500"
+            >
+              Play Cached Audio
+            </button>
+          ) : (
+            <button
+              onClick={handleGenerate}
+              disabled={!canGenerate}
+              className="flex w-full items-center justify-center gap-2 rounded-xl bg-amber-500 py-4 font-semibold text-black transition-colors hover:bg-amber-400 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {isGenerating ? (
+                <>
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                  Generating...
+                </>
+              ) : (
+                "Generate Podcast"
+              )}
+            </button>
           )}
         </div>
       )}

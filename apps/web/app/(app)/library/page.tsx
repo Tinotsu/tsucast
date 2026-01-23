@@ -1,9 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, Suspense, useRef } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { getLibrary, deleteLibraryItem, type LibraryItem } from "@/lib/api";
+import { useAuth } from "@/hooks/useAuth";
+import { getLibrary, deleteLibraryItem, updatePlaybackPosition, ApiError, type LibraryItem } from "@/lib/api";
 import { WebPlayer } from "@/components/app/WebPlayer";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import {
   Headphones,
   Play,
@@ -17,17 +20,33 @@ import {
 import { cn } from "@/lib/utils";
 
 export default function LibraryPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex min-h-[60vh] items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-amber-500" />
+      </div>
+    }>
+      <LibraryPageContent />
+    </Suspense>
+  );
+}
+
+function LibraryPageContent() {
+  const { isLoading: authLoading, isAuthenticated } = useAuth();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const highlightId = searchParams.get("highlight");
+
   const [items, setItems] = useState<LibraryItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedItem, setSelectedItem] = useState<LibraryItem | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [confirmingDeleteId, setConfirmingDeleteId] = useState<string | null>(null);
+  const positionSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const lastSavedPositionRef = useRef<number>(0);
 
-  useEffect(() => {
-    loadLibrary();
-  }, []);
-
-  const loadLibrary = async () => {
+  const loadLibrary = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
@@ -35,8 +54,8 @@ export default function LibraryPage() {
       setItems(libraryItems);
     } catch (err: unknown) {
       // Redirect to login on auth errors
-      if (err && typeof err === "object" && "status" in err && err.status === 401) {
-        window.location.href = "/login?redirect=/library";
+      if (err instanceof ApiError && (err.code === "UNAUTHORIZED" || err.status === 401)) {
+        router.push("/login?redirect=/library");
         return;
       }
       // For any other error (including connection refused), just show empty library
@@ -45,13 +64,77 @@ export default function LibraryPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [router]);
+
+  // Redirect to login if not authenticated
+  useEffect(() => {
+    if (!authLoading && !isAuthenticated) {
+      router.push("/login?redirect=/library");
+    }
+  }, [authLoading, isAuthenticated, router]);
+
+  useEffect(() => {
+    // Only load library if authenticated
+    if (!authLoading && isAuthenticated) {
+      loadLibrary();
+    }
+  }, [authLoading, isAuthenticated, loadLibrary]);
+
+  // Auto-select highlighted item from URL param
+  useEffect(() => {
+    if (highlightId && items.length > 0 && !selectedItem) {
+      const item = items.find(i => i.audio_id === highlightId);
+      if (item) {
+        setSelectedItem(item);
+      }
+    }
+  }, [highlightId, items, selectedItem]);
+
+  // Debounced position save - only saves every 5 seconds to avoid excessive API calls
+  const handlePositionChange = useCallback((position: number) => {
+    if (!selectedItem) return;
+
+    // Update local state immediately for responsive UI
+    setItems(prev => prev.map(item =>
+      item.audio_id === selectedItem.audio_id
+        ? { ...item, playback_position: position }
+        : item
+    ));
+
+    // Debounce API call - only save if position changed significantly (>5 seconds)
+    const shouldSave = Math.abs(position - lastSavedPositionRef.current) >= 5;
+    if (!shouldSave) return;
+
+    // Clear any pending save
+    if (positionSaveTimeoutRef.current) {
+      clearTimeout(positionSaveTimeoutRef.current);
+    }
+
+    // Schedule save after 2 second debounce
+    positionSaveTimeoutRef.current = setTimeout(async () => {
+      try {
+        await updatePlaybackPosition(selectedItem.audio_id, position);
+        lastSavedPositionRef.current = position;
+      } catch (err) {
+        console.error("Failed to save position:", err);
+      }
+    }, 2000);
+  }, [selectedItem]);
+
+  // Clean up timeout on unmount and save final position
+  useEffect(() => {
+    return () => {
+      if (positionSaveTimeoutRef.current) {
+        clearTimeout(positionSaveTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const handleDelete = async (audioId: string) => {
     setDeletingId(audioId);
     try {
       await deleteLibraryItem(audioId);
-      setItems(items.filter((item) => item.audio_id !== audioId));
+      setItems(prev => prev.filter((item) => item.audio_id !== audioId));
       if (selectedItem?.audio_id === audioId) {
         setSelectedItem(null);
       }
@@ -81,12 +164,18 @@ export default function LibraryPage() {
     return Math.round((item.playback_position / item.duration) * 100);
   };
 
-  if (isLoading) {
+  // Show loading while checking auth or loading library
+  if (authLoading || isLoading) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-amber-500" />
       </div>
     );
+  }
+
+  // Don't render content if not authenticated (redirect is happening)
+  if (!isAuthenticated) {
+    return null;
   }
 
   if (error) {
@@ -206,18 +295,49 @@ export default function LibraryPage() {
                       )}
                     </div>
 
-                    {/* Delete Button */}
-                    <button
-                      onClick={() => handleDelete(item.audio_id)}
-                      disabled={deletingId === item.audio_id}
-                      className="flex-shrink-0 rounded-lg p-2 text-zinc-400 opacity-0 transition-all hover:bg-red-500/10 hover:text-red-500 group-hover:opacity-100"
-                    >
-                      {deletingId === item.audio_id ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <Trash2 className="h-4 w-4" />
-                      )}
-                    </button>
+                    {/* Delete Button with Confirmation */}
+                    {confirmingDeleteId === item.audio_id ? (
+                      <div className="flex flex-shrink-0 items-center gap-1" role="group" aria-label="Confirm deletion">
+                        <button
+                          onClick={() => {
+                            handleDelete(item.audio_id);
+                            setConfirmingDeleteId(null);
+                          }}
+                          disabled={deletingId === item.audio_id}
+                          aria-label="Confirm delete"
+                          className="rounded-lg bg-red-500 px-2 py-1 text-xs font-medium text-white hover:bg-red-600"
+                        >
+                          {deletingId === item.audio_id ? (
+                            <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
+                          ) : (
+                            "Delete"
+                          )}
+                        </button>
+                        <button
+                          onClick={() => setConfirmingDeleteId(null)}
+                          aria-label="Cancel delete"
+                          className="rounded-lg bg-zinc-700 px-2 py-1 text-xs font-medium text-white hover:bg-zinc-600"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => setConfirmingDeleteId(item.audio_id)}
+                        disabled={deletingId === item.audio_id}
+                        aria-label={`Delete ${item.title}`}
+                        className={cn(
+                          "flex-shrink-0 rounded-lg p-2 text-zinc-400 transition-all hover:bg-red-500/10 hover:text-red-500",
+                          deletingId === item.audio_id ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+                        )}
+                      >
+                        {deletingId === item.audio_id ? (
+                          <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                        ) : (
+                          <Trash2 className="h-4 w-4" aria-hidden="true" />
+                        )}
+                      </button>
+                    )}
                   </div>
                 </div>
               );
@@ -227,11 +347,14 @@ export default function LibraryPage() {
           {/* Player */}
           <div className="sticky top-24">
             {selectedItem ? (
-              <WebPlayer
-                audioUrl={selectedItem.audio_url}
-                title={selectedItem.title}
-                initialPosition={selectedItem.playback_position}
-              />
+              <ErrorBoundary>
+                <WebPlayer
+                  audioUrl={selectedItem.audio_url}
+                  title={selectedItem.title}
+                  initialPosition={selectedItem.playback_position}
+                  onPositionChange={handlePositionChange}
+                />
+              </ErrorBoundary>
             ) : (
               <div className="flex h-64 items-center justify-center rounded-2xl border border-dashed border-zinc-800 bg-zinc-900">
                 <div className="text-center text-zinc-400">

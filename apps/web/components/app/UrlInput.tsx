@@ -2,13 +2,13 @@
 
 import { useState, useEffect } from "react";
 import { Link2, Loader2, Check, AlertCircle } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, isValidUrl } from "@/lib/utils";
 import { checkCache } from "@/lib/api";
 
 interface UrlInputProps {
   value: string;
   onChange: (value: string) => void;
-  onCacheHit?: (audioId: string, audioUrl: string) => void;
+  onCacheHit?: (audioId: string, audioUrl: string, title?: string) => void;
   disabled?: boolean;
 }
 
@@ -21,15 +21,6 @@ export function UrlInput({
   const [isChecking, setIsChecking] = useState(false);
   const [isCached, setIsCached] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  const isValidUrl = (url: string) => {
-    try {
-      const parsed = new URL(url);
-      return parsed.protocol === "http:" || parsed.protocol === "https:";
-    } catch {
-      return false;
-    }
-  };
 
   useEffect(() => {
     if (!value || !isValidUrl(value)) {
@@ -47,7 +38,7 @@ export function UrlInput({
         const result = await checkCache(value);
         if (result.cached && result.audioId && result.audioUrl) {
           setIsCached(true);
-          onCacheHit?.(result.audioId, result.audioUrl);
+          onCacheHit?.(result.audioId, result.audioUrl, result.title);
         }
       } catch (err) {
         // Silently fail cache check

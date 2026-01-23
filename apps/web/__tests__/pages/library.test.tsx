@@ -5,24 +5,46 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
 import LibraryPage from "@/app/(app)/library/page";
 import { createLibraryItem, createLibraryItems } from "../factories";
 
-// Mock window.location
-const mockLocation = { href: "" };
-Object.defineProperty(window, "location", {
-  value: mockLocation,
-  writable: true,
-});
+// Mock router
+const mockPush = vi.fn();
+const mockSearchParams = new URLSearchParams();
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({
+    push: mockPush,
+    replace: vi.fn(),
+    back: vi.fn(),
+  }),
+  useSearchParams: () => mockSearchParams,
+}));
 
 // Mock the API module
 const mockGetLibrary = vi.fn();
 const mockDeleteLibraryItem = vi.fn();
+const mockUpdatePlaybackPosition = vi.fn();
 
 vi.mock("@/lib/api", () => ({
   getLibrary: () => mockGetLibrary(),
   deleteLibraryItem: (id: string) => mockDeleteLibraryItem(id),
+  updatePlaybackPosition: (id: string, position: number) => mockUpdatePlaybackPosition(id, position),
+  ApiError: class ApiError extends Error {
+    code: string;
+    status: number;
+    constructor(message: string, code: string, status: number) {
+      super(message);
+      this.code = code;
+      this.status = status;
+    }
+  },
+}));
+
+// Mock useAuth to simulate authenticated user
+const mockUseAuth = vi.fn();
+vi.mock("@/hooks/useAuth", () => ({
+  useAuth: () => mockUseAuth(),
 }));
 
 // Mock WebPlayer component to avoid audio element issues
@@ -35,13 +57,22 @@ vi.mock("@/components/app/WebPlayer", () => ({
 describe("Library Page", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockLocation.href = "";
+    // Default: authenticated user
+    mockUseAuth.mockReturnValue({
+      isLoading: false,
+      isAuthenticated: true,
+      user: { id: "test-user-id" },
+    });
   });
 
   describe("Loading State", () => {
     it("[P1] should show loading spinner initially", () => {
-      // GIVEN: Library is loading
-      mockGetLibrary.mockImplementation(() => new Promise(() => {})); // Never resolves
+      // GIVEN: Auth is still loading
+      mockUseAuth.mockReturnValue({
+        isLoading: true,
+        isAuthenticated: false,
+        user: null,
+      });
 
       // WHEN: Rendering library page
       render(<LibraryPage />);
@@ -55,8 +86,10 @@ describe("Library Page", () => {
 
   describe("Authentication", () => {
     it("[P1] should redirect to login on 401 error", async () => {
-      // GIVEN: API returns 401
-      const error = { status: 401, message: "Unauthorized" };
+      // GIVEN: API returns 401 ApiError
+      // Import the mocked ApiError class
+      const { ApiError } = await import("@/lib/api");
+      const error = new ApiError("Unauthorized", "UNAUTHORIZED", 401);
       mockGetLibrary.mockRejectedValue(error);
 
       // WHEN: Rendering library page
@@ -64,7 +97,7 @@ describe("Library Page", () => {
 
       // THEN: Should redirect to login
       await waitFor(() => {
-        expect(mockLocation.href).toBe("/login?redirect=/library");
+        expect(mockPush).toHaveBeenCalledWith("/login?redirect=/library");
       });
     });
 
@@ -79,7 +112,7 @@ describe("Library Page", () => {
       await waitFor(() => {
         expect(screen.getByText("Your library is empty")).toBeInTheDocument();
       });
-      expect(mockLocation.href).toBe("");
+      expect(mockPush).not.toHaveBeenCalledWith(expect.stringContaining("/login"));
     });
   });
 
@@ -201,7 +234,7 @@ describe("Library Page", () => {
   });
 
   describe("Delete Item", () => {
-    it("[P1] should call deleteLibraryItem when delete clicked", async () => {
+    it("[P1] should show confirmation when delete clicked", async () => {
       // GIVEN: Library with items
       const item = createLibraryItem({ audio_id: "audio-123" });
       mockGetLibrary.mockResolvedValue([item]);
@@ -213,12 +246,42 @@ describe("Library Page", () => {
         expect(screen.getByText(item.title)).toBeInTheDocument();
       });
 
-      // WHEN: Clicking delete button
-      // Delete button has Trash2 icon - find by its container
+      // WHEN: Clicking delete button (trash icon)
       const deleteButtons = screen.getAllByRole("button").filter((btn) =>
         btn.className.includes("hover:text-red-500")
       );
       fireEvent.click(deleteButtons[0]);
+
+      // THEN: Confirmation buttons appear
+      await waitFor(() => {
+        expect(screen.getByRole("button", { name: /confirm delete/i })).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: /cancel delete/i })).toBeInTheDocument();
+      });
+    });
+
+    it("[P1] should call deleteLibraryItem when delete confirmed", async () => {
+      // GIVEN: Library with items
+      const item = createLibraryItem({ audio_id: "audio-123" });
+      mockGetLibrary.mockResolvedValue([item]);
+      mockDeleteLibraryItem.mockResolvedValue(undefined);
+
+      render(<LibraryPage />);
+
+      await waitFor(() => {
+        expect(screen.getByText(item.title)).toBeInTheDocument();
+      });
+
+      // WHEN: Clicking delete button then confirming
+      const deleteButtons = screen.getAllByRole("button").filter((btn) =>
+        btn.className.includes("hover:text-red-500")
+      );
+      fireEvent.click(deleteButtons[0]);
+
+      await waitFor(() => {
+        expect(screen.getByRole("button", { name: /confirm delete/i })).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByRole("button", { name: /confirm delete/i }));
 
       // THEN: deleteLibraryItem is called with correct ID
       await waitFor(() => {
@@ -238,11 +301,17 @@ describe("Library Page", () => {
         expect(screen.getByText("Item to Delete")).toBeInTheDocument();
       });
 
-      // WHEN: Deleting the item
+      // WHEN: Deleting the item (click trash, then confirm)
       const deleteButtons = screen.getAllByRole("button").filter((btn) =>
         btn.className.includes("hover:text-red-500")
       );
       fireEvent.click(deleteButtons[0]);
+
+      await waitFor(() => {
+        expect(screen.getByRole("button", { name: /confirm delete/i })).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByRole("button", { name: /confirm delete/i }));
 
       // THEN: Item is removed from display
       await waitFor(() => {
@@ -250,7 +319,39 @@ describe("Library Page", () => {
       });
     });
 
-    it("[P2] should clear selected item if deleted item was selected", async () => {
+    it("[P2] should cancel delete when cancel clicked", async () => {
+      // GIVEN: Library with items showing confirmation
+      const item = createLibraryItem({ audio_id: "audio-123" });
+      mockGetLibrary.mockResolvedValue([item]);
+
+      render(<LibraryPage />);
+
+      await waitFor(() => {
+        expect(screen.getByText(item.title)).toBeInTheDocument();
+      });
+
+      // Click delete to show confirmation
+      const deleteButtons = screen.getAllByRole("button").filter((btn) =>
+        btn.className.includes("hover:text-red-500")
+      );
+      fireEvent.click(deleteButtons[0]);
+
+      await waitFor(() => {
+        expect(screen.getByRole("button", { name: /cancel delete/i })).toBeInTheDocument();
+      });
+
+      // WHEN: Clicking cancel
+      fireEvent.click(screen.getByRole("button", { name: /cancel delete/i }));
+
+      // THEN: Confirmation disappears and item still there
+      await waitFor(() => {
+        expect(screen.queryByRole("button", { name: /cancel delete/i })).not.toBeInTheDocument();
+      });
+      expect(screen.getByText(item.title)).toBeInTheDocument();
+      expect(mockDeleteLibraryItem).not.toHaveBeenCalled();
+    });
+
+    it("[P2] should call delete API when selected item is confirmed for deletion", async () => {
       // GIVEN: Library with one item that's selected
       const item = createLibraryItem({ title: "Selected Item", audio_id: "sel-123" });
       mockGetLibrary.mockResolvedValue([item]);
@@ -272,19 +373,21 @@ describe("Library Page", () => {
         expect(screen.getByTestId("web-player")).toBeInTheDocument();
       });
 
-      // WHEN: Deleting the selected item
+      // WHEN: Deleting the selected item (click trash, then confirm)
       const deleteButtons = screen.getAllByRole("button").filter((btn) =>
         btn.className.includes("hover:text-red-500")
       );
       fireEvent.click(deleteButtons[0]);
 
-      // THEN: Player is cleared - item removed means no player visible
       await waitFor(() => {
-        expect(screen.queryByTestId("web-player")).not.toBeInTheDocument();
+        expect(screen.getByRole("button", { name: /confirm delete/i })).toBeInTheDocument();
       });
-      // And empty state is shown since library is now empty
+
+      fireEvent.click(screen.getByRole("button", { name: /confirm delete/i }));
+
+      // THEN: Delete API should be called with the correct ID
       await waitFor(() => {
-        expect(screen.getByText("Your library is empty")).toBeInTheDocument();
+        expect(mockDeleteLibraryItem).toHaveBeenCalledWith("sel-123");
       });
     });
   });

@@ -1,11 +1,34 @@
 "use client";
 
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useAuth } from "@/hooks/useAuth";
-import { PlusCircle, Library, Headphones, ArrowRight } from "lucide-react";
+import { getLibrary } from "@/lib/api";
+import { PlusCircle, Library, Headphones, ArrowRight, Loader2 } from "lucide-react";
 
 export default function DashboardPage() {
-  const { profile, isPro } = useAuth();
+  const { profile, isPro, isAuthenticated, isLoading: authLoading } = useAuth();
+  const [libraryCount, setLibraryCount] = useState<number | null>(null);
+  const [isLoadingCount, setIsLoadingCount] = useState(true);
+
+  const loadLibraryCount = useCallback(async () => {
+    setIsLoadingCount(true);
+    try {
+      const items = await getLibrary();
+      setLibraryCount(items.length);
+    } catch {
+      // Silently fail - will show dash
+      setLibraryCount(null);
+    } finally {
+      setIsLoadingCount(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!authLoading && isAuthenticated) {
+      loadLibraryCount();
+    }
+  }, [authLoading, isAuthenticated, loadLibraryCount]);
 
   const remainingGenerations = isPro
     ? "Unlimited"
@@ -67,7 +90,13 @@ export default function DashboardPage() {
                 Library Items
               </p>
               <p className="text-xl font-bold text-white">
-                —
+                {isLoadingCount ? (
+                  <Loader2 className="h-5 w-5 animate-spin text-amber-500" />
+                ) : libraryCount !== null ? (
+                  libraryCount
+                ) : (
+                  "—"
+                )}
               </p>
             </div>
           </div>
