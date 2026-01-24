@@ -14,13 +14,15 @@ workflowType: 'architecture'
 project_name: 'tsucast'
 user_name: 'Tino'
 date: '2026-01-20'
-lastEdited: "2026-01-21"
+lastEdited: "2026-01-24"
 editHistory:
   - date: "2026-01-21"
     changes: "Added Next.js web app architecture (secondary platform for testing/marketing/admin)"
+  - date: "2026-01-24"
+    changes: "Fixed cache status terminology ('generating' → 'processing'), added voice_id to cache key, documented /api/generate/status/:id endpoint"
 ---
 
-# Architecture Decision Document: tsucast (v2.3)
+# Architecture Decision Document: tsucast (v2.4)
 
 _Hybrid architecture: Supabase (Auth + DB) + Hetzner VPS + Dokploy + Cloudflare R2_
 
@@ -259,7 +261,7 @@ Both apps share: same API, same Supabase Auth, same database
                                   ↓
 ┌──────────────────────────────────────────────────────────────────┐
 │ 3. Claim Generation (Race Condition Prevention)                  │
-│    - INSERT INTO audio_cache (url_hash, status='generating')     │
+│    - INSERT INTO audio_cache (url_hash, status='processing')     │
 │      ON CONFLICT DO NOTHING                                      │
 │    - If inserted: we generate                                    │
 │    - If conflict: poll until status='ready'                      │
@@ -349,13 +351,14 @@ CREATE TRIGGER on_auth_user_created
 -- Audio Cache (public podcast cache)
 CREATE TABLE audio_cache (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  url_hash TEXT UNIQUE NOT NULL,
+  url_hash TEXT UNIQUE NOT NULL,          -- SHA256(normalized_url + voice_id)
   original_url TEXT NOT NULL,
+  voice_id TEXT NOT NULL DEFAULT 'default', -- Voice used for generation
   title TEXT,
   audio_url TEXT,                         -- R2 CDN URL
   duration_seconds INTEGER,
   word_count INTEGER,
-  status TEXT DEFAULT 'generating',       -- 'generating', 'ready', 'failed'
+  status TEXT DEFAULT 'processing',       -- 'pending', 'processing', 'ready', 'failed'
   is_public BOOLEAN DEFAULT true,
   created_by UUID REFERENCES users(id),
   created_at TIMESTAMPTZ DEFAULT now(),
@@ -363,7 +366,7 @@ CREATE TABLE audio_cache (
 );
 
 CREATE INDEX idx_audio_cache_url_hash ON audio_cache(url_hash);
-CREATE INDEX idx_audio_cache_status ON audio_cache(status) WHERE status = 'generating';
+CREATE INDEX idx_audio_cache_status ON audio_cache(status) WHERE status = 'processing';
 
 -- User Library (user's saved podcasts)
 CREATE TABLE user_library (
@@ -454,6 +457,7 @@ CREATE POLICY "Users manage own playlist items" ON playlist_items FOR ALL
 | Method | Endpoint | Description | Auth |
 |--------|----------|-------------|------|
 | POST | `/api/generate` | Generate audio from URL | Supabase JWT |
+| GET | `/api/generate/status/:id` | Poll generation status | Public (rate limited) |
 | GET | `/api/cache/check` | Check if URL is cached | Public |
 
 ### VPS API - Library
@@ -701,11 +705,18 @@ function normalizeUrl(url: string): string {
   return parsed.toString();
 }
 
-// Hash for cache key
-const urlHash = crypto.createHash('sha256')
-  .update(normalizeUrl(url))
-  .digest('hex');
+// Hash for cache key (includes voice_id to allow same URL with different voices)
+function hashUrlWithVoice(url: string, voiceId: string): string {
+  return crypto.createHash('sha256')
+    .update(normalizeUrl(url) + ':' + voiceId)
+    .digest('hex');
+}
+
+// Usage:
+const urlHash = hashUrlWithVoice(url, voiceId);
 ```
+
+> **Note:** The cache key includes `voice_id` so users can generate the same article with different voices. Each URL + voice combination is cached separately.
 
 ---
 
@@ -1375,7 +1386,8 @@ ADMIN_USER_IDS=uuid1,uuid2
 | v2.1 | 2026-01-20 | Hybrid architecture (Supabase Auth+DB, VPS API), MVP vs scale-later breakdown |
 | v2.2 | 2026-01-20 | Added Dokploy deployment, health endpoint, timeout middleware, structured logging (pino) |
 | v2.3 | 2026-01-21 | Added Next.js web app architecture (secondary platform for testing/marketing/admin) |
+| v2.4 | 2026-01-24 | Fixed cache status terminology ('generating' → 'processing'), added voice_id to cache key, documented /api/generate/status/:id endpoint |
 
 ---
 
-_Architecture v2.3 completed: 2026-01-21_
+_Architecture v2.4 completed: 2026-01-24_

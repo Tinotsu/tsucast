@@ -16,9 +16,14 @@ import Purchases, {
   PurchasesOfferings,
   PURCHASES_ERROR_CODE,
 } from 'react-native-purchases';
+import RevenueCatUI, { PAYWALL_RESULT } from 'react-native-purchases-ui';
 
 // Re-export types for consumers
 export type { PurchasesPackage, CustomerInfo, PurchasesOfferings };
+export { PAYWALL_RESULT };
+
+// Entitlement identifier for Tsucast Pro
+export const PRO_ENTITLEMENT_ID = 'Tsucast Pro';
 
 // Environment variables (set in .env)
 const API_KEY_IOS = process.env.EXPO_PUBLIC_REVENUECAT_IOS || '';
@@ -328,7 +333,11 @@ export async function restorePurchases(): Promise<CustomerInfo | null> {
  */
 export function isPro(customerInfo: CustomerInfo | null): boolean {
   if (!customerInfo) return false;
-  return customerInfo.entitlements.active['pro'] !== undefined;
+  // Check for "Tsucast Pro" entitlement (or legacy "pro")
+  return (
+    customerInfo.entitlements.active[PRO_ENTITLEMENT_ID] !== undefined ||
+    customerInfo.entitlements.active['pro'] !== undefined
+  );
 }
 
 /**
@@ -342,4 +351,203 @@ export function openSubscriptionSettings(): void {
   } else {
     Linking.openURL('https://play.google.com/store/account/subscriptions');
   }
+}
+
+/**
+ * Present RevenueCat Paywall
+ *
+ * Shows the configured paywall UI from RevenueCat dashboard.
+ * Returns the result of the paywall interaction.
+ */
+export async function presentPaywall(options?: {
+  offeringIdentifier?: string;
+}): Promise<{
+  result: PAYWALL_RESULT;
+  customerInfo?: CustomerInfo;
+}> {
+  if (!isPurchasesConfigured()) {
+    if (__DEV__) {
+      console.log('[Purchases] Paywall not available - SDK not configured');
+    }
+    return { result: PAYWALL_RESULT.NOT_PRESENTED };
+  }
+
+  try {
+    let paywallResult: PAYWALL_RESULT;
+
+    if (options?.offeringIdentifier) {
+      // Present paywall for specific offering
+      const offerings = await Purchases.getOfferings();
+      const offering = offerings.all[options.offeringIdentifier];
+
+      if (!offering) {
+        if (__DEV__) {
+          console.warn(`[Purchases] Offering "${options.offeringIdentifier}" not found`);
+        }
+        return { result: PAYWALL_RESULT.NOT_PRESENTED };
+      }
+
+      paywallResult = await RevenueCatUI.presentPaywall({ offering });
+    } else {
+      // Present default paywall
+      paywallResult = await RevenueCatUI.presentPaywall();
+    }
+
+    // Get updated customer info after paywall interaction
+    if (paywallResult === PAYWALL_RESULT.PURCHASED || paywallResult === PAYWALL_RESULT.RESTORED) {
+      const customerInfo = await Purchases.getCustomerInfo();
+      return { result: paywallResult, customerInfo };
+    }
+
+    return { result: paywallResult };
+  } catch (error) {
+    if (__DEV__) {
+      console.error('[Purchases] Paywall error:', error);
+    }
+    return { result: PAYWALL_RESULT.ERROR };
+  }
+}
+
+/**
+ * Present Paywall if user doesn't have entitlement
+ *
+ * Only shows paywall if user doesn't have the specified entitlement.
+ * Useful for gating premium features.
+ */
+export async function presentPaywallIfNeeded(
+  entitlementIdentifier: string = PRO_ENTITLEMENT_ID
+): Promise<{
+  result: PAYWALL_RESULT;
+  customerInfo?: CustomerInfo;
+}> {
+  if (!isPurchasesConfigured()) {
+    if (__DEV__) {
+      console.log('[Purchases] Paywall not available - SDK not configured');
+    }
+    return { result: PAYWALL_RESULT.NOT_PRESENTED };
+  }
+
+  try {
+    const paywallResult = await RevenueCatUI.presentPaywallIfNeeded({
+      requiredEntitlementIdentifier: entitlementIdentifier,
+    });
+
+    if (paywallResult === PAYWALL_RESULT.PURCHASED || paywallResult === PAYWALL_RESULT.RESTORED) {
+      const customerInfo = await Purchases.getCustomerInfo();
+      return { result: paywallResult, customerInfo };
+    }
+
+    return { result: paywallResult };
+  } catch (error) {
+    if (__DEV__) {
+      console.error('[Purchases] Paywall error:', error);
+    }
+    return { result: PAYWALL_RESULT.ERROR };
+  }
+}
+
+/**
+ * Present Customer Center
+ *
+ * Shows the RevenueCat Customer Center UI for subscription management.
+ * Allows users to manage subscriptions, request refunds (iOS), etc.
+ */
+export async function presentCustomerCenter(options?: {
+  onFeedbackSurveyCompleted?: (feedbackSurveyOptionId: string) => void;
+  onShowingManageSubscriptions?: () => void;
+  onRestoreStarted?: () => void;
+  onRestoreCompleted?: (customerInfo: CustomerInfo) => void;
+  onRestoreFailed?: (error: Error) => void;
+}): Promise<void> {
+  if (!isPurchasesConfigured()) {
+    if (__DEV__) {
+      console.log('[Purchases] Customer Center not available - SDK not configured');
+    }
+    // Fall back to platform subscription settings
+    openSubscriptionSettings();
+    return;
+  }
+
+  try {
+    await RevenueCatUI.presentCustomerCenter({
+      callbacks: {
+        onFeedbackSurveyCompleted: options?.onFeedbackSurveyCompleted
+          ? (param) => options.onFeedbackSurveyCompleted?.(param.feedbackSurveyOptionId)
+          : undefined,
+        onShowingManageSubscriptions: options?.onShowingManageSubscriptions,
+        onRestoreStarted: options?.onRestoreStarted,
+        onRestoreCompleted: options?.onRestoreCompleted
+          ? (param) => options.onRestoreCompleted?.(param.customerInfo)
+          : undefined,
+        onRestoreFailed: options?.onRestoreFailed
+          ? (param) => {
+              // Convert PurchasesError to standard Error for callback compatibility
+              const error = new Error(param.error.message || 'Restore failed');
+              error.name = 'PurchasesError';
+              options.onRestoreFailed?.(error);
+            }
+          : undefined,
+      },
+    });
+  } catch (error) {
+    if (__DEV__) {
+      console.error('[Purchases] Customer Center error:', error);
+    }
+    // Fall back to platform subscription settings on error
+    openSubscriptionSettings();
+  }
+}
+
+/**
+ * Add listener for customer info updates
+ *
+ * Useful for updating UI when subscription status changes.
+ */
+export function addCustomerInfoUpdateListener(
+  listener: (customerInfo: CustomerInfo) => void
+): () => void {
+  if (!isPurchasesConfigured()) {
+    return () => {}; // No-op for unconfigured SDK
+  }
+
+  // RevenueCat SDK returns the remove function directly
+  const removeListener = Purchases.addCustomerInfoUpdateListener(listener);
+  return typeof removeListener === 'function' ? removeListener : () => {};
+}
+
+/**
+ * Get current subscription status
+ *
+ * Returns detailed subscription information.
+ */
+export async function getSubscriptionStatus(): Promise<{
+  isPro: boolean;
+  activeSubscription: string | null;
+  expirationDate: string | null;
+  willRenew: boolean;
+  managementURL: string | null;
+}> {
+  const customerInfo = await getCustomerInfo();
+
+  if (!customerInfo) {
+    return {
+      isPro: false,
+      activeSubscription: null,
+      expirationDate: null,
+      willRenew: false,
+      managementURL: null,
+    };
+  }
+
+  const proEntitlement =
+    customerInfo.entitlements.active[PRO_ENTITLEMENT_ID] ||
+    customerInfo.entitlements.active['pro'];
+
+  return {
+    isPro: !!proEntitlement,
+    activeSubscription: proEntitlement?.productIdentifier || null,
+    expirationDate: proEntitlement?.expirationDate || null,
+    willRenew: proEntitlement?.willRenew || false,
+    managementURL: customerInfo.managementURL || null,
+  };
 }

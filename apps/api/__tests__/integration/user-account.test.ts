@@ -74,6 +74,11 @@ describe('User Account API Endpoints', () => {
 
   describe('GET /api/user/limit', () => {
     it('should return rate limit status for free user', async () => {
+      // Use a future reset time to prevent auto-reset during test
+      const futureResetAt = new Date();
+      futureResetAt.setUTCDate(futureResetAt.getUTCDate() + 1);
+      futureResetAt.setUTCHours(0, 0, 0, 0);
+
       mockFrom.mockReturnValue({
         select: vi.fn().mockReturnValue({
           eq: vi.fn().mockReturnValue({
@@ -81,7 +86,7 @@ describe('User Account API Endpoints', () => {
               data: {
                 subscription_tier: 'free',
                 daily_generations: 2,
-                daily_generations_reset_at: '2026-01-24T00:00:00Z',
+                daily_generations_reset_at: futureResetAt.toISOString(),
               },
               error: null,
             }),
