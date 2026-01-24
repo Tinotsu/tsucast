@@ -1,0 +1,18 @@
+#:schema node_modules/wrangler/config-schema.json
+
+name = "tsucast-web"
+main = ".open-next/worker.js"
+compatibility_date = "2024-12-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Static assets
+assets = { directory = ".open-next/assets", binding = "ASSETS" }
+
+# Cloudflare Workers configuration (inherits from OpenNext build)
+
+# Environment variables - set these in Cloudflare Dashboard
+# Or uncomment and set for local development:
+# [vars]
+# NEXT_PUBLIC_API_URL = "https://api.tsucast.com"
+# NEXT_PUBLIC_SUPABASE_URL = "your-supabase-url"
+# NEXT_PUBLIC_SUPABASE_ANON_KEY = "your-supabase-anon-key"
