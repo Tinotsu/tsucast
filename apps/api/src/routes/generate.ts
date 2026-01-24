@@ -9,6 +9,7 @@ import { Hono } from 'hono';
 import { z } from 'zod';
 import { logger } from '../lib/logger.js';
 import { normalizeUrl, hashUrlWithVoice } from '../utils/url.js';
+import { ipRateLimit } from '../middleware/ip-rate-limit.js';
 import { fetchUrl, isPdfUrl, fetchPdf } from '../services/fetcher.js';
 import { parseHtmlContent } from '../services/parser.js';
 import { parsePdfContent, isImageOnlyPdf } from '../services/pdfParser.js';
@@ -38,7 +39,8 @@ const generateSchema = z.object({
 
 
 // Check if audio exists in cache (legacy endpoint - use /api/cache/check instead)
-app.get('/cache', async (c) => {
+// Rate limited: 120 requests/minute per IP
+app.get('/cache', ipRateLimit(120, 60 * 1000), async (c) => {
   const url = c.req.query('url');
 
   if (!url) {
@@ -49,7 +51,8 @@ app.get('/cache', async (c) => {
 });
 
 // Get generation status (for polling)
-app.get('/status/:id', async (c) => {
+// Rate limited: 60 requests/minute per IP (polling endpoint)
+app.get('/status/:id', ipRateLimit(60, 60 * 1000), async (c) => {
   const id = c.req.param('id');
 
   const entry = await getCacheEntryById(id);

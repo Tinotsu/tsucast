@@ -78,7 +78,7 @@ vi.mock("@/components/app/VoiceSelector", () => ({
       value={value}
       onChange={(e) => onChange(e.target.value)}
     >
-      <option value="alloy">Alloy</option>
+      <option value="default">Alloy</option>
       <option value="echo">Echo</option>
     </select>
   ),
@@ -265,7 +265,7 @@ describe("Generate Page", () => {
       await waitFor(() => {
         expect(mockGenerateAudio).toHaveBeenCalledWith({
           url: "https://example.com/article",
-          voiceId: "alloy",
+          voiceId: "default",
         });
       });
     });

@@ -3,8 +3,13 @@ import { z } from 'zod';
 import { logger } from '../lib/logger.js';
 import { normalizeUrl, hashUrlWithVoice } from '../utils/url.js';
 import { getSupabase } from '../lib/supabase.js';
+import { ipRateLimit } from '../middleware/ip-rate-limit.js';
 
 const app = new Hono();
+
+// Apply IP rate limit to all cache routes (public, no auth)
+// 120 requests per minute per IP
+app.use('*', ipRateLimit(120, 60 * 1000));
 
 // Valid voice ID pattern - alphanumeric with optional hyphens/underscores, max 64 chars
 const voiceIdSchema = z.string()

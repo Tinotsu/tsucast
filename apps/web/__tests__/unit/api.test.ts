@@ -115,11 +115,19 @@ describe("API Client", () => {
 
   describe("generateAudio", () => {
     it("[P1] should send POST request with correct body", async () => {
-      // GIVEN: API returns success
+      // GIVEN: API returns success with status: "ready"
       const responseData = createGenerateResponse();
+      // API expects status: "ready" in the response body
       global.fetch = vi.fn().mockResolvedValue({
         ok: true,
-        json: () => Promise.resolve(responseData),
+        json: () => Promise.resolve({
+          status: "ready",
+          audioUrl: responseData.audioUrl,
+          title: responseData.title,
+          duration: responseData.duration,
+          wordCount: responseData.wordCount,
+          remaining: responseData.remaining,
+        }),
       });
 
       const { generateAudio } = await import("@/lib/api");
@@ -127,7 +135,7 @@ describe("API Client", () => {
       // WHEN: Generating audio
       const result = await generateAudio({
         url: "https://example.com/article",
-        voiceId: "alloy",
+        voiceId: "default",
       });
 
       // THEN: Returns generate response
@@ -138,7 +146,7 @@ describe("API Client", () => {
         expect.stringContaining("/api/generate"),
         expect.objectContaining({
           method: "POST",
-          body: JSON.stringify({ url: "https://example.com/article", voiceId: "alloy" }),
+          body: JSON.stringify({ url: "https://example.com/article", voiceId: "default" }),
         })
       );
     });

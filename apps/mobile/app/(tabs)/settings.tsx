@@ -13,8 +13,14 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useAuth } from '@/hooks/useAuth';
+import { useSubscription } from '@/hooks/useSubscription';
 import { deleteAccount } from '@/services/api';
-import { restorePurchases, isPro as checkIsPro, isPurchasesConfigured } from '@/services/purchases';
+import {
+  restorePurchases,
+  isPro as checkIsPro,
+  isPurchasesConfigured,
+  presentCustomerCenter,
+} from '@/services/purchases';
 
 interface SettingsItemProps {
   icon: keyof typeof Ionicons.glyphMap;
@@ -105,7 +111,29 @@ export default function SettingsScreen() {
     router.push('/upgrade');
   };
 
-  const handleManageSubscription = () => {
+  const handleManageSubscription = async () => {
+    // Use RevenueCat Customer Center when available
+    if (isPurchasesConfigured()) {
+      try {
+        await presentCustomerCenter({
+          onRestoreCompleted: () => {
+            Alert.alert(
+              'Subscription Restored!',
+              'Your subscription has been restored successfully.',
+              [{ text: 'OK' }]
+            );
+          },
+        });
+        return;
+      } catch (error) {
+        if (__DEV__) {
+          console.error('Customer Center error:', error);
+        }
+        // Fall through to platform settings on error
+      }
+    }
+
+    // Fallback to platform subscription settings
     if (Platform.OS === 'ios') {
       Linking.openURL('https://apps.apple.com/account/subscriptions');
     } else {

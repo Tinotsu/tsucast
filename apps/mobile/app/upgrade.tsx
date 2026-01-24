@@ -2,6 +2,7 @@
  * Upgrade Screen
  *
  * Displays subscription options and handles purchases.
+ * Uses RevenueCat Paywall when configured, falls back to custom UI.
  * Story: 5-3 In-App Purchase Integration
  */
 
@@ -10,14 +11,17 @@ import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator, Alert, Pla
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
+import RevenueCatUI from 'react-native-purchases-ui';
 import {
   getOfferings,
   purchasePackage,
   restorePurchases,
   isPro,
   isPurchasesConfigured,
+  PAYWALL_RESULT,
   type PurchasesOfferings,
 } from '@/services/purchases';
+import { useSubscription } from '@/hooks/useSubscription';
 
 const BENEFITS = [
   'Unlimited articles per day',
@@ -31,10 +35,61 @@ export default function UpgradeScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [isPurchasing, setIsPurchasing] = useState(false);
   const [isRestoring, setIsRestoring] = useState(false);
+  const [useNativePaywall, setUseNativePaywall] = useState(true);
+  const { invalidate, isPurchasesConfigured: isConfigured } = useSubscription();
 
   useEffect(() => {
     loadOfferings();
   }, []);
+
+  // When RevenueCat is configured and native paywall is enabled, show it
+  if (isConfigured && useNativePaywall) {
+    return (
+      <View className="flex-1 bg-cream dark:bg-deep-brown">
+        <RevenueCatUI.Paywall
+          onDismiss={() => {
+            router.back();
+          }}
+          onPurchaseCompleted={({ customerInfo }) => {
+            invalidate();
+            if (isPro(customerInfo)) {
+              Alert.alert(
+                'Welcome to Pro!',
+                'Enjoy unlimited articles.',
+                [{ text: 'OK', onPress: () => router.back() }]
+              );
+            }
+          }}
+          onRestoreCompleted={({ customerInfo }) => {
+            invalidate();
+            if (isPro(customerInfo)) {
+              Alert.alert(
+                'Subscription Restored!',
+                'Your Pro subscription has been restored.',
+                [{ text: 'OK', onPress: () => router.back() }]
+              );
+            } else {
+              Alert.alert(
+                'No Subscription Found',
+                'We couldn\'t find an active subscription for this account.',
+                [{ text: 'OK' }]
+              );
+            }
+          }}
+          onPurchaseError={({ error }) => {
+            if (__DEV__) {
+              console.error('Purchase error:', error);
+            }
+            Alert.alert(
+              'Purchase Failed',
+              'Something went wrong. Please try again later.',
+              [{ text: 'OK' }]
+            );
+          }}
+        />
+      </View>
+    );
+  }
 
   const loadOfferings = async () => {
     setIsLoading(true);

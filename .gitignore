@@ -7,6 +7,7 @@ node_modules/
 dist/
 build/
 .expo/
+.next/
 *.tsbuildinfo
 .turbo/
 
@@ -38,6 +39,8 @@ pnpm-debug.log*
 # Testing
 coverage/
 .nyc_output/
+playwright-report/
+test-results/
 
 # Expo / React Native
 *.jks

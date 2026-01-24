@@ -87,18 +87,8 @@ async function getAuthToken(): Promise<string | null> {
   }
 }
 
-// Clear auth cookies when session is invalid
-function clearAuthCookies() {
-  if (typeof document !== 'undefined') {
-    const cookies = document.cookie.split(';');
-    for (const cookie of cookies) {
-      const [name] = cookie.trim().split('=');
-      if (name.startsWith('sb-')) {
-        document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/`;
-      }
-    }
-  }
-}
+// Import shared cookie utility
+import { clearAuthCookies } from './cookies';
 
 async function fetchApi<T>(
   endpoint: string,
@@ -278,6 +268,25 @@ export async function getLimitStatus(): Promise<LimitStatusResponse> {
   return fetchApi<LimitStatusResponse>("/api/user/limit");
 }
 
+interface SubscriptionStatusResponse {
+  tier: "free" | "pro";
+  isPro: boolean;
+  used: number;
+  limit: number | null;
+  remaining: number | null;
+  resetAt: string | null;
+  subscription: {
+    expiresAt: string | null;
+    productId: string | null;
+    managementUrl: string | null;
+    store: string | null;
+  } | null;
+}
+
+export async function getSubscriptionStatus(): Promise<SubscriptionStatusResponse> {
+  return fetchApi<SubscriptionStatusResponse>("/api/user/subscription");
+}
+
 export async function getLibrary(): Promise<LibraryItem[]> {
   const response = await fetchApi<{ items: LibraryItem[] }>("/api/library");
   return response.items;
@@ -311,6 +320,7 @@ export type {
   CacheCheckResponse,
   LimitStatusResponse,
   LibraryItem,
+  SubscriptionStatusResponse,
 };
 
 export { ApiError };

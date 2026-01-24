@@ -2,8 +2,10 @@
 
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
-import { Check, Crown, Sparkles, ArrowLeft } from "lucide-react";
+import { Check, Crown, Sparkles, ArrowLeft, Calendar, CreditCard } from "lucide-react";
 import Link from "next/link";
+import { useEffect, useState } from "react";
+import { getSubscriptionStatus, type SubscriptionStatusResponse } from "@/lib/api";
 
 const features = [
   "Unlimited article conversions",

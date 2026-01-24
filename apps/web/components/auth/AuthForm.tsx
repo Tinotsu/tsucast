@@ -277,6 +277,30 @@ export function AuthForm({ mode }: AuthFormProps) {
           </>
         )}
       </p>
+
+      {/* Legal Links (App Store requirement) */}
+      {!isLogin && (
+        <p className="mt-4 text-center text-xs text-zinc-500">
+          By signing up, you agree to our{" "}
+          <a
+            href="https://tsucast.com/terms"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-zinc-400 underline hover:text-white"
+          >
+            Terms of Service
+          </a>{" "}
+          and{" "}
+          <a
+            href="https://tsucast.com/privacy"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-zinc-400 underline hover:text-white"
+          >
+            Privacy Policy
+          </a>
+        </p>
+      )}
     </div>
   );
 }

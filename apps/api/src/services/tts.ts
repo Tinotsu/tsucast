@@ -11,6 +11,10 @@ import { ErrorCodes } from '../utils/errors.js';
 const FISH_AUDIO_API_URL = 'https://api.fish.audio/v1/tts';
 const TTS_TIMEOUT_MS = 120000; // 2 minutes for long articles
 
+// Default Fish Audio voice ID - set via env var FISH_AUDIO_DEFAULT_VOICE_ID
+// MVP: Single voice only until multiple voices are configured
+const getDefaultVoiceId = () => process.env.FISH_AUDIO_DEFAULT_VOICE_ID || '';
+
 export interface TtsOptions {
   text: string;
   voiceId: string;
@@ -34,6 +38,13 @@ export async function generateSpeech(options: TtsOptions): Promise<TtsResult> {
     throw new Error(ErrorCodes.TTS_FAILED);
   }
 
+  // Map "default" to actual Fish Audio voice ID
+  const fishAudioVoiceId = voiceId === 'default' ? getDefaultVoiceId() : voiceId;
+  if (!fishAudioVoiceId) {
+    logger.error('FISH_AUDIO_DEFAULT_VOICE_ID not configured');
+    throw new Error(ErrorCodes.TTS_FAILED);
+  }
+
   // Create abort controller for timeout
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), TTS_TIMEOUT_MS);
@@ -44,20 +55,25 @@ export async function generateSpeech(options: TtsOptions): Promise<TtsResult> {
     : controller.signal;
 
   try {
-    logger.info({ voiceId, textLength: text.length }, 'Starting TTS generation');
+    logger.info({ voiceId, fishAudioVoiceId, textLength: text.length }, 'Starting TTS generation');
+
+    const requestBody = {
+      text,
+      reference_id: fishAudioVoiceId,
+      format: 'mp3',
+      mp3_bitrate: 128,
+    };
+
+    logger.info({ requestBody: { ...requestBody, text: `${text.substring(0, 100)}...` } }, 'Fish Audio request');
 
     const response = await fetch(FISH_AUDIO_API_URL, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
+        'model': 's1',
       },
-      body: JSON.stringify({
-        text,
-        reference_id: voiceId,
-        format: 'mp3',
-        mp3_bitrate: 128,
-      }),
+      body: JSON.stringify(requestBody),
       signal: combinedSignal,
     });
 
@@ -66,11 +82,13 @@ export async function generateSpeech(options: TtsOptions): Promise<TtsResult> {
     if (!response.ok) {
       const errorText = await response.text().catch(() => 'Unknown error');
       logger.error(
-        { status: response.status, error: errorText },
+        { status: response.status, statusText: response.statusText, error: errorText, headers: Object.fromEntries(response.headers) },
         'Fish Audio API error'
       );
       throw new Error(ErrorCodes.TTS_FAILED);
     }
+
+    logger.info('Fish Audio response received, reading buffer...');
 
     const audioBuffer = Buffer.from(await response.arrayBuffer());
 
