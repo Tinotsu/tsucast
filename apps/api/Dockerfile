@@ -7,7 +7,7 @@ WORKDIR /app
 
 # Install dependencies first (better layer caching)
 COPY package*.json ./
-RUN npm ci --only=production=false
+RUN npm ci
 
 # Copy source and build
 COPY tsconfig.json ./
@@ -25,7 +25,7 @@ RUN addgroup --system --gid 1001 nodejs && \
 
 # Copy only production dependencies
 COPY package*.json ./
-RUN npm ci --only=production && npm cache clean --force
+RUN npm ci --omit=dev && npm cache clean --force
 
 # Copy built files
 COPY --from=builder /app/dist ./dist
