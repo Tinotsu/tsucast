@@ -3,12 +3,13 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
+import { useCredits } from "@/hooks/useCredits";
 import { UrlInput } from "@/components/app/UrlInput";
 import { VoiceSelector } from "@/components/app/VoiceSelector";
 import { WebPlayer } from "@/components/app/WebPlayer";
-import { generateAudio, ApiError } from "@/lib/api";
+import { generateAudio, previewCreditCost, ApiError, type CreditPreview } from "@/lib/api";
 import { isValidUrl } from "@/lib/utils";
-import { Loader2, Sparkles, AlertCircle, RotateCcw } from "lucide-react";
+import { Loader2, Sparkles, AlertCircle, RotateCcw, Ticket, Clock, Zap } from "lucide-react";
 import Link from "next/link";
 
 interface GenerationResult {
@@ -20,6 +21,7 @@ interface GenerationResult {
 
 export default function GeneratePage() {
   const { profile, isPro, isLoading, isAuthenticated } = useAuth();
+  const { credits, timeBank, invalidateCredits, isLoading: creditsLoading } = useCredits();
   const router = useRouter();
 
   const [url, setUrl] = useState("");
@@ -33,12 +35,41 @@ export default function GeneratePage() {
     title?: string;
   } | null>(null);
 
+  // Credit preview state
+  const [preview, setPreview] = useState<CreditPreview | null>(null);
+  const [isLoadingPreview, setIsLoadingPreview] = useState(false);
+
   // Redirect to login if not authenticated
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
       router.push("/login?redirect=/generate");
     }
   }, [isLoading, isAuthenticated, router]);
+
+  // Load credit preview when URL changes
+  useEffect(() => {
+    if (!url || !isValidUrl(url)) {
+      setPreview(null);
+      return;
+    }
+
+    const loadPreview = async () => {
+      setIsLoadingPreview(true);
+      try {
+        const p = await previewCreditCost(url, voiceId);
+        setPreview(p);
+      } catch (err) {
+        console.error("Failed to load preview:", err);
+        setPreview(null);
+      } finally {
+        setIsLoadingPreview(false);
+      }
+    };
+
+    // Debounce the preview request
+    const timer = setTimeout(loadPreview, 500);
+    return () => clearTimeout(timer);
+  }, [url, voiceId]);
 
   // useCallback MUST be before any conditional returns (React hooks rule)
   const handleCacheHit = useCallback((audioId: string, audioUrl: string, title?: string) => {
@@ -59,13 +90,20 @@ export default function GeneratePage() {
     return null;
   }
 
+  // Check if user has credits or is on legacy rate limit
+  const hasCredits = credits > 0;
   const remainingGenerations = isPro
     ? null
     : 3 - (profile?.daily_generations || 0);
-  const isAtLimit = !isPro && remainingGenerations !== null && remainingGenerations <= 0;
+  const isAtLimit = !isPro && !hasCredits && remainingGenerations !== null && remainingGenerations <= 0;
+
+  // Determine if user can generate based on credits or rate limit
+  const canAfford = preview
+    ? preview.isCached || preview.hasSufficientCredits || isPro
+    : hasCredits || isPro || (remainingGenerations !== null && remainingGenerations > 0);
 
   const handleGenerate = async () => {
-    if (!url || isGenerating || isAtLimit) return;
+    if (!url || isGenerating || !canAfford) return;
 
     setIsGenerating(true);
     setError(null);
@@ -80,14 +118,15 @@ export default function GeneratePage() {
         title: response.title,
         duration: response.duration,
       });
+      // Refresh credit balance after generation
+      invalidateCredits();
     } catch (err) {
       if (err instanceof ApiError) {
         if (err.code === "UNAUTHORIZED" || err.status === 401) {
-          // Session expired or not authenticated - redirect to login
           router.push("/login?redirect=/generate");
           return;
         } else if (err.code === "RATE_LIMITED") {
-          setError("You've reached your daily limit. Upgrade to Pro for unlimited generations.");
+          setError("You've reached your limit. Buy credits to continue.");
         } else {
           setError(err.message);
         }
@@ -99,7 +138,7 @@ export default function GeneratePage() {
     }
   };
 
-  const canGenerate = url && isValidUrl(url) && !isGenerating && !isAtLimit;
+  const canGenerate = url && isValidUrl(url) && !isGenerating && canAfford;
 
   const handlePlayCached = () => {
     if (!cachedResult) return;
@@ -109,6 +148,15 @@ export default function GeneratePage() {
       title: cachedResult.title || "Cached Audio",
       duration: 0,
     });
+  };
+
+  // Determine button text
+  const getButtonText = () => {
+    if (isGenerating) return null; // Will show spinner
+    if (preview?.isCached) return "Play Now (Free)";
+    if (preview?.creditsNeeded === 0) return "Generate (Time Bank)";
+    if (preview?.creditsNeeded) return `Generate (${preview.creditsNeeded} credit${preview.creditsNeeded > 1 ? "s" : ""})`;
+    return "Generate Podcast";
   };
 
   return (
@@ -122,51 +170,48 @@ export default function GeneratePage() {
         </p>
       </div>
 
-      {/* Limit Banner */}
+      {/* Credit Balance Banner */}
       {!isPro && (
         <div className="mb-6 rounded-xl border border-amber-500/30 bg-amber-500/5 p-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <Sparkles className="h-5 w-5 text-amber-500" />
-              <span className="text-sm text-white">
-                {remainingGenerations} of 3 generations left today
-              </span>
+              <Ticket className="h-5 w-5 text-amber-500" />
+              <div>
+                <span className="text-sm font-medium text-white">
+                  {creditsLoading ? "..." : `${credits} credits`}
+                </span>
+                {timeBank > 0 && (
+                  <span className="ml-2 text-sm text-zinc-400">
+                    +{timeBank} min banked
+                  </span>
+                )}
+              </div>
             </div>
             <Link
               href="/upgrade"
               className="text-sm font-medium text-amber-500 hover:underline"
             >
-              Upgrade
+              {credits === 0 ? "Buy Credits" : "Get More"}
             </Link>
-          </div>
-          {/* Progress bar */}
-          <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-zinc-800">
-            <div
-              className="h-full rounded-full bg-amber-500 transition-all"
-              style={{
-                width: `${((profile?.daily_generations || 0) / 3) * 100}%`,
-              }}
-            />
           </div>
         </div>
       )}
 
-      {/* At Limit Message */}
-      {isAtLimit && (
+      {/* No Credits Message */}
+      {!isPro && credits === 0 && remainingGenerations !== null && remainingGenerations <= 0 && (
         <div className="mb-6 rounded-xl border border-red-500/30 bg-red-500/10 p-6 text-center">
           <AlertCircle className="mx-auto mb-3 h-8 w-8 text-red-500" />
           <h3 className="mb-2 font-semibold text-red-400">
-            Daily Limit Reached
+            No Credits Available
           </h3>
           <p className="mb-4 text-sm text-red-300">
-            You&apos;ve used all your free generations today. Upgrade to Pro for
-            unlimited access.
+            You need credits to generate podcasts. Purchase a credit pack to continue.
           </p>
           <Link
             href="/upgrade"
             className="inline-block rounded-lg bg-amber-500 px-6 py-2 font-semibold text-black hover:bg-amber-400"
           >
-            Upgrade to Pro
+            Buy Credits
           </Link>
         </div>
       )}
@@ -183,6 +228,7 @@ export default function GeneratePage() {
               onClick={() => {
                 setResult(null);
                 setUrl("");
+                setPreview(null);
               }}
               className="rounded-lg border border-zinc-800 px-6 py-2 font-medium text-zinc-400 hover:bg-zinc-800"
             >
@@ -214,6 +260,56 @@ export default function GeneratePage() {
             disabled={isGenerating}
           />
 
+          {/* Credit Preview */}
+          {url && isValidUrl(url) && !cachedResult && (
+            <div className="rounded-lg border border-zinc-800 bg-zinc-900 p-4">
+              {isLoadingPreview ? (
+                <div className="flex items-center gap-2 text-sm text-zinc-400">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Analyzing article...
+                </div>
+              ) : preview ? (
+                <div className="space-y-2">
+                  {preview.isCached ? (
+                    <div className="flex items-center gap-2 text-green-400">
+                      <Zap className="h-4 w-4" />
+                      <span className="text-sm font-medium">Already generated - Play for free!</span>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-zinc-400">Estimated length</span>
+                        <span className="text-white">~{preview.estimatedMinutes} min</span>
+                      </div>
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-zinc-400">Credits needed</span>
+                        <span className="font-medium text-white">
+                          {preview.creditsNeeded === 0 ? (
+                            <span className="text-green-400">Free (time bank)</span>
+                          ) : (
+                            `${preview.creditsNeeded} credit${preview.creditsNeeded > 1 ? "s" : ""}`
+                          )}
+                        </span>
+                      </div>
+                      {!preview.hasSufficientCredits && !isPro && (
+                        <div className="mt-2 rounded-lg bg-red-500/10 p-2 text-center text-sm text-red-400">
+                          Not enough credits.{" "}
+                          <Link href="/upgrade" className="font-medium underline">
+                            Buy more
+                          </Link>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              ) : (
+                <div className="text-sm text-zinc-500">
+                  Enter a valid URL to see credit cost
+                </div>
+              )}
+            </div>
+          )}
+
           {error && (
             <div className="rounded-lg bg-red-500/10 p-4">
               <p className="text-sm text-red-400">{error}</p>
@@ -233,13 +329,18 @@ export default function GeneratePage() {
               onClick={handlePlayCached}
               className="flex w-full items-center justify-center gap-2 rounded-xl bg-green-600 py-4 font-semibold text-white transition-colors hover:bg-green-500"
             >
-              Play Cached Audio
+              <Zap className="h-5 w-5" />
+              Play Cached Audio (Free)
             </button>
           ) : (
             <button
               onClick={handleGenerate}
               disabled={!canGenerate}
-              className="flex w-full items-center justify-center gap-2 rounded-xl bg-amber-500 py-4 font-semibold text-black transition-colors hover:bg-amber-400 disabled:cursor-not-allowed disabled:opacity-50"
+              className={`flex w-full items-center justify-center gap-2 rounded-xl py-4 font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
+                preview?.isCached
+                  ? "bg-green-600 text-white hover:bg-green-500"
+                  : "bg-amber-500 text-black hover:bg-amber-400"
+              }`}
             >
               {isGenerating ? (
                 <>
@@ -247,7 +348,7 @@ export default function GeneratePage() {
                   Generating...
                 </>
               ) : (
-                "Generate Podcast"
+                getButtonText()
               )}
             </button>
           )}

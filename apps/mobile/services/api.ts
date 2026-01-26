@@ -491,6 +491,88 @@ export async function reorderPlaylistItems(playlistId: string, itemIds: string[]
 }
 
 // ============================================================
+// Credit System API Functions
+// Story: 10-2 Mobile Article Credit Pricing
+// ============================================================
+
+/**
+ * Credit balance from the API
+ */
+export interface CreditBalance {
+  credits: number;
+  timeBank: number;
+  totalPurchased: number;
+  totalUsed: number;
+}
+
+/**
+ * Get user's credit balance
+ */
+export async function getCredits(): Promise<CreditBalance> {
+  const token = await getAuthToken();
+
+  if (!token) {
+    throw new Error('Authentication required');
+  }
+
+  const response = await fetch(`${API_URL}/api/user/credits`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    throw new Error(data.error?.message || 'Failed to get credit balance');
+  }
+
+  return response.json();
+}
+
+/**
+ * Generation preview result
+ */
+export interface GenerationPreview {
+  isCached: boolean;
+  estimatedMinutes: number;
+  creditsNeeded: number;
+  currentCredits: number;
+  currentTimeBank: number;
+  hasSufficientCredits: boolean;
+}
+
+/**
+ * Preview credit cost before generation
+ * Returns estimated duration, credits needed, and whether it's cached
+ */
+export async function previewGeneration(
+  url: string,
+  voiceId?: string
+): Promise<GenerationPreview> {
+  const token = await getAuthToken();
+
+  if (!token) {
+    throw new Error('Authentication required');
+  }
+
+  const response = await fetch(`${API_URL}/api/generate/preview`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ url, voiceId }),
+  });
+
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    throw new Error(data.error?.message || 'Failed to preview generation');
+  }
+
+  return response.json();
+}
+
+// ============================================================
 // User Account API Functions
 // Story: 8-1 MVP Launch Blockers
 // ============================================================

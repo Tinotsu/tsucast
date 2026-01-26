@@ -14,6 +14,7 @@ import reportRoutes from './routes/report.js';
 import userRoutes from './routes/user.js';
 import webhookRoutes from './routes/webhooks.js';
 import playlistRoutes from './routes/playlists.js';
+import checkoutRoutes from './routes/checkout.js';
 
 const app = new Hono();
 
@@ -51,6 +52,7 @@ app.route('/api/report', reportRoutes);
 app.route('/api/user', userRoutes);
 app.route('/api/webhooks', webhookRoutes);
 app.route('/api/playlists', playlistRoutes);
+app.route('/api/checkout', checkoutRoutes);
 
 // Root route
 app.get('/', (c) => {

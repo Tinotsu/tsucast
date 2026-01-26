@@ -11,6 +11,7 @@ import { getSupabase } from '../lib/supabase.js';
 import { getUserFromToken } from '../middleware/auth.js';
 import { getRateLimitStatus } from '../services/rate-limit.js';
 import { getSubscriptionDetails, isRevenueCatConfigured, deleteSubscriber } from '../services/revenuecat.js';
+import { getUserCreditBalance } from '../services/credits.js';
 
 const app = new Hono();
 
@@ -220,6 +221,39 @@ app.delete('/account', async (c) => {
         message: 'Failed to delete account. Please try again.'
       }
     }, 500);
+  }
+});
+
+/**
+ * Get user's credit balance
+ * Used by web app for article credit pricing
+ */
+app.get('/credits', async (c) => {
+  const userId = await getUserFromToken(c.req.header('Authorization'));
+
+  if (!userId) {
+    return c.json({ error: { code: 'UNAUTHORIZED', message: 'Authentication required' } }, 401);
+  }
+
+  logger.info({ userId }, 'Getting credit balance');
+
+  try {
+    const balance = await getUserCreditBalance(userId);
+
+    if (!balance) {
+      // Return zeros for users without credits yet
+      return c.json({
+        credits: 0,
+        timeBank: 0,
+        totalPurchased: 0,
+        totalUsed: 0,
+      });
+    }
+
+    return c.json(balance);
+  } catch (error) {
+    logger.error({ error, userId }, 'Failed to get credit balance');
+    return c.json({ error: { code: 'FETCH_FAILED', message: 'Failed to get credit balance' } }, 500);
   }
 });
 

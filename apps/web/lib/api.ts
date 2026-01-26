@@ -314,6 +314,61 @@ export async function deleteAccount(): Promise<void> {
   });
 }
 
+// Credit system endpoints
+
+interface CreditBalance {
+  credits: number;
+  timeBank: number;
+  totalPurchased: number;
+  totalUsed: number;
+}
+
+export async function getCreditBalance(): Promise<CreditBalance> {
+  return fetchApi<CreditBalance>("/api/user/credits");
+}
+
+interface CreditPreview {
+  isCached: boolean;
+  estimatedMinutes: number;
+  wordCount?: number;
+  creditsNeeded: number;
+  currentCredits: number;
+  currentTimeBank: number;
+  hasSufficientCredits: boolean;
+  estimationFailed?: boolean;
+}
+
+export async function previewCreditCost(url: string, voiceId?: string): Promise<CreditPreview> {
+  return fetchApi<CreditPreview>("/api/generate/preview", {
+    method: "POST",
+    body: JSON.stringify({ url, voiceId }),
+  });
+}
+
+interface CheckoutResponse {
+  checkoutUrl: string;
+  sessionId: string;
+}
+
+export async function createCreditCheckout(packId: string): Promise<CheckoutResponse> {
+  return fetchApi<CheckoutResponse>("/api/checkout/credits", {
+    method: "POST",
+    body: JSON.stringify({ packId }),
+  });
+}
+
+interface CheckoutSessionStatus {
+  status: string;
+  credits: number | null;
+  packId: string | null;
+}
+
+export async function getCheckoutSessionStatus(sessionId: string): Promise<CheckoutSessionStatus> {
+  return fetchApi<CheckoutSessionStatus>(`/api/checkout/session/${sessionId}`);
+}
+
+export type { CreditBalance, CreditPreview, CheckoutResponse, CheckoutSessionStatus };
+
 export type {
   GenerateRequest,
   GenerateResponse,

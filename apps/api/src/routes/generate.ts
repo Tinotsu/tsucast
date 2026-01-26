@@ -29,6 +29,12 @@ import { ErrorCodes, createApiError, LIMITS } from '../utils/errors.js';
 import { getSupabase } from '../lib/supabase.js';
 import { getUserFromToken } from '../middleware/auth.js';
 import { checkRateLimit, incrementGenerationCount } from '../services/rate-limit.js';
+import {
+  previewCreditCost,
+  deductCredits,
+  estimateDurationFromWords,
+  getUserCreditBalance,
+} from '../services/credits.js';
 
 const app = new Hono();
 
@@ -88,6 +94,91 @@ app.get('/status/:id', ipRateLimit(60, 60 * 1000), async (c) => {
   return c.json({ status: entry.status }, 202);
 });
 
+/**
+ * Preview credit cost before generation
+ * Returns estimated duration, credits needed, and whether it's cached
+ */
+app.post('/preview', async (c) => {
+  try {
+    const body = await c.req.json();
+    const { url, voiceId } = body;
+
+    if (!url) {
+      return c.json({ error: createApiError(ErrorCodes.INVALID_URL, 'URL is required') }, 400);
+    }
+
+    // Require authentication
+    const userId = await getUserFromToken(c.req.header('Authorization'));
+    if (!userId) {
+      return c.json({
+        error: { code: 'UNAUTHORIZED', message: 'Authentication required' },
+      }, 401);
+    }
+
+    // Normalize URL and generate hash
+    const normalizedUrl = normalizeUrl(url);
+    const urlHash = hashUrlWithVoice(normalizedUrl, voiceId || 'default');
+
+    // Check cache and estimate credits
+    const preview = await previewCreditCost(userId, urlHash);
+
+    // If not cached, try to estimate from URL (quick fetch for word count)
+    if (!preview.isCached && preview.estimatedMinutes === 0) {
+      try {
+        const isPdf = isPdfUrl(url);
+        let wordCount = 0;
+
+        if (isPdf) {
+          const { buffer, filename } = await fetchPdf(url);
+          const pdfResult = await parsePdfContent(buffer, filename);
+          wordCount = pdfResult.wordCount;
+        } else {
+          const html = await fetchUrl(url);
+          const htmlResult = await parseHtmlContent(html, url);
+          wordCount = htmlResult.wordCount;
+        }
+
+        const estimatedMinutes = estimateDurationFromWords(wordCount);
+        const balance = await getUserCreditBalance(userId);
+
+        // Recalculate with actual word count
+        const { calculateCreditsNeeded } = await import('../services/credits.js');
+        const calculation = calculateCreditsNeeded(
+          estimatedMinutes,
+          balance?.timeBank ?? 0
+        );
+
+        return c.json({
+          isCached: false,
+          estimatedMinutes,
+          wordCount,
+          creditsNeeded: calculation.creditsNeeded,
+          currentCredits: balance?.credits ?? 0,
+          currentTimeBank: balance?.timeBank ?? 0,
+          hasSufficientCredits: (balance?.credits ?? 0) >= calculation.creditsNeeded,
+        });
+      } catch (error) {
+        // If fetch fails, return preview with unknown duration
+        logger.warn({ url, error }, 'Failed to estimate article length');
+        return c.json({
+          isCached: false,
+          estimatedMinutes: 0,
+          creditsNeeded: 1, // Assume at least 1 credit
+          currentCredits: preview.currentCredits,
+          currentTimeBank: preview.currentTimeBank,
+          hasSufficientCredits: preview.currentCredits >= 1,
+          estimationFailed: true,
+        });
+      }
+    }
+
+    return c.json(preview);
+  } catch (error) {
+    logger.error({ error }, 'Preview failed');
+    return c.json({ error: createApiError(ErrorCodes.FETCH_FAILED) }, 500);
+  }
+});
+
 // Generate audio from URL
 app.post('/', async (c) => {
   try {
@@ -123,12 +214,16 @@ app.post('/', async (c) => {
 
       rateLimit = await checkRateLimit(userId, supabase);
 
-      if (!rateLimit.allowed) {
-        logger.info({ userId }, 'Rate limit exceeded');
+      // Check if user has credits (credit system bypasses rate limit)
+      const userCredits = await getUserCreditBalance(userId);
+      const hasCredits = userCredits && userCredits.credits > 0;
+
+      if (!rateLimit.allowed && !hasCredits) {
+        logger.info({ userId, hasCredits }, 'Rate limit exceeded and no credits');
         return c.json({
           error: {
             code: 'RATE_LIMITED',
-            message: "You've reached your daily limit of 3 articles. Upgrade to Pro for unlimited access.",
+            message: "You've reached your daily limit. Buy credits or upgrade to Pro for unlimited access.",
           },
           remaining: 0,
           resetAt: rateLimit.resetAt,
@@ -383,9 +478,36 @@ app.post('/', async (c) => {
       }
     }
 
-    // Increment generation counter for free users
-    if (supabase && userId && rateLimit && !rateLimit.isPro) {
-      await incrementGenerationCount(userId, supabase);
+    // Deduct credits (new credit system) or increment generation counter (legacy rate limit)
+    let creditBalance = null;
+    const durationMinutes = Math.round(ttsResult.durationSeconds / 60);
+
+    if (supabase && userId) {
+      // Try credit system first
+      const userCredits = await getUserCreditBalance(userId);
+
+      if (userCredits && userCredits.credits > 0) {
+        // User has credits - deduct them
+        creditBalance = await deductCredits(
+          userId,
+          durationMinutes,
+          `Generated: ${title}`,
+          { url, wordCount, durationMinutes, cacheEntryId }
+        );
+
+        if (!creditBalance) {
+          // This shouldn't happen since we checked credits above, but handle it
+          logger.warn({ userId }, 'Credit deduction failed - insufficient credits');
+        } else {
+          logger.info(
+            { userId, creditsUsed: userCredits.credits - creditBalance.credits, newBalance: creditBalance.credits },
+            'Credits deducted'
+          );
+        }
+      } else if (rateLimit && !rateLimit.isPro) {
+        // Fall back to legacy rate limit system
+        await incrementGenerationCount(userId, supabase);
+      }
     }
 
     logger.info(
@@ -406,6 +528,11 @@ app.post('/', async (c) => {
       wordCount,
       contentType: isPdf ? 'pdf' : 'html',
       remaining: newRemaining,
+      // Include credit info if using credit system
+      credits: creditBalance ? {
+        balance: creditBalance.credits,
+        timeBank: creditBalance.timeBank,
+      } : undefined,
     });
   } catch (error) {
     logger.error({ error }, 'Generation failed');

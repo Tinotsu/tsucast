@@ -14,6 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useAuth } from '@/hooks/useAuth';
 import { useSubscription } from '@/hooks/useSubscription';
+import { useCredits } from '@/hooks/useCredits';
 import { deleteAccount } from '@/services/api';
 import {
   restorePurchases,
@@ -78,6 +79,7 @@ function SettingsItem({
 
 export default function SettingsScreen() {
   const { user, profile, signOut, isPro, isLoading } = useAuth();
+  const { credits, timeBank, isLoading: creditsLoading } = useCredits();
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
   const [isRestoring, setIsRestoring] = useState(false);
@@ -109,6 +111,11 @@ export default function SettingsScreen() {
 
   const handleUpgrade = () => {
     router.push('/upgrade');
+  };
+
+  const handleBuyCredits = () => {
+    // Open web checkout to bypass Apple's 30% fee (legal under EU DMA)
+    Linking.openURL('https://tsucast.app/upgrade');
   };
 
   const handleManageSubscription = async () => {
@@ -262,15 +269,41 @@ export default function SettingsScreen() {
               </View>
             </View>
           </View>
+
+          {/* Credit Balance */}
+          {!isPro && (
+            <View className="mt-3 pt-3 border-t border-zinc-800">
+              <View className="flex-row items-center justify-between">
+                <View className="flex-row items-center">
+                  <Ionicons name="ticket" size={16} color="#f59e0b" />
+                  <Text className="text-sm text-zinc-400 ml-2">Credits</Text>
+                </View>
+                <Text className="text-sm font-semibold text-white">
+                  {creditsLoading ? '...' : credits}
+                  {timeBank > 0 && (
+                    <Text className="text-zinc-500 font-normal"> (+{timeBank} min banked)</Text>
+                  )}
+                </Text>
+              </View>
+            </View>
+          )}
         </View>
 
         {!isPro && (
-          <SettingsItem
-            icon="star"
-            title="Upgrade to Pro"
-            subtitle="Unlimited articles, priority processing"
-            onPress={handleUpgrade}
-          />
+          <>
+            <SettingsItem
+              icon="ticket"
+              title="Buy Credits"
+              subtitle="Pay-as-you-go, no subscription"
+              onPress={handleBuyCredits}
+            />
+            <SettingsItem
+              icon="star"
+              title="Upgrade to Pro"
+              subtitle="Unlimited articles, priority processing"
+              onPress={handleUpgrade}
+            />
+          </>
         )}
 
         {isPro && (

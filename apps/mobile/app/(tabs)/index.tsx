@@ -2,7 +2,7 @@
  * Add Screen
  *
  * Main content generation screen.
- * Stories: 5-1 Free Tier, 5-2 Limit Display & Upgrade Prompt
+ * Stories: 5-1 Free Tier, 5-2 Limit Display & Upgrade Prompt, 10-2 Mobile Credits
  */
 
 import { useState, useEffect, useRef, useCallback } from 'react';
@@ -18,28 +18,32 @@ import { router } from 'expo-router';
 import { PasteInput } from '../../components/add/PasteInput';
 import { VoiceSelector } from '../../components/add/VoiceSelector';
 import { GenerateButton } from '../../components/add/GenerateButton';
-import { LimitBanner } from '../../components/ui/LimitBanner';
-import { LimitModal } from '../../components/ui/LimitModal';
+import { CreditBalance } from '../../components/ui/CreditBalance';
+import { CreditPreview } from '../../components/add/CreditPreview';
+import { CreditPurchaseModal } from '../../components/ui/CreditPurchaseModal';
 import { isValidUrl, getUrlValidationError } from '../../utils/validation';
 import { normalizeAndHashUrl } from '../../utils/urlNormalization';
-import { checkCache, CacheResult } from '../../services/api';
+import { checkCache, CacheResult, previewGeneration, GenerationPreview } from '../../services/api';
 import { useVoicePreference } from '../../hooks/useVoicePreference';
 import { useSubscription } from '../../hooks/useSubscription';
+import { useCredits } from '../../hooks/useCredits';
 
 /**
  * Add Screen State Machine
  *
  * idle -> validating (on input change)
  * validating -> invalid (validation failed) OR checking_cache (validation passed)
- * checking_cache -> cached (found) OR ready_to_generate (not found)
+ * checking_cache -> previewing (cache miss) OR cached (cache hit)
+ * previewing -> ready_to_generate (preview complete)
  */
 type AddScreenState =
   | { status: 'idle' }
   | { status: 'validating' }
   | { status: 'invalid'; error: string }
   | { status: 'checking_cache' }
+  | { status: 'previewing' }
   | { status: 'cached'; audioUrl: string; title: string; duration?: number }
-  | { status: 'ready_to_generate'; normalizedUrl: string; urlHash: string };
+  | { status: 'ready_to_generate'; normalizedUrl: string; urlHash: string; preview: GenerationPreview };
 
 // Debounce delay for URL validation (ms)
 const VALIDATION_DEBOUNCE_MS = 300;
@@ -47,9 +51,10 @@ const VALIDATION_DEBOUNCE_MS = 300;
 export default function AddScreen() {
   const [url, setUrl] = useState('');
   const [state, setState] = useState<AddScreenState>({ status: 'idle' });
-  const [showLimitModal, setShowLimitModal] = useState(false);
+  const [showPurchaseModal, setShowPurchaseModal] = useState(false);
   const { selectedVoiceId, setSelectedVoiceId } = useVoicePreference();
-  const { isPro, used, limit, remaining, resetAt } = useSubscription();
+  const { isPro } = useSubscription();
+  const { credits, timeBank, invalidate: invalidateCredits } = useCredits();
 
   // Ref to track validation timeout for debouncing
   const validationTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -64,7 +69,7 @@ export default function AddScreen() {
   }, []);
 
   /**
-   * Process URL: validate, normalize, and check cache
+   * Process URL: validate, normalize, check cache, and preview credits
    */
   const processUrl = useCallback(async (text: string) => {
     const trimmed = text.trim();
@@ -105,25 +110,72 @@ export default function AddScreen() {
           title: cacheResult.title || 'Untitled',
           duration: cacheResult.duration,
         });
+        return;
+      }
+
+      // Not cached - get credit preview (skip for Pro users who have unlimited)
+      if (!isPro) {
+        setState({ status: 'previewing' });
+        try {
+          const preview = await previewGeneration(trimmed, selectedVoiceId);
+          setState({
+            status: 'ready_to_generate',
+            normalizedUrl: normalized,
+            urlHash: hash,
+            preview,
+          });
+        } catch {
+          // Preview failed, use defaults
+          setState({
+            status: 'ready_to_generate',
+            normalizedUrl: normalized,
+            urlHash: hash,
+            preview: {
+              isCached: false,
+              estimatedMinutes: 0,
+              creditsNeeded: 1,
+              currentCredits: credits,
+              currentTimeBank: timeBank,
+              hasSufficientCredits: credits >= 1,
+            },
+          });
+        }
       } else {
+        // Pro user - no credit check needed
         setState({
           status: 'ready_to_generate',
           normalizedUrl: normalized,
           urlHash: hash,
+          preview: {
+            isCached: false,
+            estimatedMinutes: 0,
+            creditsNeeded: 0,
+            currentCredits: Infinity,
+            currentTimeBank: 0,
+            hasSufficientCredits: true,
+          },
         });
       }
     } catch (error) {
       if (__DEV__) {
         console.error('URL processing error:', error);
       }
-      // On error, still allow generation
+      // On error, still allow generation with default preview
       setState({
         status: 'ready_to_generate',
         normalizedUrl: trimmed,
         urlHash: '',
+        preview: {
+          isCached: false,
+          estimatedMinutes: 0,
+          creditsNeeded: 1,
+          currentCredits: credits,
+          currentTimeBank: timeBank,
+          hasSufficientCredits: credits >= 1,
+        },
       });
     }
-  }, []);
+  }, [isPro, credits, timeBank, selectedVoiceId]);
 
   /**
    * Handle URL input changes with debouncing
@@ -149,9 +201,9 @@ export default function AddScreen() {
    * Handle generate button press
    */
   const handleGenerate = () => {
-    // Check limit before attempting generation (not cached content)
-    if (state.status === 'ready_to_generate' && !isPro && remaining <= 0) {
-      setShowLimitModal(true);
+    // Check credits before attempting generation (not cached content)
+    if (state.status === 'ready_to_generate' && !isPro && !state.preview.hasSufficientCredits) {
+      setShowPurchaseModal(true);
       return;
     }
 
@@ -171,20 +223,25 @@ export default function AddScreen() {
   };
 
   /**
-   * Handle upgrade navigation from limit modal
+   * Handle credit pack purchase
    */
-  const handleUpgrade = () => {
-    setShowLimitModal(false);
-    router.push('/upgrade');
+  const handlePurchase = async (packId: string) => {
+    // TODO: Implement actual RevenueCat purchase
+    if (__DEV__) {
+      console.log('Purchasing pack:', packId);
+    }
+    // After purchase, invalidate credits to refetch
+    invalidateCredits();
   };
 
   // Derived state for UI
-  const isLoading = state.status === 'validating' || state.status === 'checking_cache';
+  const isLoading = state.status === 'validating' || state.status === 'checking_cache' || state.status === 'previewing';
   const hasError = state.status === 'invalid';
   const isValid = state.status === 'ready_to_generate' || state.status === 'cached';
-  const isAtLimit = !isPro && remaining <= 0;
-  const canGenerate = isValid && !isLoading && !isAtLimit;
   const isCached = state.status === 'cached';
+  const isPreviewing = state.status === 'previewing';
+  const hasEnoughCredits = isPro || isCached || (state.status === 'ready_to_generate' && state.preview.hasSufficientCredits);
+  const canGenerate = isValid && !isLoading;
 
   return (
     <SafeAreaView className="flex-1 bg-black">
@@ -205,9 +262,13 @@ export default function AddScreen() {
               Paste any article URL to turn it into a podcast
             </Text>
 
-            {/* Limit Banner for free users */}
+            {/* Credit Balance for all users (Pro shows unlimited) */}
             {!isPro && (
-              <LimitBanner used={used} limit={limit} />
+              <CreditBalance
+                credits={credits}
+                timeBank={timeBank}
+                onBuyPress={() => setShowPurchaseModal(true)}
+              />
             )}
 
             {/* Paste Input Area - 60% of available space */}
@@ -220,6 +281,27 @@ export default function AddScreen() {
                 isValid={isValid}
                 isCached={isCached}
               />
+
+              {/* Credit Preview - shows after URL validation for non-Pro users */}
+              {!isPro && (state.status === 'ready_to_generate' || state.status === 'previewing') && (
+                <CreditPreview
+                  estimatedMinutes={state.status === 'ready_to_generate' ? state.preview.estimatedMinutes : 0}
+                  creditsNeeded={state.status === 'ready_to_generate' ? state.preview.creditsNeeded : 1}
+                  isCached={false}
+                  hasEnoughCredits={hasEnoughCredits}
+                  isLoading={isPreviewing}
+                />
+              )}
+
+              {/* Cached badge */}
+              {isCached && (
+                <CreditPreview
+                  estimatedMinutes={0}
+                  creditsNeeded={0}
+                  isCached={true}
+                  hasEnoughCredits={true}
+                />
+              )}
             </View>
 
             {/* Voice Selector */}
@@ -244,12 +326,12 @@ export default function AddScreen() {
         </ScrollView>
       </KeyboardAvoidingView>
 
-      {/* Limit Modal */}
-      <LimitModal
-        visible={showLimitModal}
-        onClose={() => setShowLimitModal(false)}
-        onUpgrade={handleUpgrade}
-        resetAt={resetAt}
+      {/* Credit Purchase Modal */}
+      <CreditPurchaseModal
+        visible={showPurchaseModal}
+        onClose={() => setShowPurchaseModal(false)}
+        onPurchase={handlePurchase}
+        currentCredits={credits}
       />
     </SafeAreaView>
   );

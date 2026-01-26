@@ -29,10 +29,26 @@ vi.mock("@/hooks/useAuth", () => ({
   useAuth: () => mockUseAuthReturn,
 }));
 
+// Mock useCredits hook
+const mockInvalidateCredits = vi.fn();
+let mockUseCreditsReturn = {
+  credits: 5,
+  timeBank: 0,
+  isLoading: false,
+  error: null,
+  invalidateCredits: mockInvalidateCredits,
+};
+
+vi.mock("@/hooks/useCredits", () => ({
+  useCredits: () => mockUseCreditsReturn,
+}));
+
 // Mock API
 const mockGenerateAudio = vi.fn();
+const mockPreviewCreditCost = vi.fn();
 vi.mock("@/lib/api", () => ({
   generateAudio: (req: unknown) => mockGenerateAudio(req),
+  previewCreditCost: (url: string, voiceId?: string) => mockPreviewCreditCost(url, voiceId),
   ApiError: class ApiError extends Error {
     code: string;
     status: number;
@@ -99,6 +115,22 @@ describe("Generate Page", () => {
       isLoading: false,
       isAuthenticated: false,
     };
+    mockUseCreditsReturn = {
+      credits: 5,
+      timeBank: 0,
+      isLoading: false,
+      error: null,
+      invalidateCredits: mockInvalidateCredits,
+    };
+    // Default preview response
+    mockPreviewCreditCost.mockResolvedValue({
+      isCached: false,
+      estimatedMinutes: 10,
+      creditsNeeded: 1,
+      currentCredits: 5,
+      currentTimeBank: 0,
+      hasSufficientCredits: true,
+    });
   });
 
   describe("Authentication Redirect", () => {
@@ -164,12 +196,12 @@ describe("Generate Page", () => {
       // WHEN: Rendering generate page
       render(<GeneratePage />);
 
-      // THEN: Shows remaining count
-      expect(screen.getByText(/2 of 3 generations left today/i)).toBeInTheDocument();
+      // THEN: Shows credit balance (now using credit system instead of daily generations)
+      expect(screen.getByText(/5 credits/i)).toBeInTheDocument();
     });
 
-    it("[P1] should show limit reached message when at limit", () => {
-      // GIVEN: Free user at limit
+    it("[P1] should show no credits message when at limit", () => {
+      // GIVEN: Free user with no credits
       mockUseAuthReturn = {
         ...mockUseAuthReturn,
         profile: createUserProfile({ daily_generations: 3 }),
@@ -177,16 +209,21 @@ describe("Generate Page", () => {
         isLoading: false,
         isAuthenticated: true,
       };
+      // Set credits to 0 to simulate no credits available
+      mockUseCreditsReturn = {
+        ...mockUseCreditsReturn,
+        credits: 0,
+      };
 
       // WHEN: Rendering generate page
       render(<GeneratePage />);
 
-      // THEN: Shows limit reached message
-      expect(screen.getByText("Daily Limit Reached")).toBeInTheDocument();
+      // THEN: Shows no credits message
+      expect(screen.getByText("No Credits Available")).toBeInTheDocument();
     });
 
-    it("[P1] should disable generate button when at limit", () => {
-      // GIVEN: Free user at limit
+    it("[P1] should disable generate button when at limit with no credits", () => {
+      // GIVEN: Free user with no credits and at daily limit
       mockUseAuthReturn = {
         ...mockUseAuthReturn,
         profile: createUserProfile({ daily_generations: 3 }),
@@ -194,17 +231,29 @@ describe("Generate Page", () => {
         isLoading: false,
         isAuthenticated: true,
       };
+      mockUseCreditsReturn = {
+        ...mockUseCreditsReturn,
+        credits: 0,
+      };
+      mockPreviewCreditCost.mockResolvedValue({
+        isCached: false,
+        estimatedMinutes: 10,
+        creditsNeeded: 1,
+        currentCredits: 0,
+        currentTimeBank: 0,
+        hasSufficientCredits: false,
+      });
 
       // WHEN: Rendering generate page
       render(<GeneratePage />);
 
-      // THEN: Generate button is disabled
+      // THEN: Generate button is disabled (no credits)
       const generateButton = screen.getByRole("button", { name: /generate podcast/i });
       expect(generateButton).toBeDisabled();
     });
 
-    it("[P1] should show Upgrade link when at limit", () => {
-      // GIVEN: Free user at limit
+    it("[P1] should show Buy Credits link when at limit", () => {
+      // GIVEN: Free user with no credits
       mockUseAuthReturn = {
         ...mockUseAuthReturn,
         profile: createUserProfile({ daily_generations: 3 }),
@@ -212,17 +261,22 @@ describe("Generate Page", () => {
         isLoading: false,
         isAuthenticated: true,
       };
+      mockUseCreditsReturn = {
+        ...mockUseCreditsReturn,
+        credits: 0,
+      };
 
       // WHEN: Rendering generate page
       render(<GeneratePage />);
 
-      // THEN: Upgrade to Pro link is visible
-      expect(screen.getByRole("link", { name: /upgrade to pro/i })).toBeInTheDocument();
+      // THEN: Buy Credits links are visible (may appear multiple times)
+      const buyCreditsLinks = screen.getAllByRole("link", { name: /buy credits/i });
+      expect(buyCreditsLinks.length).toBeGreaterThan(0);
     });
   });
 
   describe("Generation Limit (Pro Users)", () => {
-    it("[P1] should not show limit banner for pro users", () => {
+    it("[P1] should not show credit banner for pro users", () => {
       // GIVEN: Pro user
       mockUseAuthReturn = {
         ...mockUseAuthReturn,
@@ -235,8 +289,8 @@ describe("Generate Page", () => {
       // WHEN: Rendering generate page
       render(<GeneratePage />);
 
-      // THEN: No limit banner
-      expect(screen.queryByText(/generations left today/i)).not.toBeInTheDocument();
+      // THEN: No credit banner for pro users
+      expect(screen.queryByText(/\d+ credits/i)).not.toBeInTheDocument();
     });
   });
 
@@ -368,7 +422,7 @@ describe("Generate Page", () => {
       // Import ApiError to create proper instance
       const { ApiError } = await import("@/lib/api");
       mockGenerateAudio.mockRejectedValue(
-        new ApiError("Daily limit exceeded", "RATE_LIMITED", 429)
+        new ApiError("Rate limited", "RATE_LIMITED", 429)
       );
 
       render(<GeneratePage />);
@@ -377,12 +431,12 @@ describe("Generate Page", () => {
       const urlInput = screen.getByTestId("url-input");
       fireEvent.change(urlInput, { target: { value: "https://example.com/article" } });
 
-      const generateButton = screen.getByRole("button", { name: /generate podcast/i });
+      const generateButton = screen.getByRole("button", { name: /generate/i });
       fireEvent.click(generateButton);
 
-      // THEN: Shows rate limit message
+      // THEN: Shows rate limit message (now credits-based)
       await waitFor(() => {
-        expect(screen.getByText(/daily limit/i)).toBeInTheDocument();
+        expect(screen.getByText(/reached your limit.*Buy credits/i)).toBeInTheDocument();
       });
     });
 

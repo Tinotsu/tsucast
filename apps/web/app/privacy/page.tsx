@@ -93,12 +93,12 @@ export default function PrivacyPage() {
                 <p className="mt-1 text-sm text-zinc-400">Text-to-speech conversion (article text is processed to generate audio)</p>
               </div>
               <div className="rounded-lg border border-zinc-800 p-4">
-                <h4 className="font-medium text-white">RevenueCat</h4>
-                <p className="mt-1 text-sm text-zinc-400">Subscription management and analytics</p>
+                <h4 className="font-medium text-white">Stripe</h4>
+                <p className="mt-1 text-sm text-zinc-400">Payment processing for credit purchases (web)</p>
               </div>
               <div className="rounded-lg border border-zinc-800 p-4">
                 <h4 className="font-medium text-white">App Store / Google Play</h4>
-                <p className="mt-1 text-sm text-zinc-400">Payment processing for subscriptions</p>
+                <p className="mt-1 text-sm text-zinc-400">Payment processing for credit purchases (mobile)</p>
               </div>
             </div>
 
