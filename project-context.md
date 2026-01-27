@@ -148,7 +148,7 @@ tsucast/
 ### Credits & Rate Limiting
 Two independent layers control API access:
 
-- **Credit-based** (`services/credits.ts`): Each generation costs 1 credit. Credits checked before generation (`getUserCreditBalance`), deducted after successful audio generation (`deductCredits`). TOCTOU race handled — if credits drained between check and deduction, returns HTTP 402 `INSUFFICIENT_CREDITS`. Users purchase credit packs (Starter/Regular/Power) via Stripe checkout. Time bank tracks unused duration minutes.
+- **Credit-based** (`services/credits.ts`): Each generation costs 1 credit. Credits checked before generation (`getUserCreditBalance`), deducted after successful audio generation (`deductCredits`). TOCTOU race handled — if credits drained between check and deduction, returns HTTP 402 `INSUFFICIENT_CREDITS`. Users purchase credit packs (candy/coffee/kebab/pizza/feast) via Stripe checkout. Time bank tracks unused duration minutes.
 - **IP-based** (`middleware/ip-rate-limit.ts`): In-memory sliding window — 60 requests per 60 seconds by default. LRU eviction at 10k entries (~1 MB cap). Returns `429` with `X-RateLimit-Limit`, `X-RateLimit-Remaining`, `X-RateLimit-Reset`, and `Retry-After` headers. **Single-process only** — needs Redis for multi-instance deployments.
 
 ### NativeWind (Mobile Styling)
@@ -505,6 +505,7 @@ Operational context for each service/concern. Use this when modifying or debuggi
 - Content extraction: `PARSE_FAILED`, `PAYWALL_DETECTED`, `ARTICLE_TOO_LONG`, `FETCH_FAILED`
 - PDF-specific: `IMAGE_ONLY_PDF`, `PDF_PASSWORD_PROTECTED`, `PDF_TOO_LARGE`
 - TTS: `TTS_FAILED`
+- Credit: `INSUFFICIENT_CREDITS`
 - Generic: `INVALID_URL`, `TIMEOUT`, `INTERNAL_ERROR`, `SERVICE_UNAVAILABLE`
 - Inline (not in ErrorCodes): `UNAUTHORIZED` (401), `NOT_FOUND` (404) — used directly in route handlers
 
