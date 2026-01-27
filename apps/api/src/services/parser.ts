@@ -29,7 +29,9 @@ export async function parseHtmlContent(
 ): Promise<ParseResult> {
   try {
     // Parse HTML with linkedom (lighter than jsdom)
-    const { document } = parseHTML(html);
+    // linkedom's parseHTML types omit `document` — cast needed
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { document } = parseHTML(html) as any;
 
     // Set base URL for relative links
     const base = document.createElement('base');
