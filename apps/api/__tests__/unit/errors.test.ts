@@ -25,6 +25,8 @@ describe('ErrorCodes', () => {
     expect(ErrorCodes.TTS_FAILED).toBe('TTS_FAILED');
     expect(ErrorCodes.INVALID_URL).toBe('INVALID_URL');
     expect(ErrorCodes.TIMEOUT).toBe('TIMEOUT');
+    expect(ErrorCodes.INTERNAL_ERROR).toBe('INTERNAL_ERROR');
+    expect(ErrorCodes.SERVICE_UNAVAILABLE).toBe('SERVICE_UNAVAILABLE');
   });
 });
 
@@ -37,6 +39,8 @@ describe('ErrorMessages', () => {
     expect(ErrorMessages[ErrorCodes.IMAGE_ONLY_PDF]).toBeTruthy();
     expect(ErrorMessages[ErrorCodes.PDF_PASSWORD_PROTECTED]).toBeTruthy();
     expect(ErrorMessages[ErrorCodes.PDF_TOO_LARGE]).toBeTruthy();
+    expect(ErrorMessages[ErrorCodes.INTERNAL_ERROR]).toBeTruthy();
+    expect(ErrorMessages[ErrorCodes.SERVICE_UNAVAILABLE]).toBeTruthy();
   });
 
   it('should have descriptive paywall message', () => {

@@ -28,6 +28,8 @@ export const ErrorCodes = {
   // Generic errors
   INVALID_URL: 'INVALID_URL',
   TIMEOUT: 'TIMEOUT',
+  INTERNAL_ERROR: 'INTERNAL_ERROR',
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
 } as const;
 
 export const ErrorMessages: Record<string, string> = {
@@ -43,6 +45,9 @@ export const ErrorMessages: Record<string, string> = {
   [ErrorCodes.TTS_FAILED]: 'Audio generation failed. Please try again.',
   [ErrorCodes.INVALID_URL]: 'Please enter a valid URL',
   [ErrorCodes.TIMEOUT]: 'Request timed out. Please try again.',
+  [ErrorCodes.INTERNAL_ERROR]: 'Something went wrong. Please try again.',
+  [ErrorCodes.SERVICE_UNAVAILABLE]:
+    'Service is temporarily unavailable. Please try again in a moment.',
 };
 
 /**

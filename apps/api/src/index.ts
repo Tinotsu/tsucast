@@ -1,3 +1,6 @@
+import { initSentry, captureException, flush as sentryFlush } from './lib/sentry.js';
+initSentry();
+
 import { serve } from '@hono/node-server';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
@@ -6,6 +9,8 @@ import { bodyLimit } from 'hono/body-limit';
 import { logger } from './lib/logger.js';
 import { timeoutMiddleware } from './middleware/timeout.js';
 import { loggingMiddleware } from './middleware/logging.js';
+import { clearRateLimitInterval } from './middleware/ip-rate-limit.js';
+import { createApiError, ErrorCodes } from './utils/errors.js';
 import healthRoutes from './routes/health.js';
 import generateRoutes from './routes/generate.js';
 import libraryRoutes from './routes/library.js';
@@ -16,7 +21,13 @@ import webhookRoutes from './routes/webhooks.js';
 import playlistRoutes from './routes/playlists.js';
 import checkoutRoutes from './routes/checkout.js';
 
-const app = new Hono();
+type AppEnv = {
+  Variables: {
+    requestId: string;
+  };
+};
+
+const app = new Hono<AppEnv>();
 
 // Global middleware
 // CORS: Restrict to allowed origins in production
@@ -35,7 +46,9 @@ app.use('*', cors({
   allowHeaders: ['Content-Type', 'Authorization'],
   credentials: true,
 }));
-app.use('*', honoLogger()); // Console logging for dev
+if (process.env.NODE_ENV !== 'production') {
+  app.use('*', honoLogger());
+}
 app.use('*', loggingMiddleware); // Structured logging with request IDs
 app.use('*', timeoutMiddleware(120000)); // 120s default timeout
 app.use('*', bodyLimit({
@@ -70,15 +83,62 @@ app.notFound((c) => {
 
 // Error handler
 app.onError((err, c) => {
-  logger.error({ err, path: c.req.path }, 'Unhandled error');
-  return c.json({ error: 'Internal Server Error' }, 500);
+  const requestId = c.get('requestId');
+  logger.error({ err, path: c.req.path, method: c.req.method, requestId }, 'Unhandled error');
+  captureException(err);
+  return c.json({ error: createApiError(ErrorCodes.INTERNAL_ERROR) }, 500);
 });
 
 const port = parseInt(process.env.PORT || '3001', 10);
 
 logger.info({ port }, 'Starting tsucast API server');
 
-serve({
+const server = serve({
   fetch: app.fetch,
   port,
+});
+
+// Graceful shutdown
+async function shutdown(signal: string) {
+  logger.info({ signal }, `Received ${signal}, shutting down gracefully...`);
+
+  clearRateLimitInterval();
+
+  server.close(() => {
+    logger.info('Server closed');
+  });
+
+  // Flush any buffered Sentry events before exit
+  await sentryFlush(2000).catch(() => {});
+
+  // Force exit after 30s (matches Docker's default SIGKILL timeout)
+  setTimeout(() => {
+    logger.error('Forced shutdown after 30s timeout');
+    process.exit(1);
+  }, 30000).unref();
+
+  server.close(() => process.exit(0));
+}
+
+process.on('SIGTERM', () => { shutdown('SIGTERM'); });
+process.on('SIGINT', () => { shutdown('SIGINT'); });
+
+process.on('uncaughtException', (err) => {
+  logger.fatal({ err }, 'Uncaught exception');
+  captureException(err);
+  // Flush with a hard timeout — async ops are unreliable after uncaught exceptions
+  sentryFlush(2000)
+    .catch(() => {})
+    .finally(() => process.exit(1));
+  // Hard fallback if flush promise never settles
+  setTimeout(() => process.exit(1), 3000).unref();
+});
+
+process.on('unhandledRejection', (reason) => {
+  logger.fatal({ err: reason }, 'Unhandled rejection');
+  captureException(reason);
+  sentryFlush(2000)
+    .catch(() => {})
+    .finally(() => process.exit(1));
+  setTimeout(() => process.exit(1), 3000).unref();
 });

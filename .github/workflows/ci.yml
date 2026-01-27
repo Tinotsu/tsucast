@@ -27,6 +27,12 @@ jobs:
       - name: Typecheck Mobile
         run: npm run typecheck --workspace=apps/mobile
 
+      - name: Typecheck API
+        run: npm run typecheck --workspace=apps/api
+
+      - name: Typecheck Web
+        run: npm run typecheck --workspace=apps/web
+
       - name: Lint Mobile
         run: npm run lint --workspace=apps/mobile
         continue-on-error: true
@@ -50,6 +56,29 @@ jobs:
 
       - name: Build API
         run: npm run build --workspace=apps/api
+
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Test API
+        run: npm run test --workspace=apps/api
+
+      - name: Test Web
+        run: npm run test --workspace=apps/web
 
   expo-doctor:
     name: Expo Doctor

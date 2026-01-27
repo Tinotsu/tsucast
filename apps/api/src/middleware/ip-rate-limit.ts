@@ -3,6 +3,7 @@
  *
  * Simple in-memory rate limiter for public endpoints.
  * Prevents abuse of unauthenticated endpoints.
+ * Uses LRU eviction to cap memory at ~1MB (10K entries).
  *
  * Note: In production with multiple instances, use Redis instead.
  */
@@ -15,11 +16,13 @@ interface RateLimitEntry {
   resetAt: number;
 }
 
+const MAX_ENTRIES = 10_000;
+
 // In-memory store (per-process)
 const ipLimits = new Map<string, RateLimitEntry>();
 
 // Clean up expired entries every 5 minutes
-setInterval(() => {
+const cleanupInterval = setInterval(() => {
   const now = Date.now();
   for (const [ip, entry] of ipLimits.entries()) {
     if (entry.resetAt <= now) {
@@ -27,6 +30,20 @@ setInterval(() => {
     }
   }
 }, 5 * 60 * 1000);
+
+/**
+ * Clear the cleanup interval (for graceful shutdown)
+ */
+export function clearRateLimitInterval(): void {
+  clearInterval(cleanupInterval);
+}
+
+/**
+ * Get the current size of the IP limiter Map (for health metrics)
+ */
+export function getIpLimiterSize(): number {
+  return ipLimits.size;
+}
 
 /**
  * Get client IP from request (handles proxies)
@@ -66,14 +83,28 @@ export function ipRateLimit(limit: number = 60, windowMs: number = 60 * 1000) {
 
     let entry = ipLimits.get(ip);
 
+    if (entry) {
+      // LRU: re-insert to move to end of iteration order
+      ipLimits.delete(ip);
+    }
+
     // Create new entry or reset if window expired
     if (!entry || entry.resetAt <= now) {
       entry = { count: 0, resetAt: now + windowMs };
-      ipLimits.set(ip, entry);
     }
 
     // Increment counter
     entry.count++;
+
+    // Evict LRU entry if at capacity
+    if (!ipLimits.has(ip) && ipLimits.size >= MAX_ENTRIES) {
+      const lruKey = ipLimits.keys().next().value;
+      if (lruKey !== undefined) {
+        ipLimits.delete(lruKey);
+      }
+    }
+
+    ipLimits.set(ip, entry);
 
     // Add rate limit headers
     const remaining = Math.max(0, limit - entry.count);

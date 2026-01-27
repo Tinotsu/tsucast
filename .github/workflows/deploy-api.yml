@@ -35,6 +35,33 @@ jobs:
             -H "Content-Type: application/json" \
             -d '{"ref": "${{ github.ref }}", "sha": "${{ github.sha }}"}'
 
+      - name: Wait for deployment
+        run: |
+          for i in $(seq 1 12); do
+            if curl -sf https://api.tsucast.com/health/ready; then
+              echo "Health check passed on attempt $i"
+              exit 0
+            fi
+            echo "Attempt $i failed, retrying in 10s..."
+            sleep 10
+          done
+          echo "Health check failed after 12 attempts (2 minutes)"
+          exit 1
+
+      - name: Smoke test
+        run: |
+          RESPONSE=$(curl -sf https://api.tsucast.com/health) || {
+            echo "Smoke test failed: curl could not reach health endpoint"
+            exit 1
+          }
+          echo "$RESPONSE"
+          if echo "$RESPONSE" | grep -qE '"status"\s*:\s*"(ok|degraded)"'; then
+            echo "Smoke test passed"
+          else
+            echo "Smoke test failed: health check did not return ok or degraded status"
+            exit 1
+          fi
+
       # Alternative: Direct SSH deploy
       # - name: Deploy via SSH
       #   uses: appleboy/ssh-action@v1.0.0

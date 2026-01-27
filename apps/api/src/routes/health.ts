@@ -9,6 +9,7 @@ import { Hono } from 'hono';
 import { createClient } from '@supabase/supabase-js';
 import { S3Client, HeadBucketCommand } from '@aws-sdk/client-s3';
 import { logger } from '../lib/logger.js';
+import { getIpLimiterSize } from '../middleware/ip-rate-limit.js';
 
 const app = new Hono();
 
@@ -19,6 +20,12 @@ interface HealthCheck {
   timestamp: string;
   uptime: number;
   duration_ms: number;
+  memory: {
+    rss_mb: number;
+    heap_used_mb: number;
+    heap_total_mb: number;
+  };
+  ipLimiterSize: number;
   services: {
     database: ServiceStatus;
     storage: ServiceStatus;
@@ -34,12 +41,26 @@ interface HealthCheck {
  * Response time target: < 500ms
  */
 app.get('/', async (c) => {
+  // In production, require HEALTH_CHECK_TOKEN to access detailed health info
+  const token = process.env.HEALTH_CHECK_TOKEN;
+  if (token && c.req.header('authorization') !== `Bearer ${token}`) {
+    return c.json({ status: 'ok', timestamp: new Date().toISOString() }, 200);
+  }
+
   const startTime = Date.now();
+  const mem = process.memoryUsage();
+  const toMB = (bytes: number) => Math.round((bytes / 1024 / 1024) * 100) / 100;
   const checks: HealthCheck = {
     status: 'ok',
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
     duration_ms: 0,
+    memory: {
+      rss_mb: toMB(mem.rss),
+      heap_used_mb: toMB(mem.heapUsed),
+      heap_total_mb: toMB(mem.heapTotal),
+    },
+    ipLimiterSize: getIpLimiterSize(),
     services: {
       database: 'unknown',
       storage: 'unknown',
