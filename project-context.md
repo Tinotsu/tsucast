@@ -354,6 +354,180 @@ auth.users
 - `uncaughtException` and `unhandledRejection` handlers capture + flush Sentry before exit
 - Tracing disabled (`tracesSampleRate: 0`) — error capture only
 
+## Service Integration Guide
+
+Operational context for each service/concern. Use this when modifying or debugging integrations.
+
+### 1. Supabase (Database & Auth)
+**What it does** — PostgreSQL database, authentication, and row-level security via Supabase.
+
+**Key files:**
+- Mobile client: `apps/mobile/services/supabase.ts`
+- Web server client: `apps/web/lib/supabase/server.ts`
+- Web browser client: `apps/web/lib/supabase/client.ts`
+- API service-role client: `apps/api/src/lib/supabase.ts`
+
+**Env vars:** `EXPO_PUBLIC_SUPABASE_URL`, `EXPO_PUBLIC_SUPABASE_ANON_KEY` (mobile); `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` (web); `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` (API)
+
+**How it works** — Four distinct client instances exist, each with different key scopes. Mobile and web use the `anon` key (respects RLS). The API server uses the `service_role` key for admin operations that bypass RLS. Auth supports email/password and Google OAuth (3 Google client IDs: iOS, Android, web). RPC functions (`add_credits`, `deduct_credits`, `use_time_bank`, `refund_credits`, `deduct_credits_for_refund`) are `SECURITY DEFINER` for atomic credit operations.
+
+**Checklist:**
+- Never use `service_role` key in mobile or web clients
+- Always use parameterized queries — never interpolate user input into SQL
+- Credit operations must use RPC functions (atomic) — never direct `UPDATE`
+- New tables must have RLS policies and UUID primary keys
+- Auto-create related rows via triggers when appropriate (see `handle_new_user()`)
+
+### 2. Cloudflare R2 (Audio Storage)
+**What it does** — S3-compatible object storage for generated audio files, served via CDN.
+
+**Key files:** `apps/api/src/services/storage.ts`
+
+**Env vars:** `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` (API)
+
+**How it works** — Uses AWS SDK v3 (`@aws-sdk/client-s3`) with S3-compatible endpoint. The client is a lazy-loaded singleton (created on first use). Audio files are stored at `audio/{urlHash}.mp3` with `Content-Type: audio/mpeg` and 1-year `Cache-Control` (`max-age=31536000, public`). Files are served directly from the R2 CDN URL.
+
+**Checklist:**
+- Always serve audio from CDN URL — never proxy audio bytes through the API server
+- Use the existing singleton — never create new S3 client instances
+- Maintain the `audio/{urlHash}.mp3` key structure
+- Set proper content-type and cache-control headers on upload
+
+### 3. Audio Cache
+**What it does** — Prevents duplicate TTS generation by caching audio results keyed by URL hash.
+
+**Key files:** `apps/api/src/services/cache.ts`, database table `audio_cache`
+
+**How it works** — The `audio_cache` table implements a state machine: `pending` → `processing` → `ready` → `failed`. When a generation request arrives, the service first checks for an existing `ready` entry. If none exists, it atomically claims the URL by inserting a `pending` row (unique constraint on `url_hash` prevents races). A row stuck in `processing` for >5 minutes is considered stale and can be reclaimed. The `ready` state includes `audio_url`, `duration_seconds`, `word_count`, and `voice_id`.
+
+**Checklist:**
+- Always check cache before starting TTS generation
+- Handle unique constraint violations gracefully (another worker claimed it)
+- Respect the state machine — never skip states
+- Stale detection threshold is 5 minutes for `processing` rows
+
+### 4. Fish Audio (TTS)
+**What it does** — Converts extracted article text to spoken audio via Fish Audio's API.
+
+**Key files:** `apps/api/src/services/tts.ts`
+
+**Env vars:** `FISH_AUDIO_API_KEY` (API)
+
+**How it works** — Sends HTTP POST to `api.fish.audio/v1/tts` with the text content and voice ID. Returns MP3 audio at 128kbps. The request has a 120-second timeout via `AbortSignal`. Duration is estimated from word count (not measured from the audio stream), so `duration_seconds` in the cache is approximate.
+
+**Checklist:**
+- Always use `AbortSignal` with timeout for TTS requests
+- Duration values are estimates — do not rely on exact accuracy
+- Handle API errors gracefully (rate limits, timeouts, service outages)
+- Voice IDs must match valid Fish Audio voice identifiers
+
+### 5. Stripe (Web Payments)
+**What it does** — Processes one-time credit pack purchases on the web via Stripe Checkout.
+
+**Key files:** `apps/api/src/routes/checkout.ts`, `apps/api/src/services/credits.ts`, `apps/api/src/routes/webhooks.ts`
+
+**How it works** — Five credit packs are available (candy/coffee/kebab/pizza/feast) at different price points. The checkout route creates a Stripe Checkout session; on successful payment, a Stripe webhook (`checkout.session.completed`) triggers credit addition via the `credits` service. Webhook payloads are verified using HMAC signature validation, which requires the raw request body (not parsed JSON).
+
+**Checklist:**
+- Always verify webhook signatures using `stripe.webhooks.constructEvent()` with raw body
+- Check idempotency — `credit_transactions` has GIN indexes on `stripeSessionId`, `stripeChargeId`, and `stripePaymentIntent` in metadata
+- Never process a webhook event without signature verification
+- Credit additions must go through RPC functions for atomicity
+
+### 6. RevenueCat (Mobile Subscriptions)
+**What it does** — Manages mobile in-app purchases and pro tier subscriptions via RevenueCat.
+
+**Key files:** `apps/api/src/services/revenuecat.ts`, `apps/api/src/routes/webhooks.ts`, mobile initialization in app startup
+
+**Env vars:** `EXPO_PUBLIC_REVENUECAT_IOS`, `EXPO_PUBLIC_REVENUECAT_ANDROID` (mobile); `REVENUECAT_WEBHOOK_AUTH_KEY` (API)
+
+**How it works** — Mobile app initializes RevenueCat SDK after auth with the user's ID. When API keys are not configured (local dev), the SDK operates in stub mode returning mock data. The API webhook endpoint authenticates via Bearer token comparison. On account deletion, the API calls `deleteSubscriber` to clean up RevenueCat data.
+
+**Checklist:**
+- Use timing-safe comparison for webhook Bearer token authentication
+- Always call `deleteSubscriber` when deleting a user account
+- Stub mode must work seamlessly for local development without API keys
+- Initialize RevenueCat only after successful authentication
+
+### 7. API Server (Hono)
+**What it does** — Central API server handling all backend logic, running on Hetzner VPS.
+
+**Key files:** `apps/api/src/index.ts`, `apps/api/src/routes/`, `apps/api/src/middleware/`
+
+**How it works** — Hono v4 app with typed routes. Middleware chain order is critical: CORS → logger → logging → timeout (120s) → body limit (1MB). Routes are mounted via `app.route()` in the entry file. The server listens on port 3001 and implements graceful shutdown (flushes Sentry, clears intervals). Auth is handled by `getUserFromToken()` helper or `requireAuth` middleware, not Hono's built-in auth.
+
+**Checklist:**
+- ESM module — all relative imports must use `.js` extension
+- Route handlers never throw — always return `c.json({ error }, status)`
+- Maintain middleware order exactly (CORS first, body limit last)
+- Port 3001 — do not change without updating deploy configs
+- New routes must be mounted in `src/index.ts`
+
+### 8. Cloudflare Workers (Web Deployment)
+**What it does** — Hosts the Next.js 15 web app on Cloudflare Pages via OpenNext adapter.
+
+**Key files:** `apps/web/`, deploy command `npm run web:deploy`
+
+**How it works** — Next.js 15 App Router is adapted for Cloudflare Workers runtime via `@opennextjs/cloudflare`. The build produces a Workers-compatible bundle deployed to Cloudflare Pages. `NEXT_PUBLIC_*` env vars are baked in at build time (not runtime), so changes require a redeploy.
+
+**Checklist:**
+- `NEXT_PUBLIC_*` variables are build-time only — redeploy after changes
+- Do not use `@sentry/nextjs` — it is incompatible with Workers runtime
+- Avoid Node.js-specific APIs (fs, path, child_process) — Workers is not Node
+- Supabase SSR uses `@supabase/ssr` — follow the existing server/client/middleware pattern
+
+### 9. Mobile App (Expo)
+**What it does** — Primary user-facing app built with Expo SDK 54 and React Native.
+
+**Key files:** `apps/mobile/app/` (routes), `apps/mobile/services/`, `apps/mobile/stores/`
+
+**Env vars:** See mobile env section above.
+
+**How it works** — Expo Router v6 provides file-based routing with layout groups: `(tabs)` for authenticated screens, `(auth)` for login/signup. Auth tokens are stored in `expo-secure-store` (never AsyncStorage). Google OAuth requires 3 client IDs (iOS, Android, web). `react-native-track-player` requires a custom dev client — the app cannot run in Expo Go. Android uses a foreground service for background audio playback.
+
+**Checklist:**
+- Custom dev client required — do not attempt to run in Expo Go
+- Auth tokens via `expo-secure-store` — never AsyncStorage
+- Three Google OAuth client IDs must be configured (iOS, Android, web)
+- Android background audio requires foreground service setup
+- NativeWind v4 with Tailwind v3 — do not use v4 syntax in mobile
+
+### 10. Logging & Error Handling
+**What it does** — Structured logging (Pino) and error tracking (Sentry) for the API server.
+
+**Key files:** `apps/api/src/lib/logger.ts`, `apps/api/src/lib/sentry.ts`, `apps/api/src/utils/errors.ts`
+
+**Env vars:** `SENTRY_DSN` (API, optional)
+
+**How it works** — Pino outputs JSON in production, pretty-printed in dev. It auto-redacts `authorization`, `token`, `password`, `api_key`, and `secret` fields. Sentry captures unhandled errors via `app.onError` plus `uncaughtException`/`unhandledRejection` handlers; it is a no-op when `SENTRY_DSN` is unset. API errors follow a standard format: `{ error: { code, message } }` with HTTP status codes. Error codes are centralized in `ErrorCodes` from `utils/errors.ts`.
+
+**Error code catalog** (from `utils/errors.ts`):
+- Content extraction: `PARSE_FAILED`, `PAYWALL_DETECTED`, `ARTICLE_TOO_LONG`, `FETCH_FAILED`
+- PDF-specific: `IMAGE_ONLY_PDF`, `PDF_PASSWORD_PROTECTED`, `PDF_TOO_LARGE`
+- TTS: `TTS_FAILED`
+- Generic: `INVALID_URL`, `TIMEOUT`, `INTERNAL_ERROR`, `SERVICE_UNAVAILABLE`
+- Inline (not in ErrorCodes): `UNAUTHORIZED` (401), `NOT_FOUND` (404) — used directly in route handlers
+
+**Checklist:**
+- Never use `console.log` — always use Pino logger
+- Always include `requestId` in log context for traceability
+- Never expose database error details in API responses
+- Use `createApiError()` helper — never construct error objects manually
+- Sentry web uses `@sentry/browser` (not `@sentry/nextjs`) due to Workers runtime
+
+### 11. Background Jobs
+**What it does** — Periodic cleanup tasks running as in-memory intervals within the API process.
+
+**Key files:** `apps/api/src/index.ts` (interval setup and shutdown)
+
+**How it works** — There is no external job queue (no Redis, no Bull, no cron). All periodic tasks run as `setInterval` timers within the API server process. This means all scheduled state is in-memory and lost on restart. The graceful shutdown handler clears all intervals before exiting. IP rate limit cleanup (LRU eviction at 10k entries) is one such interval.
+
+**Checklist:**
+- Accept that state is lost on restart — design accordingly
+- Always clear intervals in the graceful shutdown handler
+- Do not add heavy or long-running jobs as intervals — they block the event loop
+- For future scaling: migrate to Redis-backed job queue if multi-instance deployment is needed
+
 ## Code Review Checklist
 
 When performing a code review, ALWAYS complete these steps **in order**:
