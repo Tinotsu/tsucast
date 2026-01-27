@@ -78,23 +78,23 @@ export function AuthForm({ mode }: AuthFormProps) {
   return (
     <div className="mx-auto w-full max-w-md">
       {/* Logo */}
-      <div className="mb-8 text-center">
+      <div className="mb-10 text-center">
         <Link href="/" className="inline-flex items-center gap-2">
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-amber-500">
-            <Headphones className="h-6 w-6 text-black" />
+          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#1a1a1a]">
+            <Headphones className="h-6 w-6 text-white" />
           </div>
-          <span className="text-2xl font-bold text-white">
+          <span className="text-2xl font-bold tracking-tight text-[#1a1a1a]">
             tsucast
           </span>
         </Link>
       </div>
 
       {/* Header */}
-      <div className="mb-8 text-center">
-        <h1 className="text-2xl font-bold text-white">
+      <div className="mb-10 text-center">
+        <h1 className="text-2xl font-bold tracking-tight text-[#1a1a1a]">
           {isLogin ? "Welcome back" : "Create your account"}
         </h1>
-        <p className="mt-2 text-zinc-400">
+        <p className="mt-3 font-normal leading-relaxed text-[#737373]">
           {isLogin
             ? "Sign in to access your podcast library"
             : "Start converting articles to podcasts"}
@@ -106,7 +106,7 @@ export function AuthForm({ mode }: AuthFormProps) {
         <button
           onClick={handleGoogleSignIn}
           disabled={isGoogleLoading || isAppleLoading || isLoading}
-          className="flex w-full items-center justify-center gap-3 rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-3 font-medium text-white transition-colors hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-50"
+          className="flex w-full items-center justify-center gap-3 rounded-xl border border-[#e5e5e5] bg-white px-4 py-3 font-bold text-[#1a1a1a] transition-colors hover:bg-[#1a1a1a] hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
         >
           {isGoogleLoading ? (
             <Loader2 className="h-5 w-5 animate-spin" />
@@ -136,7 +136,7 @@ export function AuthForm({ mode }: AuthFormProps) {
         <button
           onClick={handleAppleSignIn}
           disabled={isGoogleLoading || isAppleLoading || isLoading}
-          className="flex w-full items-center justify-center gap-3 rounded-xl bg-white px-4 py-3 font-medium text-black transition-colors hover:bg-zinc-200 disabled:cursor-not-allowed disabled:opacity-50"
+          className="flex w-full items-center justify-center gap-3 rounded-xl bg-[#1a1a1a] px-4 py-3 font-bold text-white transition-colors hover:bg-white hover:text-[#1a1a1a] hover:border hover:border-[#1a1a1a] disabled:cursor-not-allowed disabled:opacity-50"
         >
           {isAppleLoading ? (
             <Loader2 className="h-5 w-5 animate-spin" />
@@ -150,14 +150,14 @@ export function AuthForm({ mode }: AuthFormProps) {
       </div>
 
       {/* Divider */}
-      <div className="my-6 flex items-center gap-4">
-        <div className="h-px flex-1 bg-zinc-800" />
-        <span className="text-sm text-zinc-400">or</span>
-        <div className="h-px flex-1 bg-zinc-800" />
+      <div className="my-8 flex items-center gap-4">
+        <div className="h-px flex-1 bg-[#e5e5e5]" />
+        <span className="text-sm font-normal text-[#737373]">or</span>
+        <div className="h-px flex-1 bg-[#e5e5e5]" />
       </div>
 
       {/* Email Form */}
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-5">
         {error && (
           <div className="rounded-lg bg-red-500/10 p-3 text-sm text-red-400">
             {error}
@@ -167,12 +167,12 @@ export function AuthForm({ mode }: AuthFormProps) {
         <div>
           <label
             htmlFor="email"
-            className="mb-1.5 block text-sm font-medium text-white"
+            className="mb-1.5 block text-sm font-medium tracking-tight text-[#1a1a1a]"
           >
             Email
           </label>
           <div className="relative">
-            <Mail className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-zinc-400" />
+            <Mail className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-[#a3a3a3]" />
             <input
               id="email"
               type="email"
@@ -180,7 +180,7 @@ export function AuthForm({ mode }: AuthFormProps) {
               onChange={(e) => setEmail(e.target.value)}
               placeholder="you@example.com"
               required
-              className="w-full rounded-xl border border-zinc-800 bg-zinc-900 py-3 pl-10 pr-4 text-white placeholder:text-zinc-500 focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-500/20"
+              className="w-full rounded-xl border border-[#e5e5e5] bg-white py-3 pl-10 pr-4 text-[#1a1a1a] placeholder:text-[#a3a3a3] focus:border-[#1a1a1a] focus:outline-none focus:ring-2 focus:ring-black/10"
             />
           </div>
         </div>
@@ -188,12 +188,12 @@ export function AuthForm({ mode }: AuthFormProps) {
         <div>
           <label
             htmlFor="password"
-            className="mb-1.5 block text-sm font-medium text-white"
+            className="mb-1.5 block text-sm font-medium tracking-tight text-[#1a1a1a]"
           >
             Password
           </label>
           <div className="relative">
-            <Lock className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-zinc-400" />
+            <Lock className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-[#a3a3a3]" />
             <input
               id="password"
               type="password"
@@ -202,7 +202,7 @@ export function AuthForm({ mode }: AuthFormProps) {
               placeholder={isLogin ? "Enter your password" : "Min. 8 characters"}
               required
               minLength={8}
-              className="w-full rounded-xl border border-zinc-800 bg-zinc-900 py-3 pl-10 pr-4 text-white placeholder:text-zinc-500 focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-500/20"
+              className="w-full rounded-xl border border-[#e5e5e5] bg-white py-3 pl-10 pr-4 text-[#1a1a1a] placeholder:text-[#a3a3a3] focus:border-[#1a1a1a] focus:outline-none focus:ring-2 focus:ring-black/10"
             />
           </div>
         </div>
@@ -211,12 +211,12 @@ export function AuthForm({ mode }: AuthFormProps) {
           <div>
             <label
               htmlFor="confirmPassword"
-              className="mb-1.5 block text-sm font-medium text-white"
+              className="mb-1.5 block text-sm font-medium tracking-tight text-[#1a1a1a]"
             >
               Confirm Password
             </label>
             <div className="relative">
-              <Lock className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-zinc-400" />
+              <Lock className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-[#a3a3a3]" />
               <input
                 id="confirmPassword"
                 type="password"
@@ -225,7 +225,7 @@ export function AuthForm({ mode }: AuthFormProps) {
                 placeholder="Confirm your password"
                 required
                 minLength={8}
-                className="w-full rounded-xl border border-zinc-800 bg-zinc-900 py-3 pl-10 pr-4 text-white placeholder:text-zinc-500 focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-500/20"
+                className="w-full rounded-xl border border-[#e5e5e5] bg-white py-3 pl-10 pr-4 text-[#1a1a1a] placeholder:text-[#a3a3a3] focus:border-[#1a1a1a] focus:outline-none focus:ring-2 focus:ring-black/10"
               />
             </div>
           </div>
@@ -235,8 +235,8 @@ export function AuthForm({ mode }: AuthFormProps) {
           type="submit"
           disabled={isLoading || isGoogleLoading || isAppleLoading}
           className={cn(
-            "flex w-full items-center justify-center gap-2 rounded-xl py-3 font-semibold transition-colors",
-            "bg-amber-500 text-black hover:bg-amber-400",
+            "flex w-full items-center justify-center gap-2 rounded-xl py-3 font-bold transition-colors",
+            "bg-[#1a1a1a] text-white hover:bg-white hover:text-[#1a1a1a] hover:border hover:border-[#1a1a1a]",
             "disabled:cursor-not-allowed disabled:opacity-50"
           )}
         >
@@ -254,13 +254,13 @@ export function AuthForm({ mode }: AuthFormProps) {
       </form>
 
       {/* Footer */}
-      <p className="mt-6 text-center text-sm text-zinc-400">
+      <p className="mt-8 text-center text-sm font-normal leading-relaxed text-[#737373]">
         {isLogin ? (
           <>
             Don&apos;t have an account?{" "}
             <Link
               href="/signup"
-              className="font-medium text-amber-500 hover:underline"
+              className="font-medium text-[#1a1a1a] underline hover:text-[#1a1a1a]"
             >
               Sign up
             </Link>
@@ -270,7 +270,7 @@ export function AuthForm({ mode }: AuthFormProps) {
             Already have an account?{" "}
             <Link
               href="/login"
-              className="font-medium text-amber-500 hover:underline"
+              className="font-medium text-[#1a1a1a] underline hover:text-[#1a1a1a]"
             >
               Sign in
             </Link>
@@ -280,13 +280,13 @@ export function AuthForm({ mode }: AuthFormProps) {
 
       {/* Legal Links (App Store requirement) */}
       {!isLogin && (
-        <p className="mt-4 text-center text-xs text-zinc-500">
+        <p className="mt-4 text-center text-xs font-normal leading-relaxed text-[#737373]">
           By signing up, you agree to our{" "}
           <a
             href="https://tsucast.com/terms"
             target="_blank"
             rel="noopener noreferrer"
-            className="text-zinc-400 underline hover:text-white"
+            className="text-[#737373] underline hover:text-[#1a1a1a]"
           >
             Terms of Service
           </a>{" "}
@@ -295,7 +295,7 @@ export function AuthForm({ mode }: AuthFormProps) {
             href="https://tsucast.com/privacy"
             target="_blank"
             rel="noopener noreferrer"
-            className="text-zinc-400 underline hover:text-white"
+            className="text-[#737373] underline hover:text-[#1a1a1a]"
           >
             Privacy Policy
           </a>

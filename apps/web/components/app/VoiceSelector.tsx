@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import { Volume2, Check } from "lucide-react";
 
 // MVP: Single default voice only
-// TODO: Add multiple voices when Fish Audio voice IDs are configured
+// TODO: Add multiple voices when Kokoro voices are configured
 const DEFAULT_VOICE = {
   id: "default",
   name: "Default",
@@ -29,26 +29,26 @@ export function VoiceSelector({ value, onChange, disabled }: VoiceSelectorProps)
 
   return (
     <div className="space-y-3">
-      <label className="block text-sm font-medium text-white">
+      <label className="block text-sm font-medium tracking-tight text-[#1a1a1a]">
         Voice
       </label>
-      <div className="rounded-xl border border-amber-500 bg-amber-500/5 p-4">
+      <div className="rounded-xl bg-white p-6">
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-amber-500 text-black">
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#1a1a1a] text-white">
             <Volume2 className="h-5 w-5" />
           </div>
           <div className="flex-1">
-            <p className="font-medium text-amber-500">
+            <p className="font-medium tracking-tight text-[#1a1a1a]">
               {DEFAULT_VOICE.name}
             </p>
-            <p className="text-xs text-zinc-400">
+            <p className="text-xs font-normal leading-relaxed text-[#737373]">
               {DEFAULT_VOICE.gender === "female" ? "Female" : "Male"} • {DEFAULT_VOICE.accent}
             </p>
           </div>
-          <Check className="h-4 w-4 text-amber-500" />
+          <Check className="h-4 w-4 text-[#1a1a1a]" />
         </div>
       </div>
-      <p className="text-xs text-zinc-500">
+      <p className="text-xs font-normal leading-relaxed text-[#737373]">
         More voices coming soon
       </p>
     </div>

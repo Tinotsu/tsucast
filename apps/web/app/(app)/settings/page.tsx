@@ -39,7 +39,7 @@ export default function SettingsPage() {
   if (isLoading || !isAuthenticated) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-amber-500" />
+        <Loader2 className="h-8 w-8 animate-spin text-[#1a1a1a]" />
       </div>
     );
   }
@@ -87,25 +87,25 @@ export default function SettingsPage() {
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-12 sm:px-6 lg:px-8">
-      <h1 className="mb-8 text-3xl font-bold text-white">
+      <h1 className="mb-12 text-3xl font-bold tracking-tight text-[#1a1a1a]">
         Settings
       </h1>
 
       {/* Profile Section */}
-      <section className="mb-8">
-        <h2 className="mb-4 text-lg font-semibold text-white">
+      <section className="mb-12">
+        <h2 className="mb-4 text-lg font-bold text-[#1a1a1a]">
           Profile
         </h2>
-        <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-6">
+        <div className="rounded-2xl bg-white p-6">
           <div className="flex items-center gap-4">
-            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-amber-500/10">
-              <User className="h-8 w-8 text-amber-500" />
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#1a1a1a]">
+              <User className="h-8 w-8 text-white" />
             </div>
             <div>
-              <p className="font-semibold text-white">
+              <p className="font-bold text-[#1a1a1a]">
                 {profile?.display_name || profile?.email?.split("@")[0]}
               </p>
-              <p className="flex items-center gap-2 text-sm text-zinc-400">
+              <p className="flex items-center gap-2 text-sm font-normal text-[#737373]">
                 <Mail className="h-4 w-4" />
                 {profile?.email}
               </p>
@@ -115,22 +115,22 @@ export default function SettingsPage() {
       </section>
 
       {/* Credits Section */}
-      <section className="mb-8">
-        <h2 className="mb-4 text-lg font-semibold text-white">
+      <section className="mb-12">
+        <h2 className="mb-4 text-lg font-bold text-[#1a1a1a]">
           Credits
         </h2>
-        <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-6">
+        <div className="rounded-2xl bg-white p-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-amber-500/10">
-                <Ticket className="h-5 w-5 text-amber-500" />
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#1a1a1a]">
+                <Ticket className="h-5 w-5 text-white" />
               </div>
               <div>
-                <p className="font-semibold text-white">
-                  {creditsLoading ? "…" : `${credits} credits available`}
+                <p className="font-bold text-[#1a1a1a]">
+                  {creditsLoading ? "..." : `${credits} credits available`}
                 </p>
                 {timeBank > 0 && (
-                  <p className="text-sm text-zinc-400">
+                  <p className="text-sm font-normal text-[#737373]">
                     {timeBank} min banked
                   </p>
                 )}
@@ -138,7 +138,7 @@ export default function SettingsPage() {
             </div>
             <Link
               href="/upgrade"
-              className="rounded-lg bg-amber-500 px-4 py-2 font-medium text-black hover:bg-amber-400"
+              className="rounded-lg bg-[#1a1a1a] px-4 py-2 font-bold text-white hover:bg-white hover:text-[#1a1a1a] hover:border hover:border-[#1a1a1a]"
             >
               Buy more credits
             </Link>
@@ -147,17 +147,17 @@ export default function SettingsPage() {
       </section>
 
       {/* Account Section */}
-      <section className="mb-8">
-        <h2 className="mb-4 text-lg font-semibold text-white">
+      <section className="mb-12">
+        <h2 className="mb-4 text-lg font-bold text-[#1a1a1a]">
           Account
         </h2>
-        <div className="rounded-2xl border border-zinc-800 bg-zinc-900">
+        <div className="rounded-2xl bg-white">
           <button
             onClick={handleSignOut}
             disabled={isSigningOut}
-            className="flex w-full items-center justify-between border-b border-zinc-800 px-6 py-4 text-left text-white transition-colors hover:bg-zinc-800"
+            className="flex w-full items-center justify-between border-b border-[#e5e5e5] px-6 py-4 text-left text-[#1a1a1a] transition-colors hover:bg-[#1a1a1a] hover:text-white"
           >
-            <span className="flex items-center gap-3">
+            <span className="flex items-center gap-3 font-bold">
               <LogOut className="h-5 w-5" />
               Sign out
             </span>
@@ -165,9 +165,9 @@ export default function SettingsPage() {
           </button>
           <button
             onClick={() => setShowDeleteDialog(true)}
-            className="flex w-full items-center justify-between px-6 py-4 text-left text-red-500 transition-colors hover:bg-red-500/10"
+            className="flex w-full items-center justify-between px-6 py-4 text-left text-red-500 transition-colors hover:bg-red-500 hover:text-white"
           >
-            <span className="flex items-center gap-3">
+            <span className="flex items-center gap-3 font-bold">
               <Trash2 className="h-5 w-5" />
               Delete account
             </span>
@@ -177,56 +177,56 @@ export default function SettingsPage() {
 
       {/* Legal Links */}
       <section>
-        <h2 className="mb-4 text-lg font-semibold text-white">
+        <h2 className="mb-4 text-lg font-bold text-[#1a1a1a]">
           Legal
         </h2>
-        <div className="rounded-2xl border border-zinc-800 bg-zinc-900">
+        <div className="rounded-2xl bg-white">
           <Link
             href="/privacy"
-            className="flex items-center justify-between border-b border-zinc-800 px-6 py-4 text-white transition-colors hover:bg-zinc-800"
+            className="flex items-center justify-between border-b border-[#e5e5e5] px-6 py-4 font-medium text-[#1a1a1a] transition-colors hover:bg-[#1a1a1a] hover:text-white"
           >
             Privacy Policy
-            <ExternalLink className="h-4 w-4 text-zinc-400" />
+            <ExternalLink className="h-4 w-4" />
           </Link>
           <Link
             href="/terms"
-            className="flex items-center justify-between px-6 py-4 text-white transition-colors hover:bg-zinc-800"
+            className="flex items-center justify-between px-6 py-4 font-medium text-[#1a1a1a] transition-colors hover:bg-[#1a1a1a] hover:text-white"
           >
             Terms of Service
-            <ExternalLink className="h-4 w-4 text-zinc-400" />
+            <ExternalLink className="h-4 w-4" />
           </Link>
         </div>
       </section>
 
       {/* App Version */}
-      <p className="mt-8 text-center text-xs text-zinc-500">
+      <p className="mt-12 text-center text-xs font-normal text-[#737373]">
         tsucast Web v1.0.0
       </p>
 
       {/* Delete Account Confirmation Dialog */}
       {showDeleteDialog && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
-          <div className="w-full max-w-md rounded-2xl border border-zinc-800 bg-zinc-900 p-6">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/80 p-4">
+          <div className="w-full max-w-md rounded-2xl border border-[#e5e5e5] bg-white p-6">
             <div className="mb-4 flex items-start justify-between">
               <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-500/10">
-                  <AlertTriangle className="h-5 w-5 text-red-500" />
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-500">
+                  <AlertTriangle className="h-5 w-5 text-white" />
                 </div>
-                <h3 className="text-lg font-semibold text-white">
+                <h3 className="text-lg font-bold text-[#1a1a1a]">
                   Delete Account
                 </h3>
               </div>
               <button
                 onClick={closeDeleteDialog}
-                className="rounded-lg p-1 text-zinc-400 hover:bg-zinc-800 hover:text-white"
+                className="rounded-lg p-1 text-[#737373] hover:bg-[#1a1a1a] hover:text-white"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
 
-            <div className="mb-6 space-y-3 text-sm text-zinc-400">
+            <div className="mb-6 space-y-3 text-sm font-normal text-[#737373]">
               <p>
-                This action <span className="font-semibold text-red-500">cannot be undone</span>.
+                This action <span className="text-red-500">cannot be undone</span>.
                 All your data will be permanently deleted, including:
               </p>
               <ul className="ml-4 list-disc space-y-1">
@@ -236,7 +236,7 @@ export default function SettingsPage() {
                 <li>Account information</li>
               </ul>
               <p className="pt-2">
-                To confirm, type <span className="font-mono font-semibold text-white">DELETE</span> below:
+                To confirm, type <span className="font-mono text-[#1a1a1a]">DELETE</span> below:
               </p>
             </div>
 
@@ -245,12 +245,12 @@ export default function SettingsPage() {
               value={deleteConfirmText}
               onChange={(e) => setDeleteConfirmText(e.target.value)}
               placeholder="Type DELETE to confirm"
-              className="mb-4 w-full rounded-lg border border-zinc-700 bg-zinc-800 px-4 py-3 text-white placeholder-zinc-500 focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500"
+              className="mb-4 w-full rounded-lg border border-[#e5e5e5] bg-white px-4 py-3 font-normal text-[#1a1a1a] placeholder:text-[#a3a3a3] focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500"
               disabled={isDeleting}
             />
 
             {deleteError && (
-              <div className="mb-4 rounded-lg bg-red-500/10 px-4 py-3 text-sm text-red-500">
+              <div className="mb-4 rounded-lg border border-red-500 bg-white px-4 py-3 text-sm text-red-500">
                 {deleteError}
               </div>
             )}
@@ -259,14 +259,14 @@ export default function SettingsPage() {
               <button
                 onClick={closeDeleteDialog}
                 disabled={isDeleting}
-                className="flex-1 rounded-lg border border-zinc-700 px-4 py-3 font-medium text-white hover:bg-zinc-800 disabled:opacity-50"
+                className="flex-1 rounded-lg border border-[#1a1a1a] px-4 py-3 font-bold text-[#1a1a1a] hover:bg-[#1a1a1a] hover:text-white disabled:opacity-50"
               >
                 Cancel
               </button>
               <button
                 onClick={handleDeleteAccount}
                 disabled={deleteConfirmText !== "DELETE" || isDeleting}
-                className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-red-600 px-4 py-3 font-medium text-white hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-50"
+                className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-red-600 px-4 py-3 font-bold text-white hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {isDeleting ? (
                   <>

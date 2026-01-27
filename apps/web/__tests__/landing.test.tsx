@@ -70,10 +70,10 @@ describe("Landing Page Components", () => {
     it("shows credit counts and features", () => {
       render(<Pricing />);
 
-      expect(screen.getByText(/5 credits \(\$1\.00\/article\)/)).toBeInTheDocument();
-      expect(screen.getByText(/10 credits \(\$0\.90\/article\)/)).toBeInTheDocument();
-      expect(screen.getByText(/20 credits \(\$0\.85\/article\)/)).toBeInTheDocument();
-      expect(screen.getByText(/50 credits \(\$0\.80\/article\)/)).toBeInTheDocument();
+      expect(screen.getByText(/15 credits \(\$0\.33\/article\)/)).toBeInTheDocument();
+      expect(screen.getByText(/30 credits \(\$0\.30\/article\)/)).toBeInTheDocument();
+      expect(screen.getByText(/60 credits \(\$0\.28\/article\)/)).toBeInTheDocument();
+      expect(screen.getByText(/150 credits \(\$0\.27\/article\)/)).toBeInTheDocument();
       expect(screen.getByText("Credits never expire")).toBeInTheDocument();
       expect(screen.getByText("Cache hits are free")).toBeInTheDocument();
     });

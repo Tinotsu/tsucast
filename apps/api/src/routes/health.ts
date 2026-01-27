@@ -162,36 +162,12 @@ async function checkStorage(): Promise<boolean> {
 }
 
 /**
- * Check Fish Audio API availability
+ * Check Kokoro TTS configuration (env-var only, no network call).
+ * A cold RunPod serverless endpoint won't respond within 5s,
+ * so we only verify env vars are set. Actual TTS health is validated at generation time.
  */
-async function checkTTS(): Promise<boolean> {
-  const apiKey = process.env.FISH_AUDIO_API_KEY;
-
-  if (!apiKey) {
-    return false;
-  }
-
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 5000);
-
-    const response = await fetch('https://api.fish.audio/v1/tts', {
-      method: 'OPTIONS',
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-      },
-      signal: controller.signal,
-    });
-
-    clearTimeout(timeoutId);
-
-    // OPTIONS should return 200 or 204, or we accept any non-5xx response
-    return response.status < 500;
-  } catch (error) {
-    // If it's just an abort error from timeout, still consider it a failure
-    logger.error({ error }, 'TTS health check failed');
-    return false;
-  }
+function checkTTS(): boolean {
+  return !!(process.env.KOKORO_API_URL && process.env.KOKORO_API_KEY);
 }
 
 export default app;

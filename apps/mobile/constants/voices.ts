@@ -12,14 +12,14 @@ export interface Voice {
   gender: 'male' | 'female' | 'neutral';
   style: string;
   previewUrl: string;
-  fishAudioId: string;
+  kokoroVoiceId: string;
 }
 
 /**
  * Available voices for audio generation
  *
- * Note: Fish Audio IDs should be updated with actual voice IDs
- * Preview URLs point to R2 storage
+ * Kokoro voice IDs map to built-in Kokoro TTS voices.
+ * Preview URLs point to R2 storage.
  */
 export const VOICES: Voice[] = [
   {
@@ -29,7 +29,7 @@ export const VOICES: Voice[] = [
     gender: 'male',
     style: 'Narration',
     previewUrl: 'https://audio.tsucast.app/voices/alex.mp3',
-    fishAudioId: 'e58b0d7efca34eb38d5c4985e378abcb', // Example Fish Audio voice
+    kokoroVoiceId: 'am_adam',
   },
   {
     id: 'sarah',
@@ -38,7 +38,7 @@ export const VOICES: Voice[] = [
     gender: 'female',
     style: 'Storytelling',
     previewUrl: 'https://audio.tsucast.app/voices/sarah.mp3',
-    fishAudioId: '7f92f8afb8ec43bf81429cc1c9199cb1', // Example Fish Audio voice
+    kokoroVoiceId: 'af_sarah',
   },
   {
     id: 'james',
@@ -47,7 +47,7 @@ export const VOICES: Voice[] = [
     gender: 'male',
     style: 'Documentary',
     previewUrl: 'https://audio.tsucast.app/voices/james.mp3',
-    fishAudioId: 'a0e99e7d4af24b5b8e8d9e0f0a1b2c3d', // Example Fish Audio voice
+    kokoroVoiceId: 'am_michael',
   },
   {
     id: 'emma',
@@ -56,7 +56,7 @@ export const VOICES: Voice[] = [
     gender: 'female',
     style: 'Conversational',
     previewUrl: 'https://audio.tsucast.app/voices/emma.mp3',
-    fishAudioId: 'b1f00f8e5bg35c6c9f9e0f1g1b2c3d4e', // Example Fish Audio voice
+    kokoroVoiceId: 'af_bella',
   },
 ];
 

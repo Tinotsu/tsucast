@@ -247,10 +247,8 @@ describe("Library Page", () => {
       });
 
       // WHEN: Clicking delete button (trash icon)
-      const deleteButtons = screen.getAllByRole("button").filter((btn) =>
-        btn.className.includes("hover:text-red-500")
-      );
-      fireEvent.click(deleteButtons[0]);
+      const deleteButton = screen.getByRole("button", { name: /^delete /i });
+      fireEvent.click(deleteButton);
 
       // THEN: Confirmation buttons appear
       await waitFor(() => {
@@ -272,10 +270,8 @@ describe("Library Page", () => {
       });
 
       // WHEN: Clicking delete button then confirming
-      const deleteButtons = screen.getAllByRole("button").filter((btn) =>
-        btn.className.includes("hover:text-red-500")
-      );
-      fireEvent.click(deleteButtons[0]);
+      const deleteButton = screen.getByRole("button", { name: /^delete /i });
+      fireEvent.click(deleteButton);
 
       await waitFor(() => {
         expect(screen.getByRole("button", { name: /confirm delete/i })).toBeInTheDocument();
@@ -302,10 +298,8 @@ describe("Library Page", () => {
       });
 
       // WHEN: Deleting the item (click trash, then confirm)
-      const deleteButtons = screen.getAllByRole("button").filter((btn) =>
-        btn.className.includes("hover:text-red-500")
-      );
-      fireEvent.click(deleteButtons[0]);
+      const deleteButton = screen.getByRole("button", { name: /^delete /i });
+      fireEvent.click(deleteButton);
 
       await waitFor(() => {
         expect(screen.getByRole("button", { name: /confirm delete/i })).toBeInTheDocument();
@@ -331,10 +325,8 @@ describe("Library Page", () => {
       });
 
       // Click delete to show confirmation
-      const deleteButtons = screen.getAllByRole("button").filter((btn) =>
-        btn.className.includes("hover:text-red-500")
-      );
-      fireEvent.click(deleteButtons[0]);
+      const deleteButton = screen.getByRole("button", { name: /^delete /i });
+      fireEvent.click(deleteButton);
 
       await waitFor(() => {
         expect(screen.getByRole("button", { name: /cancel delete/i })).toBeInTheDocument();
@@ -374,10 +366,8 @@ describe("Library Page", () => {
       });
 
       // WHEN: Deleting the selected item (click trash, then confirm)
-      const deleteButtons = screen.getAllByRole("button").filter((btn) =>
-        btn.className.includes("hover:text-red-500")
-      );
-      fireEvent.click(deleteButtons[0]);
+      const deleteButton = screen.getByRole("button", { name: /^delete /i });
+      fireEvent.click(deleteButton);
 
       await waitFor(() => {
         expect(screen.getByRole("button", { name: /confirm delete/i })).toBeInTheDocument();

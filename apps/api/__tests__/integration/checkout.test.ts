@@ -25,7 +25,7 @@ vi.mock("stripe", () => {
             metadata: {
               userId: "user-123",
               packId: "coffee",
-              credits: "5",
+              credits: "15",
             },
             client_reference_id: "user-123",
           }),
@@ -52,7 +52,6 @@ describe("Checkout API", () => {
 
     // Set required env vars
     process.env.STRIPE_SECRET_KEY = "sk_test_123";
-    process.env.STRIPE_PRICE_CANDY = "price_candy";
     process.env.STRIPE_PRICE_COFFEE = "price_coffee";
     process.env.STRIPE_PRICE_KEBAB = "price_kebab";
     process.env.STRIPE_PRICE_PIZZA = "price_pizza";
@@ -65,7 +64,6 @@ describe("Checkout API", () => {
 
   afterEach(() => {
     delete process.env.STRIPE_SECRET_KEY;
-    delete process.env.STRIPE_PRICE_CANDY;
     delete process.env.STRIPE_PRICE_COFFEE;
     delete process.env.STRIPE_PRICE_KEBAB;
     delete process.env.STRIPE_PRICE_PIZZA;
@@ -148,7 +146,7 @@ describe("Checkout API", () => {
     });
 
     it.skip("[P1] should accept all valid pack IDs", async () => {
-      const validPacks = ["candy", "coffee", "kebab", "pizza", "feast"];
+      const validPacks = ["coffee", "kebab", "pizza", "feast"];
 
       for (const packId of validPacks) {
         const res = await app.request("/checkout/credits", {
@@ -230,7 +228,7 @@ describe("Checkout API", () => {
                   metadata: {
                     userId: "other-user-456", // Different user
                     packId: "coffee",
-                    credits: "5",
+                    credits: "15",
                   },
                 }),
               },

@@ -56,8 +56,9 @@ R2_SECRET_ACCESS_KEY=your-secret-key
 R2_BUCKET=tsucast-audio
 R2_PUBLIC_URL=https://audio.tsucast.com
 
-# Fish Audio TTS
-FISH_AUDIO_API_KEY=your-fish-audio-key
+# Kokoro TTS (RunPod Serverless)
+KOKORO_API_URL=your-kokoro-api-url
+KOKORO_API_KEY=your-kokoro-api-key
 
 # RevenueCat (optional - for in-app purchases)
 REVENUECAT_WEBHOOK_AUTH_KEY=your-webhook-auth-key
@@ -324,7 +325,7 @@ curl http://localhost:3001/health | jq
 
 - `database: unhealthy` - Check SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY
 - `storage: unhealthy` - Check R2 credentials
-- `tts: unhealthy` - Check FISH_AUDIO_API_KEY
+- `tts: unhealthy` - Check KOKORO_API_URL and KOKORO_API_KEY
 
 ### 502 Bad Gateway
 
@@ -353,6 +354,7 @@ curl http://localhost:3001/health
 | `R2_SECRET_ACCESS_KEY` | **Yes** | R2 secret key |
 | `R2_BUCKET` | **Yes** | R2 bucket name |
 | `R2_PUBLIC_URL` | **Yes** | Public URL for audio files |
-| `FISH_AUDIO_API_KEY` | **Yes** | Fish Audio API key |
+| `KOKORO_API_URL` | **Yes** | Kokoro TTS RunPod Serverless URL |
+| `KOKORO_API_KEY` | **Yes** | Kokoro TTS RunPod API key |
 | `REVENUECAT_WEBHOOK_AUTH_KEY` | No | RevenueCat webhook secret |
 | `REVENUECAT_API_SECRET_KEY` | No | RevenueCat API key |

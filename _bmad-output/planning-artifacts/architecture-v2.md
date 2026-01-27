@@ -3,6 +3,7 @@ version: 2.2
 status: 'complete'
 completedAt: '2026-01-20'
 previousVersion: 'architecture.md'
+superseded_tts: 'Fish Audio references are outdated — TTS migrated to self-hosted Kokoro on RunPod Serverless. See implementation-artifacts/tech-spec-self-hosted-tts-kokoro.md'
 inputDocuments:
   - path: '_bmad-output/planning-artifacts/prd.md'
     type: 'prd'

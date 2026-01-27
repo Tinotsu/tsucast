@@ -64,12 +64,12 @@ export function UrlInput({
   };
 
   return (
-    <div className="space-y-2">
-      <label className="block text-sm font-medium text-white">
+    <div className="space-y-3">
+      <label className="block text-sm font-medium tracking-tight text-[#1a1a1a]">
         Article URL
       </label>
       <div className="relative">
-        <Link2 className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-zinc-400" />
+        <Link2 className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-[#a3a3a3]" />
         <input
           type="url"
           value={value}
@@ -77,20 +77,20 @@ export function UrlInput({
           placeholder="https://example.com/article"
           disabled={disabled}
           className={cn(
-            "w-full rounded-xl border bg-zinc-900 py-4 pl-12 pr-12 text-white",
-            "placeholder:text-zinc-500",
-            "focus:outline-none focus:ring-2 focus:ring-amber-500/20",
+            "w-full rounded-xl border bg-white py-4 pl-12 pr-12 text-[#1a1a1a]",
+            "placeholder:text-[#a3a3a3]",
+            "focus:outline-none focus:ring-2 focus:ring-black/10",
             "disabled:cursor-not-allowed disabled:opacity-50",
             error
               ? "border-red-500 focus:border-red-500"
               : isCached
                 ? "border-green-500 focus:border-green-500"
-                : "border-zinc-800 focus:border-amber-500"
+                : "border-[#e5e5e5] focus:border-[#1a1a1a]"
           )}
         />
         <div className="absolute right-4 top-1/2 -translate-y-1/2">
           {isChecking && (
-            <Loader2 className="h-5 w-5 animate-spin text-zinc-400" />
+            <Loader2 className="h-5 w-5 animate-spin text-[#737373]" />
           )}
           {!isChecking && isCached && (
             <Check className="h-5 w-5 text-green-500" />
@@ -102,7 +102,7 @@ export function UrlInput({
       </div>
       {error && <p className="text-sm text-red-500">{error}</p>}
       {isCached && !error && (
-        <p className="text-sm text-green-400">
+        <p className="text-sm font-normal text-green-500">
           This article is already cached - it will play instantly!
         </p>
       )}

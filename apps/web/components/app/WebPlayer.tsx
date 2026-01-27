@@ -131,16 +131,16 @@ export function WebPlayer({
   };
 
   return (
-    <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-6">
+    <div className="rounded-2xl bg-white p-8">
       <audio ref={audioRef} src={audioUrl} preload="metadata" />
 
       {/* Title */}
-      <h3 className="mb-6 line-clamp-2 text-lg font-semibold text-white">
+      <h3 className="mb-6 line-clamp-2 text-lg font-bold tracking-tight text-[#1a1a1a]">
         {title}
       </h3>
 
       {/* Progress Bar */}
-      <div className="mb-4">
+      <div className="mb-6">
         <input
           type="range"
           min={0}
@@ -152,21 +152,21 @@ export function WebPlayer({
           aria-valuemax={duration || 100}
           aria-valuenow={currentTime}
           aria-valuetext={`${formatTime(currentTime)} of ${formatTime(duration)}`}
-          className="h-2 w-full cursor-pointer appearance-none rounded-full bg-zinc-700 accent-amber-500"
+          className="h-2 w-full cursor-pointer appearance-none rounded-full bg-[#e5e5e5] accent-[#1a1a1a]"
         />
-        <div className="mt-2 flex justify-between text-xs text-zinc-400">
+        <div className="mt-2 flex justify-between text-xs font-normal text-[#737373]">
           <span>{formatTime(currentTime)}</span>
           <span>{formatTime(duration)}</span>
         </div>
       </div>
 
       {/* Controls */}
-      <div className="flex items-center justify-center gap-4" role="group" aria-label="Playback controls">
+      <div className="flex items-center justify-center gap-6" role="group" aria-label="Playback controls">
         {/* Skip Back */}
         <button
           onClick={() => skip(-15)}
           aria-label="Skip back 15 seconds"
-          className="rounded-full p-3 text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-amber-500"
+          className="rounded-full p-3 text-[#1a1a1a] transition-colors hover:bg-[#1a1a1a] hover:text-white"
         >
           <SkipBack className="h-6 w-6" aria-hidden="true" />
         </button>
@@ -175,7 +175,7 @@ export function WebPlayer({
         <button
           onClick={togglePlay}
           aria-label={isPlaying ? "Pause" : "Play"}
-          className="flex h-14 w-14 items-center justify-center rounded-full bg-amber-500 text-black transition-colors hover:bg-amber-400"
+          className="flex h-14 w-14 items-center justify-center rounded-full bg-[#1a1a1a] text-white transition-colors hover:bg-white hover:text-[#1a1a1a] hover:border hover:border-[#1a1a1a]"
         >
           {isPlaying ? (
             <Pause className="h-6 w-6" aria-hidden="true" />
@@ -188,23 +188,23 @@ export function WebPlayer({
         <button
           onClick={() => skip(30)}
           aria-label="Skip forward 30 seconds"
-          className="rounded-full p-3 text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-amber-500"
+          className="rounded-full p-3 text-[#1a1a1a] transition-colors hover:bg-[#1a1a1a] hover:text-white"
         >
           <SkipForward className="h-6 w-6" aria-hidden="true" />
         </button>
       </div>
 
       {/* Secondary Controls */}
-      <div className="mt-4 flex items-center justify-center gap-4" role="group" aria-label="Additional controls">
+      <div className="mt-6 flex items-center justify-center gap-4" role="group" aria-label="Additional controls">
         {/* Speed */}
         <button
           onClick={changeSpeed}
           aria-label={`Playback speed ${playbackRate}x. Click to change.`}
           className={cn(
-            "rounded-lg px-3 py-1 text-sm font-medium transition-colors",
+            "rounded-lg px-3 py-1 text-sm font-bold transition-colors",
             playbackRate !== 1
-              ? "bg-amber-500/10 text-amber-500"
-              : "text-zinc-400 hover:bg-zinc-800 hover:text-amber-500"
+              ? "bg-[#1a1a1a] text-white"
+              : "text-[#1a1a1a] hover:bg-[#1a1a1a] hover:text-white"
           )}
         >
           {playbackRate}x
@@ -214,7 +214,7 @@ export function WebPlayer({
         <button
           onClick={toggleMute}
           aria-label={isMuted ? "Unmute" : "Mute"}
-          className="rounded-lg p-2 text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-amber-500"
+          className="rounded-lg p-2 text-[#1a1a1a] transition-colors hover:bg-[#1a1a1a] hover:text-white"
         >
           {isMuted ? (
             <VolumeX className="h-5 w-5" aria-hidden="true" />
@@ -225,7 +225,7 @@ export function WebPlayer({
       </div>
 
       {/* Browser Limitation Notice */}
-      <p className="mt-6 text-center text-xs text-zinc-500">
+      <p className="mt-8 text-center text-xs font-normal leading-relaxed text-[#737373]">
         Note: Audio may pause when switching browser tabs. For background
         playback, use the mobile app.
       </p>

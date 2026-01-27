@@ -28,11 +28,10 @@ export interface CreditPack {
 }
 
 export const CREDIT_PACKS: CreditPack[] = [
-  { id: 'candy', emoji: '🍬', name: 'Candy', credits: 3, price: '$2.99' },
-  { id: 'coffee', emoji: '☕', name: 'Coffee', credits: 5, price: '$4.99', recommended: true },
-  { id: 'kebab', emoji: '🥙', name: 'Kebab', credits: 10, price: '$8.99' },
-  { id: 'pizza', emoji: '🍕', name: 'Pizza', credits: 20, price: '$16.99' },
-  { id: 'feast', emoji: '🍱', name: 'Feast', credits: 50, price: '$39.99', best: true },
+  { id: 'coffee', emoji: '☕', name: 'Coffee', credits: 15, price: '$4.99', recommended: true },
+  { id: 'kebab', emoji: '🥙', name: 'Kebab', credits: 30, price: '$8.99' },
+  { id: 'pizza', emoji: '🍕', name: 'Pizza', credits: 60, price: '$16.99' },
+  { id: 'feast', emoji: '🍱', name: 'Feast', credits: 150, price: '$39.99', best: true },
 ];
 
 interface CreditPurchaseModalProps {

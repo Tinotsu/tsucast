@@ -80,7 +80,7 @@ export default function GeneratePage() {
   if (isLoading) {
     return (
       <div className="flex min-h-[50vh] items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-amber-500" />
+        <Loader2 className="h-8 w-8 animate-spin text-[#1a1a1a]" />
       </div>
     );
   }
@@ -156,26 +156,26 @@ export default function GeneratePage() {
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-12 sm:px-6 lg:px-8">
-      <div className="mb-8 text-center">
-        <h1 className="text-3xl font-bold text-white">
+      <div className="mb-12 text-center">
+        <h1 className="text-3xl font-bold tracking-tight text-[#1a1a1a]">
           Generate Podcast
         </h1>
-        <p className="mt-2 text-zinc-400">
+        <p className="mt-2 font-normal leading-relaxed text-[#737373]">
           Paste any article URL and convert it to audio
         </p>
       </div>
 
       {/* Credit Balance Banner */}
-      <div className="mb-6 rounded-xl border border-amber-500/30 bg-amber-500/5 p-4">
+      <div className="mb-8 rounded-xl border border-[#e5e5e5] bg-white p-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <Ticket className="h-5 w-5 text-amber-500" />
+              <Ticket className="h-5 w-5 text-[#737373]" />
               <div>
-                <span className="text-sm font-medium text-white">
+                <span className="text-sm font-bold text-[#1a1a1a]">
                   {creditsLoading ? "..." : `${credits} credits`}
                 </span>
                 {timeBank > 0 && (
-                  <span className="ml-2 text-sm text-zinc-400">
+                  <span className="ml-2 text-sm font-normal text-[#737373]">
                     +{timeBank} min banked
                   </span>
                 )}
@@ -183,7 +183,7 @@ export default function GeneratePage() {
             </div>
             <Link
               href="/upgrade"
-              className="text-sm font-medium text-amber-500 hover:underline"
+              className="text-sm font-medium text-[#1a1a1a] underline hover:no-underline"
             >
               {credits === 0 ? "Buy Credits" : "Get More"}
             </Link>
@@ -192,17 +192,17 @@ export default function GeneratePage() {
 
       {/* No Credits Message */}
       {credits === 0 && (
-        <div className="mb-6 rounded-xl border border-red-500/30 bg-red-500/10 p-6 text-center">
+        <div className="mb-8 rounded-xl border border-red-500 bg-white p-6 text-center">
           <AlertCircle className="mx-auto mb-3 h-8 w-8 text-red-500" />
-          <h3 className="mb-2 font-semibold text-red-400">
+          <h3 className="mb-2 font-bold text-red-400">
             No Credits Available
           </h3>
-          <p className="mb-4 text-sm text-red-300">
+          <p className="mb-4 text-sm font-normal text-red-300">
             You need credits to generate podcasts. Purchase a credit pack to continue.
           </p>
           <Link
             href="/upgrade"
-            className="inline-block rounded-lg bg-amber-500 px-6 py-2 font-semibold text-black hover:bg-amber-400"
+            className="inline-block rounded-lg bg-[#1a1a1a] px-6 py-2 font-bold text-white hover:bg-white hover:text-[#1a1a1a] hover:border hover:border-[#1a1a1a]"
           >
             Buy Credits
           </Link>
@@ -223,13 +223,13 @@ export default function GeneratePage() {
                 setUrl("");
                 setPreview(null);
               }}
-              className="rounded-lg border border-zinc-800 px-6 py-2 font-medium text-zinc-400 hover:bg-zinc-800"
+              className="rounded-lg border border-[#1a1a1a] px-6 py-2 font-bold text-[#1a1a1a] hover:bg-[#1a1a1a] hover:text-white"
             >
               Generate Another
             </button>
             <Link
               href={`/library?highlight=${result.audioId}`}
-              className="rounded-lg bg-amber-500 px-6 py-2 font-medium text-black hover:bg-amber-400"
+              className="rounded-lg bg-[#1a1a1a] px-6 py-2 font-bold text-white hover:bg-white hover:text-[#1a1a1a] hover:border hover:border-[#1a1a1a]"
             >
               View in Library
             </Link>
@@ -255,28 +255,28 @@ export default function GeneratePage() {
 
           {/* Credit Preview */}
           {url && isValidUrl(url) && !cachedResult && (
-            <div className="rounded-lg border border-zinc-800 bg-zinc-900 p-4">
+            <div className="rounded-lg border border-[#e5e5e5] bg-white p-4">
               {isLoadingPreview ? (
-                <div className="flex items-center gap-2 text-sm text-zinc-400">
+                <div className="flex items-center gap-2 text-sm font-normal text-[#737373]">
                   <Loader2 className="h-4 w-4 animate-spin" />
                   Analyzing article...
                 </div>
               ) : preview ? (
-                <div className="space-y-2">
+                <div className="space-y-3">
                   {preview.isCached ? (
                     <div className="flex items-center gap-2 text-green-400">
                       <Zap className="h-4 w-4" />
-                      <span className="text-sm font-medium">Already generated - Play for free!</span>
+                      <span className="text-sm font-bold">Already generated - Play for free!</span>
                     </div>
                   ) : (
                     <>
                       <div className="flex items-center justify-between text-sm">
-                        <span className="text-zinc-400">Estimated length</span>
-                        <span className="text-white">~{preview.estimatedMinutes} min</span>
+                        <span className="font-medium text-[#737373]">Estimated length</span>
+                        <span className="font-normal text-[#1a1a1a]">~{preview.estimatedMinutes} min</span>
                       </div>
                       <div className="flex items-center justify-between text-sm">
-                        <span className="text-zinc-400">Credits needed</span>
-                        <span className="font-medium text-white">
+                        <span className="font-medium text-[#737373]">Credits needed</span>
+                        <span className="font-normal text-[#1a1a1a]">
                           {preview.creditsNeeded === 0 ? (
                             <span className="text-green-400">Free (time bank)</span>
                           ) : (
@@ -285,9 +285,9 @@ export default function GeneratePage() {
                         </span>
                       </div>
                       {!preview.hasSufficientCredits && (
-                        <div className="mt-2 rounded-lg bg-red-500/10 p-2 text-center text-sm text-red-400">
+                        <div className="mt-2 rounded-lg border border-red-500 bg-white p-2 text-center text-sm text-red-400">
                           Not enough credits.{" "}
-                          <Link href="/upgrade" className="font-medium underline">
+                          <Link href="/upgrade" className="font-bold underline">
                             Buy more
                           </Link>
                         </div>
@@ -296,7 +296,7 @@ export default function GeneratePage() {
                   )}
                 </div>
               ) : (
-                <div className="text-sm text-zinc-500">
+                <div className="text-sm font-normal text-[#737373]">
                   Enter a valid URL to see credit cost
                 </div>
               )}
@@ -304,12 +304,12 @@ export default function GeneratePage() {
           )}
 
           {error && (
-            <div className="rounded-lg bg-red-500/10 p-4">
+            <div className="rounded-lg border border-red-500 bg-white p-4">
               <p className="text-sm text-red-400">{error}</p>
               <button
                 onClick={handleGenerate}
                 disabled={!canGenerate}
-                className="mt-3 flex items-center gap-2 rounded-lg bg-red-500/20 px-4 py-2 text-sm font-medium text-red-400 transition-colors hover:bg-red-500/30 disabled:cursor-not-allowed disabled:opacity-50"
+                className="mt-3 flex items-center gap-2 rounded-lg border border-red-500 bg-white px-4 py-2 text-sm font-bold text-red-400 transition-colors hover:bg-red-500 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <RotateCcw className="h-4 w-4" />
                 Try Again
@@ -320,7 +320,7 @@ export default function GeneratePage() {
           {cachedResult ? (
             <button
               onClick={handlePlayCached}
-              className="flex w-full items-center justify-center gap-2 rounded-xl bg-green-600 py-4 font-semibold text-white transition-colors hover:bg-green-500"
+              className="flex w-full items-center justify-center gap-2 rounded-xl bg-green-600 py-4 font-bold text-white transition-colors hover:bg-green-500"
             >
               <Zap className="h-5 w-5" />
               Play Cached Audio (Free)
@@ -329,10 +329,10 @@ export default function GeneratePage() {
             <button
               onClick={handleGenerate}
               disabled={!canGenerate}
-              className={`flex w-full items-center justify-center gap-2 rounded-xl py-4 font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
+              className={`flex w-full items-center justify-center gap-2 rounded-xl py-4 font-bold transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
                 preview?.isCached
                   ? "bg-green-600 text-white hover:bg-green-500"
-                  : "bg-amber-500 text-black hover:bg-amber-400"
+                  : "bg-[#1a1a1a] text-white hover:bg-white hover:text-[#1a1a1a] hover:border hover:border-[#1a1a1a]"
               }`}
             >
               {isGenerating ? (

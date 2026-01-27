@@ -214,7 +214,7 @@ webhooks.post('/stripe', async (c) => {
     }
 
     const userId = session.metadata?.userId || session.client_reference_id;
-    const packId = session.metadata?.packId as CreditPackId | undefined;
+    const packId = session.metadata?.packId as string | undefined;
     const creditsFromMeta = session.metadata?.credits;
 
     if (!userId) {
@@ -240,7 +240,9 @@ webhooks.post('/stripe', async (c) => {
     if (creditsFromMeta) {
       credits = parseInt(creditsFromMeta, 10);
     } else if (packId && packId in CREDIT_PACKS) {
-      credits = CREDIT_PACKS[packId].credits;
+      credits = CREDIT_PACKS[packId as CreditPackId].credits;
+    } else if (packId) {
+      logger.warn({ packId, sessionId: session.id }, 'Unknown credit pack ID in webhook — may be legacy session');
     }
 
     // ISSUE 5 FIX: Validate credit amount properly (NaN check)
@@ -329,8 +331,9 @@ webhooks.post('/stripe', async (c) => {
 
     if (creditsToRemove > 0) {
       try {
-        // Use negative credits via the refund function (which adds credits back)
-        // We need to REMOVE credits, so we use a direct update
+        // TODO: Create `deduct_credits_for_refund` RPC in Supabase to make this atomic.
+        // The fallback path below has a race condition (read-then-update) if two
+        // refund webhooks fire concurrently for the same user.
         const { error: refundError } = await supabase.rpc('deduct_credits_for_refund', {
           p_user_id: originalTx.user_id,
           p_credits: creditsToRemove,

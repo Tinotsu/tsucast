@@ -29,8 +29,8 @@ export default function GlobalError({
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          backgroundColor: '#000000',
-          color: '#ffffff',
+          backgroundColor: '#ffffff',
+          color: '#1a1a1a',
           fontFamily:
             "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
         }}
@@ -48,18 +48,21 @@ export default function GlobalError({
           <h2
             style={{
               fontSize: '1.25rem',
-              fontWeight: 600,
+              fontWeight: 700,
               marginBottom: '1rem',
-              color: '#a1a1aa',
+              color: '#1a1a1a',
+              letterSpacing: '-0.025em',
             }}
           >
             Something went wrong
           </h2>
           <p
             style={{
-              color: '#71717a',
+              color: '#737373',
+              fontWeight: 400,
               marginBottom: '2rem',
               maxWidth: '400px',
+              lineHeight: '1.625',
             }}
           >
             An unexpected error occurred. Try refreshing the page.
@@ -69,11 +72,11 @@ export default function GlobalError({
               onClick={() => reset()}
               style={{
                 padding: '0.625rem 1.5rem',
-                backgroundColor: '#f59e0b',
-                color: '#000000',
+                backgroundColor: '#1a1a1a',
+                color: '#ffffff',
                 border: 'none',
                 borderRadius: '0.5rem',
-                fontWeight: 600,
+                fontWeight: 700,
                 cursor: 'pointer',
                 fontSize: '0.875rem',
               }}
@@ -85,10 +88,10 @@ export default function GlobalError({
               style={{
                 padding: '0.625rem 1.5rem',
                 backgroundColor: 'transparent',
-                color: '#ffffff',
-                border: '1px solid #27272a',
+                color: '#1a1a1a',
+                border: '1px solid #e5e5e5',
                 borderRadius: '0.5rem',
-                fontWeight: 600,
+                fontWeight: 700,
                 textDecoration: 'none',
                 fontSize: '0.875rem',
               }}

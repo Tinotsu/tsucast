@@ -62,33 +62,33 @@ const features = [
 
 export function Features() {
   return (
-    <section className="bg-zinc-900 py-24" id="features">
+    <section className="bg-white py-32" id="features">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         {/* Section Header */}
         <div className="text-center">
-          <h2 className="text-3xl font-bold tracking-tight text-white sm:text-4xl">
+          <h2 className="text-3xl font-bold tracking-tight text-[#1a1a1a] sm:text-4xl">
             Everything You Need to Listen
           </h2>
-          <p className="mx-auto mt-4 max-w-2xl text-lg text-zinc-400">
+          <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-[#737373]">
             tsucast is designed for one thing: turning your reading list into
             audio you can enjoy anywhere.
           </p>
         </div>
 
         {/* Features Grid */}
-        <div className="mt-16 grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mt-20 grid gap-10 sm:grid-cols-2 lg:grid-cols-4">
           {features.map((feature) => (
             <div
               key={feature.title}
-              className="group rounded-2xl border border-zinc-800 bg-black/50 p-6 transition-all hover:border-amber-500 hover:shadow-lg"
+              className="group rounded-2xl bg-white p-8 transition-all hover:bg-[#fafafa]"
             >
-              <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-amber-500/10 text-amber-500 transition-colors group-hover:bg-amber-500 group-hover:text-black">
+              <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-[#f5f5f5] text-[#1a1a1a] transition-colors group-hover:bg-black group-hover:text-white">
                 <feature.icon className="h-6 w-6" />
               </div>
-              <h3 className="mb-2 text-lg font-semibold text-white">
+              <h3 className="mb-3 text-lg font-bold text-[#1a1a1a]">
                 {feature.title}
               </h3>
-              <p className="text-sm text-zinc-400">
+              <p className="text-sm leading-relaxed text-[#737373]">
                 {feature.description}
               </p>
             </div>

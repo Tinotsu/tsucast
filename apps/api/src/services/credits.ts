@@ -332,12 +332,12 @@ export async function refundCredits(
 }
 
 // Credit pack definitions (matching pricing specification)
+// Stripe price IDs are configured via env vars in checkout.ts (getStripePriceIds)
 export const CREDIT_PACKS = {
-  candy: { credits: 3, priceUsd: 2.99, stripePriceId: '' },
-  coffee: { credits: 5, priceUsd: 4.99, stripePriceId: '' },
-  kebab: { credits: 10, priceUsd: 8.99, stripePriceId: '' },
-  pizza: { credits: 20, priceUsd: 16.99, stripePriceId: '' },
-  feast: { credits: 50, priceUsd: 39.99, stripePriceId: '' },
+  coffee: { credits: 15, priceUsd: 4.99 },
+  kebab: { credits: 30, priceUsd: 8.99 },
+  pizza: { credits: 60, priceUsd: 16.99 },
+  feast: { credits: 150, priceUsd: 39.99 },
 } as const;
 
 export type CreditPackId = keyof typeof CREDIT_PACKS;

@@ -1,5 +1,7 @@
 # Story 3.2: Streaming Audio Generation
 
+> **SUPERSEDED (TTS):** Fish Audio references in this story are outdated. TTS provider was migrated to self-hosted Kokoro on RunPod Serverless. See `_bmad-output/implementation-artifacts/tech-spec-self-hosted-tts-kokoro.md`.
+
 Status: done
 
 ## Story

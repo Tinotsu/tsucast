@@ -29,26 +29,26 @@ export default function AdminLayout({
 
   if (isLoading || isChecking) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-black">
-        <Loader2 className="h-8 w-8 animate-spin text-amber-500" />
+      <div className="flex min-h-screen items-center justify-center bg-white">
+        <Loader2 className="h-8 w-8 animate-spin text-[#1a1a1a]" />
       </div>
     );
   }
 
   if (!isAdmin) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-black">
+      <div className="flex min-h-screen items-center justify-center bg-white">
         <div className="text-center">
           <ShieldAlert className="mx-auto mb-4 h-16 w-16 text-red-500" />
-          <h1 className="mb-2 text-2xl font-bold text-white">
+          <h1 className="mb-2 text-2xl font-bold tracking-tight text-[#1a1a1a]">
             Access Denied
           </h1>
-          <p className="mb-6 text-zinc-400">
+          <p className="mb-6 font-normal leading-relaxed text-[#737373]">
             You don&apos;t have permission to access the admin panel.
           </p>
           <button
             onClick={() => router.push("/dashboard")}
-            className="rounded-lg bg-amber-500 px-6 py-2 font-medium text-black hover:bg-amber-400"
+            className="rounded-lg bg-[#1a1a1a] px-6 py-2 font-bold text-white hover:bg-white hover:text-[#1a1a1a] hover:border hover:border-[#1a1a1a]"
           >
             Go to Dashboard
           </button>
@@ -58,7 +58,7 @@ export default function AdminLayout({
   }
 
   return (
-    <div className="min-h-screen bg-black">
+    <div className="min-h-screen bg-white">
       <AdminSidebar />
       <main className="ml-64 min-h-screen p-8">{children}</main>
     </div>

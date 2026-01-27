@@ -7,7 +7,7 @@ tsucast is a mobile app that converts web articles into high-quality audio using
 ## Features
 
 - **Instant conversion** - Paste any URL, hear audio in <10 seconds
-- **Premium voices** - Natural-sounding AI voices via Fish Audio
+- **Premium voices** - Natural-sounding AI voices via Kokoro TTS
 - **Background playback** - Listen while using other apps
 - **Personal library** - Save and organize your audio articles
 - **Cross-device sync** - Your library follows you everywhere
@@ -22,7 +22,7 @@ tsucast is a mobile app that converts web articles into high-quality audio using
 | Navigation | expo-router v6 |
 | Auth & Database | Supabase |
 | API Server | Node.js + Hono |
-| Text-to-Speech | Fish Audio |
+| Text-to-Speech | Kokoro TTS |
 | Audio Storage | Cloudflare R2 |
 | Payments | RevenueCat |
 
@@ -89,7 +89,8 @@ EXPO_PUBLIC_API_URL=https://api.tsucast.com
 ```bash
 SUPABASE_URL=https://xxx.supabase.co
 SUPABASE_SERVICE_ROLE_KEY=eyJ...
-FISH_AUDIO_API_KEY=xxx
+KOKORO_API_URL=xxx
+KOKORO_API_KEY=xxx
 R2_ACCOUNT_ID=xxx
 R2_ACCESS_KEY_ID=xxx
 R2_SECRET_ACCESS_KEY=xxx
@@ -122,7 +123,7 @@ R2_BUCKET=tsucast-audio
          ┌─────────────────┼─────────────────┐
          ▼                 ▼                 ▼
    ┌───────────┐    ┌───────────┐    ┌───────────┐
-   │Fish Audio │    │    R2     │    │RevenueCat │
+   │Kokoro TTS │    │    R2     │    │RevenueCat │
    │   (TTS)   │    │ (Storage) │    │ (Payments)│
    └───────────┘    └───────────┘    └───────────┘
 ```

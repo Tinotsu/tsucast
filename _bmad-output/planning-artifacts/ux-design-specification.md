@@ -285,10 +285,11 @@ _Source: [Spotify Design - Audio-Forward UX](https://spotify.design/article/audi
 ### Implementation Approach
 
 **Design Tokens:**
-- Colors: Warm, inviting palette (avoid cold corporate blues)
+- Colors: White `#ffffff` background, Black `#000000` text and borders (+ semantic red/green)
 - Spacing: 4px base unit (4, 8, 12, 16, 24, 32, 48)
 - Border Radius: Soft and rounded (8px, 16px)
-- Typography: Clean sans-serif, limited weights
+- Borders: 1px solid black
+- Typography: System sans-serif, bold weight only, tight tracking on headings, relaxed line-height on body
 
 **Custom Components (~10 total):**
 - `PasteInput` - URL input (dominant on Add screen)
@@ -305,13 +306,13 @@ _Source: [Spotify Design - Audio-Forward UX](https://spotify.design/article/audi
 ### Customization Strategy
 
 **Visual Direction (MVP):**
-- Colors: Black & white only - no color palette needed for MVP
-- Typography: Clean, readable system fonts
-- Borders: Used to define surfaces (1px gray borders)
+- Colors: Pure black on white — no gray, no zinc, no in-between
+- Typography: Bold weight everywhere, system fonts, tight tracking on headings, relaxed line-height on body
+- Borders: 1px solid black — defines all surfaces
 - Animations: Minimal, only essential transitions
-- Spacing: Generous, uncluttered
+- Spacing: Generous, uncluttered, breathing room
 
-**Theme:** Dark mode only for MVP - simpler to implement, modern look
+**Theme:** Light mode only for MVP — clean, paper-like, Notion-inspired
 
 **What We're Avoiding:**
 - Pre-built component libraries
@@ -388,38 +389,40 @@ _Source: [Spotify Design - Audio-Forward UX](https://spotify.design/article/audi
 
 ### Color System
 
-**Theme:** Monochrome Dark - minimal, focused, distraction-free
+**Theme:** Pure Black & White — two colors only, maximum contrast, zero ambiguity.
 
-**MVP Design Philosophy:** Colors are not important for MVP. Ship fast with a simple black & white design. Visual polish comes later.
+**Inspiration:** dinq.me, backenrich.com, Notion — stark monochrome, bold type, clean borders.
 
-**Dark Theme Only (MVP):**
-- Background: Black `#000000`
-- Surface: Dark Gray `#1a1a1a` (cards, inputs)
-- Border: Gray `#333333`
-- Text Primary: White `#ffffff`
-- Text Secondary: Gray `#888888`
-- Primary Action: White text on dark, or inverted for buttons
+**Palette (strict):**
+- Background: White `#ffffff`
+- Text: Black `#000000`
+- Borders: Black `#000000`
+- Buttons: Black on white, or white on black (inverted for hover/CTA)
+- No gray. No zinc. No in-between tones.
 
-**Semantic (minimal):**
+**Semantic (only exceptions to B&W):**
 - Error: Red `#ef4444`
 - Success: Green `#22c55e`
 
-**Design Approach:**
-- Use borders to define surfaces instead of background colors
-- High contrast for readability
-- No gradients, no shadows, no complex color palette
-- Focus on typography and spacing
+**Design Rules:**
+- Only black and white exist. No gray text, no gray borders, no gray backgrounds.
+- Borders define surfaces — always 1px solid, always black or white depending on contrast.
+- High contrast is the aesthetic, not a compromise.
+- No gradients, no shadows, no opacity tricks.
+- If something needs visual hierarchy, use size and weight — not color.
 
 ### Typography System
 
 **Fonts:** System fonts (SF Pro, Roboto, system-ui)
 
+**Weight:** Bold everywhere. All text is bold. No regular, no medium, no semibold — just bold.
+
 **Scale:**
 - H1: 28px Bold
-- H2: 22px Semibold
-- Body: 16px Regular
-- Caption: 14px Regular
-- Small: 12px Medium
+- H2: 22px Bold
+- Body: 16px Bold
+- Caption: 14px Bold
+- Small: 12px Bold
 
 ### Spacing & Layout Foundation
 
@@ -429,10 +432,10 @@ _Source: [Spotify Design - Audio-Forward UX](https://spotify.design/article/audi
 
 ### Accessibility Considerations
 
-- Contrast ratio: > 4.5:1 (AA compliant) - easily met with B&W
+- Contrast ratio: 21:1 (AAA compliant) — pure black on white / white on black
 - Touch targets: Minimum 44x44px
-- Focus states: Visible white ring
-- Dark theme reduces eye strain
+- Focus states: Visible black border (2px solid)
+- Light theme for clean, paper-like readability
 
 ---
 
@@ -440,7 +443,7 @@ _Source: [Spotify Design - Audio-Forward UX](https://spotify.design/article/audi
 
 **Context:** The web app is secondary to mobile. It serves backend testing, marketing, and admin purposes. Web is NOT feature-parity with mobile and is NOT optimized for "listening while walking."
 
-**Design System:** Same monochrome dark theme as mobile (bg-black, text-white, zinc accents).
+**Design System:** Same pure black on white theme as mobile (bg-white, text-black, no gray/zinc).
 
 ### 1. Landing Page
 
@@ -568,12 +571,15 @@ _Source: [Spotify Design - Audio-Forward UX](https://spotify.design/article/audi
 
 **Components:**
 - Use same design tokens as mobile (spacing, typography, colors)
-- Buttons: White text on zinc-800 background, hover state zinc-700
-- Inputs: Black background, zinc-700 border, white text
-- Tables: Zinc-900 background, zinc-800 borders, alternating row colors
+- Buttons: Black text on white background with black border, or white text on black background (CTA)
+- Inputs: White background, black border, black bold text
+- Tables: White background, black borders, black bold text
 
 **Typography:**
 - Same scale as mobile (H1: 28px, H2: 22px, Body: 16px)
+- Bold weight everywhere — no regular or medium weights
+- Headings: `tracking-tight` for dense headlines
+- Body text: `leading-relaxed` (line-height 1.6) for comfortable reading
 - System fonts (Inter, SF Pro, Roboto, system-ui)
 
 ---

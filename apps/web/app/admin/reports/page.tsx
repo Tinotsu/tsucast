@@ -21,10 +21,10 @@ import {
 import { cn } from "@/lib/utils";
 
 const statusColors = {
-  pending: "bg-yellow-500/10 text-yellow-400",
-  fixed: "bg-green-500/10 text-green-400",
-  wont_fix: "bg-red-500/10 text-red-400",
-  duplicate: "bg-zinc-800 text-zinc-400",
+  pending: "bg-yellow-500 text-[#1a1a1a]",
+  fixed: "bg-green-500 text-white",
+  wont_fix: "bg-red-500 text-white",
+  duplicate: "bg-white text-[#1a1a1a] border border-[#e5e5e5]",
 };
 
 export default function AdminReportsPage() {
@@ -121,10 +121,10 @@ export default function AdminReportsPage() {
   return (
     <div>
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-white">
+        <h1 className="text-3xl font-bold tracking-tight text-[#1a1a1a]">
           Extraction Reports
         </h1>
-        <p className="mt-2 text-zinc-400">
+        <p className="mt-2 font-normal leading-relaxed text-[#737373]">
           Review and manage reported URL extraction failures
         </p>
       </div>
@@ -132,14 +132,14 @@ export default function AdminReportsPage() {
       {/* Filters */}
       <div className="mb-6 flex items-center gap-4">
         <div className="flex items-center gap-2">
-          <Filter className="h-4 w-4 text-zinc-400" />
+          <Filter className="h-4 w-4 text-[#1a1a1a]" />
           <select
             value={statusFilter}
             onChange={(e) => {
               setStatusFilter(e.target.value);
               setPage(1);
             }}
-            className="rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2 text-sm text-white focus:border-amber-500 focus:outline-none"
+            className="rounded-lg border border-[#e5e5e5] bg-white px-3 py-2 text-sm font-normal text-[#1a1a1a] focus:border-[#1a1a1a] focus:outline-none"
           >
             <option value="">All Status</option>
             <option value="pending">Pending</option>
@@ -151,7 +151,7 @@ export default function AdminReportsPage() {
       </div>
 
       {error && (
-        <div className="mb-6 rounded-lg bg-red-500/10 p-4 text-red-400">
+        <div className="mb-6 rounded-lg bg-red-500 p-4 text-white">
           {error}
         </div>
       )}
@@ -159,48 +159,48 @@ export default function AdminReportsPage() {
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Reports List */}
         <div className="lg:col-span-2">
-          <div className="rounded-2xl border border-zinc-800 bg-zinc-900">
+          <div className="rounded-2xl border border-[#e5e5e5] bg-white">
             {isLoading ? (
               <div className="flex h-64 items-center justify-center">
-                <Loader2 className="h-8 w-8 animate-spin text-amber-500" />
+                <Loader2 className="h-8 w-8 animate-spin text-[#1a1a1a]" />
               </div>
             ) : displayReports.length === 0 ? (
               <div className="flex h-64 flex-col items-center justify-center text-center">
-                <FileWarning className="mb-4 h-12 w-12 text-zinc-400" />
-                <p className="text-zinc-400">No reports found</p>
+                <FileWarning className="mb-4 h-12 w-12 text-[#1a1a1a]" />
+                <p className="font-normal text-[#737373]">No reports found</p>
               </div>
             ) : (
               <>
-                <div className="divide-y divide-zinc-800">
+                <div className="divide-y divide-[#e5e5e5]">
                   {displayReports.map((report) => (
                     <div
                       key={report.id}
                       onClick={() => setSelectedReport(report)}
                       className={cn(
-                        "cursor-pointer p-4 transition-colors hover:bg-amber-500/5",
+                        "cursor-pointer p-4 transition-colors hover:bg-[#1a1a1a] hover:text-white",
                         selectedReport?.id === report.id &&
-                          "bg-amber-500/10"
+                          "bg-[#1a1a1a] text-white"
                       )}
                     >
                       <div className="mb-2 flex items-start justify-between">
                         <div className="min-w-0 flex-1">
-                          <p className="truncate text-sm font-medium text-white">
+                          <p className="truncate text-sm font-bold">
                             {report.url}
                           </p>
-                          <p className="text-xs text-zinc-400">
+                          <p className="text-xs">
                             {report.error_type} • {report.report_count} reports
                           </p>
                         </div>
                         <span
                           className={cn(
-                            "ml-2 flex-shrink-0 rounded-full px-2 py-1 text-xs font-medium",
+                            "ml-2 flex-shrink-0 rounded-full px-2 py-1 text-xs font-bold",
                             statusColors[report.status]
                           )}
                         >
                           {report.status.replace("_", " ")}
                         </span>
                       </div>
-                      <p className="text-xs text-zinc-400">
+                      <p className="text-xs">
                         Reported {formatDate(report.created_at)}
                       </p>
                     </div>
@@ -208,22 +208,22 @@ export default function AdminReportsPage() {
                 </div>
 
                 {/* Pagination */}
-                <div className="flex items-center justify-between border-t border-zinc-800 px-4 py-3">
-                  <p className="text-sm text-zinc-400">
+                <div className="flex items-center justify-between border-t border-[#e5e5e5] px-4 py-3">
+                  <p className="text-sm font-normal text-[#737373]">
                     Page {page} of {totalPages}
                   </p>
                   <div className="flex gap-2">
                     <button
                       onClick={() => setPage(Math.max(1, page - 1))}
                       disabled={page === 1}
-                      className="rounded-lg border border-zinc-800 p-2 text-zinc-400 disabled:opacity-50"
+                      className="rounded-lg border border-[#e5e5e5] p-2 text-[#1a1a1a] disabled:opacity-50"
                     >
                       <ChevronLeft className="h-4 w-4" />
                     </button>
                     <button
                       onClick={() => setPage(Math.min(totalPages, page + 1))}
                       disabled={page === totalPages}
-                      className="rounded-lg border border-zinc-800 p-2 text-zinc-400 disabled:opacity-50"
+                      className="rounded-lg border border-[#e5e5e5] p-2 text-[#1a1a1a] disabled:opacity-50"
                     >
                       <ChevronRight className="h-4 w-4" />
                     </button>
@@ -237,14 +237,14 @@ export default function AdminReportsPage() {
         {/* Report Detail */}
         <div>
           {selectedReport ? (
-            <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-6">
+            <div className="rounded-2xl border border-[#e5e5e5] bg-white p-6">
               <div className="mb-4 flex items-center justify-between">
-                <h3 className="font-semibold text-white">
+                <h3 className="font-bold text-[#1a1a1a]">
                   Report Details
                 </h3>
                 <span
                   className={cn(
-                    "rounded-full px-2 py-1 text-xs font-medium",
+                    "rounded-full px-2 py-1 text-xs font-bold",
                     statusColors[selectedReport.status]
                   )}
                 >
@@ -254,16 +254,16 @@ export default function AdminReportsPage() {
 
               <div className="space-y-4">
                 <div>
-                  <p className="mb-1 text-xs font-medium text-zinc-400">
+                  <p className="mb-1 text-xs font-normal text-[#737373]">
                     URL
                   </p>
                   <div className="flex items-center gap-2">
-                    <p className="flex-1 truncate text-sm text-white">
+                    <p className="flex-1 truncate text-sm text-[#1a1a1a]">
                       {selectedReport.url}
                     </p>
                     <button
                       onClick={() => copyUrl(selectedReport.url)}
-                      className="p-1 text-zinc-400 hover:text-amber-500"
+                      className="p-1 text-[#1a1a1a] hover:text-white hover:bg-[#1a1a1a]"
                     >
                       <Copy className="h-4 w-4" />
                     </button>
@@ -271,7 +271,7 @@ export default function AdminReportsPage() {
                       href={selectedReport.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="p-1 text-zinc-400 hover:text-amber-500"
+                      className="p-1 text-[#1a1a1a] hover:text-white hover:bg-[#1a1a1a]"
                     >
                       <ExternalLink className="h-4 w-4" />
                     </a>
@@ -279,39 +279,39 @@ export default function AdminReportsPage() {
                 </div>
 
                 <div>
-                  <p className="mb-1 text-xs font-medium text-zinc-400">
+                  <p className="mb-1 text-xs font-normal text-[#737373]">
                     Error Type
                   </p>
-                  <p className="text-sm font-medium text-red-400">
+                  <p className="text-sm font-bold text-red-400">
                     {selectedReport.error_type}
                   </p>
                 </div>
 
                 {selectedReport.error_message && (
                   <div>
-                    <p className="mb-1 text-xs font-medium text-zinc-400">
+                    <p className="mb-1 text-xs font-normal text-[#737373]">
                       Error Message
                     </p>
-                    <p className="text-sm text-white">
+                    <p className="text-sm text-[#1a1a1a]">
                       {selectedReport.error_message}
                     </p>
                   </div>
                 )}
 
                 <div>
-                  <p className="mb-1 text-xs font-medium text-zinc-400">
+                  <p className="mb-1 text-xs font-normal text-[#737373]">
                     Reported By
                   </p>
-                  <p className="text-sm text-white">
+                  <p className="text-sm text-[#1a1a1a]">
                     {selectedReport.user_email}
                   </p>
                 </div>
 
                 <div>
-                  <p className="mb-1 text-xs font-medium text-zinc-400">
+                  <p className="mb-1 text-xs font-normal text-[#737373]">
                     Report Count
                   </p>
-                  <p className="text-sm text-white">
+                  <p className="text-sm text-[#1a1a1a]">
                     {selectedReport.report_count} user(s) reported this URL
                   </p>
                 </div>
@@ -319,8 +319,8 @@ export default function AdminReportsPage() {
 
               {/* Actions */}
               {selectedReport.status === "pending" && (
-                <div className="mt-6 border-t border-zinc-800 pt-6">
-                  <p className="mb-3 text-xs font-medium text-zinc-400">
+                <div className="mt-6 border-t border-[#e5e5e5] pt-6">
+                  <p className="mb-3 text-xs font-normal text-[#737373]">
                     Update Status
                   </p>
                   <div className="flex gap-2">
@@ -329,7 +329,7 @@ export default function AdminReportsPage() {
                         handleUpdateStatus(selectedReport.id, "fixed")
                       }
                       disabled={isUpdating}
-                      className="flex flex-1 items-center justify-center gap-1 rounded-lg bg-green-500 py-2 text-sm font-medium text-white hover:bg-green-600 disabled:opacity-50"
+                      className="flex flex-1 items-center justify-center gap-1 rounded-lg bg-green-500 py-2 text-sm font-bold text-white hover:bg-green-600 disabled:opacity-50"
                     >
                       <Check className="h-4 w-4" />
                       Fixed
@@ -339,7 +339,7 @@ export default function AdminReportsPage() {
                         handleUpdateStatus(selectedReport.id, "wont_fix")
                       }
                       disabled={isUpdating}
-                      className="flex flex-1 items-center justify-center gap-1 rounded-lg bg-red-500 py-2 text-sm font-medium text-white hover:bg-red-600 disabled:opacity-50"
+                      className="flex flex-1 items-center justify-center gap-1 rounded-lg bg-red-500 py-2 text-sm font-bold text-white hover:bg-red-600 disabled:opacity-50"
                     >
                       <X className="h-4 w-4" />
                       Won&apos;t Fix
@@ -349,7 +349,7 @@ export default function AdminReportsPage() {
                         handleUpdateStatus(selectedReport.id, "duplicate")
                       }
                       disabled={isUpdating}
-                      className="flex flex-1 items-center justify-center gap-1 rounded-lg border border-zinc-800 py-2 text-sm font-medium text-zinc-400 hover:bg-amber-500/5 disabled:opacity-50"
+                      className="flex flex-1 items-center justify-center gap-1 rounded-lg border border-[#1a1a1a] py-2 text-sm font-bold text-[#1a1a1a] hover:bg-[#1a1a1a] hover:text-white disabled:opacity-50"
                     >
                       <Copy className="h-4 w-4" />
                       Dupe
@@ -359,8 +359,8 @@ export default function AdminReportsPage() {
               )}
             </div>
           ) : (
-            <div className="flex h-64 items-center justify-center rounded-2xl border border-dashed border-zinc-800 bg-zinc-900">
-              <p className="text-zinc-400">
+            <div className="flex h-64 items-center justify-center rounded-2xl border border-dashed border-[#e5e5e5] bg-white">
+              <p className="font-normal text-[#737373]">
                 Select a report to view details
               </p>
             </div>

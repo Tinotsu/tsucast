@@ -114,7 +114,7 @@ test.describe("Legal Pages", () => {
 
       // Third-party disclosure
       await expect(page.getByText(/supabase/i)).toBeVisible();
-      await expect(page.getByText(/fish audio/i)).toBeVisible();
+      await expect(page.getByText(/kokoro/i)).toBeVisible();
     });
 
     test("should link to Terms of Service", async ({ page }) => {

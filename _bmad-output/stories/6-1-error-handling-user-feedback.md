@@ -1,5 +1,7 @@
 # Story 6.1: Error Handling & User Feedback
 
+> **SUPERSEDED (TTS):** Fish Audio references in this story are outdated. TTS health check is now env-var only (Kokoro on RunPod). See `_bmad-output/implementation-artifacts/tech-spec-self-hosted-tts-kokoro.md`.
+
 Status: ready-for-dev
 
 ## Story

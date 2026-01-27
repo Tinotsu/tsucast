@@ -1,5 +1,7 @@
 # Story 3.1: Voice Selection & Preview
 
+> **SUPERSEDED (TTS):** Fish Audio voice IDs in this story are outdated. Voices now use Kokoro IDs (`am_adam`, `af_sarah`, `am_michael`, `af_bella`). See `_bmad-output/implementation-artifacts/tech-spec-self-hosted-tts-kokoro.md`.
+
 Status: done
 
 ## Story

@@ -1,19 +1,25 @@
 /**
  * Text-to-Speech Service
  *
- * Integrates with Fish Audio API for TTS generation.
+ * Integrates with Kokoro TTS on RunPod Serverless for TTS generation.
  * Story: 3-2 Streaming Audio Generation
  */
 
 import { logger } from '../lib/logger.js';
 import { ErrorCodes } from '../utils/errors.js';
 
-const FISH_AUDIO_API_URL = 'https://api.fish.audio/v1/tts';
-const TTS_TIMEOUT_MS = 120000; // 2 minutes for long articles
+const TTS_TIMEOUT_MS = 180000; // 3 minutes — accounts for RunPod cold starts (10-60s) + generation
 
-// Default Fish Audio voice ID - set via env var FISH_AUDIO_DEFAULT_VOICE_ID
-// MVP: Single voice only until multiple voices are configured
-const getDefaultVoiceId = () => process.env.FISH_AUDIO_DEFAULT_VOICE_ID || '';
+// Default Kokoro voice ID — matches mobile DEFAULT_VOICE_ID ('alex' → 'am_adam')
+const DEFAULT_KOKORO_VOICE = 'am_adam';
+
+// Valid Kokoro voice IDs — reject unknown IDs before sending to RunPod
+const VALID_KOKORO_VOICES = new Set([
+  'am_adam',
+  'af_sarah',
+  'am_michael',
+  'af_bella',
+]);
 
 export interface TtsOptions {
   text: string;
@@ -26,22 +32,32 @@ export interface TtsResult {
   durationSeconds: number;
 }
 
+interface RunPodResponse {
+  id: string;
+  status: 'COMPLETED' | 'FAILED' | 'IN_PROGRESS' | 'IN_QUEUE';
+  output?: { audio_base64: string };
+  error?: string;
+  executionTime?: number;
+}
+
 /**
- * Generate speech from text using Fish Audio API
+ * Generate speech from text using Kokoro TTS on RunPod Serverless
  */
 export async function generateSpeech(options: TtsOptions): Promise<TtsResult> {
   const { text, voiceId, signal } = options;
 
-  const apiKey = process.env.FISH_AUDIO_API_KEY;
-  if (!apiKey) {
-    logger.error('FISH_AUDIO_API_KEY not configured');
+  const apiUrl = process.env.KOKORO_API_URL;
+  const apiKey = process.env.KOKORO_API_KEY;
+  if (!apiUrl || !apiKey) {
+    logger.error('KOKORO_API_URL or KOKORO_API_KEY not configured');
     throw new Error(ErrorCodes.TTS_FAILED);
   }
 
-  // Map "default" to actual Fish Audio voice ID
-  const fishAudioVoiceId = voiceId === 'default' ? getDefaultVoiceId() : voiceId;
-  if (!fishAudioVoiceId) {
-    logger.error('FISH_AUDIO_DEFAULT_VOICE_ID not configured');
+  // Map "default" to Kokoro voice ID
+  const kokoroVoiceId = voiceId === 'default' ? DEFAULT_KOKORO_VOICE : voiceId;
+
+  if (!VALID_KOKORO_VOICES.has(kokoroVoiceId)) {
+    logger.error({ voiceId, kokoroVoiceId }, 'Invalid Kokoro voice ID');
     throw new Error(ErrorCodes.TTS_FAILED);
   }
 
@@ -55,23 +71,24 @@ export async function generateSpeech(options: TtsOptions): Promise<TtsResult> {
     : controller.signal;
 
   try {
-    logger.info({ voiceId, fishAudioVoiceId, textLength: text.length }, 'Starting TTS generation');
+    logger.info({ voiceId, kokoroVoiceId, textLength: text.length }, 'Starting TTS generation');
 
     const requestBody = {
-      text,
-      reference_id: fishAudioVoiceId,
-      format: 'mp3',
-      mp3_bitrate: 64,
+      input: {
+        text,
+        voice_id: kokoroVoiceId,
+        output_format: 'mp3',
+        mp3_bitrate: 64,
+      },
     };
 
-    logger.info({ requestBody: { ...requestBody, text: `${text.substring(0, 100)}...` } }, 'Fish Audio request');
+    logger.info({ textPreview: text.substring(0, 100), voiceId: kokoroVoiceId }, 'Kokoro RunPod request');
 
-    const response = await fetch(FISH_AUDIO_API_URL, {
+    const response = await fetch(`${apiUrl}/runsync`, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
-        'model': 's1',
       },
       body: JSON.stringify(requestBody),
       signal: combinedSignal,
@@ -82,22 +99,38 @@ export async function generateSpeech(options: TtsOptions): Promise<TtsResult> {
     if (!response.ok) {
       const errorText = await response.text().catch(() => 'Unknown error');
       logger.error(
-        { status: response.status, statusText: response.statusText, error: errorText, headers: Object.fromEntries(response.headers) },
-        'Fish Audio API error'
+        { status: response.status, statusText: response.statusText, error: errorText },
+        'Kokoro RunPod API error'
       );
       throw new Error(ErrorCodes.TTS_FAILED);
     }
 
-    logger.info('Fish Audio response received, reading buffer...');
+    const result = (await response.json()) as RunPodResponse;
 
-    const audioBuffer = Buffer.from(await response.arrayBuffer());
+    if (result.status === 'FAILED') {
+      logger.error({ jobId: result.id, error: result.error }, 'Kokoro TTS job failed');
+      throw new Error(ErrorCodes.TTS_FAILED);
+    }
+
+    if (result.status !== 'COMPLETED') {
+      logger.error({ jobId: result.id, status: result.status }, 'Kokoro TTS unexpected job status');
+      throw new Error(ErrorCodes.TTS_FAILED);
+    }
+
+    if (!result.output?.audio_base64) {
+      logger.error({ jobId: result.id }, 'Kokoro TTS response missing audio data');
+      throw new Error(ErrorCodes.TTS_FAILED);
+    }
+
+    const audioBuffer = Buffer.from(result.output.audio_base64, 'base64');
 
     // Estimate duration from file size (MP3 at 64kbps)
-    // 64 kbps = 8 KB/s, so duration = size / 8000
-    const durationSeconds = Math.round(audioBuffer.length / 8000);
+    // 64 kbps = 8 KB/s, so duration ≈ size / 8000
+    // Floor to avoid overcharging — MP3 headers inflate size slightly
+    const durationSeconds = Math.floor(audioBuffer.length / 8000);
 
     logger.info(
-      { durationSeconds, fileSizeBytes: audioBuffer.length },
+      { durationSeconds, fileSizeBytes: audioBuffer.length, executionTime: result.executionTime, jobId: result.id },
       'TTS generation complete'
     );
 

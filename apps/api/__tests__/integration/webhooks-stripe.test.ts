@@ -47,13 +47,12 @@ vi.mock("../../src/lib/supabase.js", () => ({
 
 // Mock credits service
 vi.mock("../../src/services/credits.js", () => ({
-  addCredits: vi.fn().mockResolvedValue({ credits: 5, timeBank: 0 }),
+  addCredits: vi.fn().mockResolvedValue({ credits: 15, timeBank: 0 }),
   CREDIT_PACKS: {
-    candy: { credits: 3, priceUsd: 2.99 },
-    coffee: { credits: 5, priceUsd: 4.99 },
-    kebab: { credits: 10, priceUsd: 8.99 },
-    pizza: { credits: 20, priceUsd: 16.99 },
-    feast: { credits: 50, priceUsd: 39.99 },
+    coffee: { credits: 15, priceUsd: 4.99 },
+    kebab: { credits: 30, priceUsd: 8.99 },
+    pizza: { credits: 60, priceUsd: 16.99 },
+    feast: { credits: 150, priceUsd: 39.99 },
   },
 }));
 
@@ -102,7 +101,7 @@ describe("Stripe Webhook", () => {
           metadata: {
             userId: "user-123",
             packId: "coffee",
-            credits: "5",
+            credits: "15",
           },
           client_reference_id: "user-123",
           payment_intent: "pi_test_123",
@@ -171,7 +170,7 @@ describe("Stripe Webhook", () => {
       expect(res.status).toBe(200);
       expect(addCredits).toHaveBeenCalledWith(
         "user-123",
-        5,
+        15,
         expect.stringContaining("coffee"),
         expect.objectContaining({
           stripeSessionId: "cs_test_session_123",
@@ -212,7 +211,7 @@ describe("Stripe Webhook", () => {
         data: {
           object: {
             ...validCheckoutEvent.data.object,
-            metadata: { packId: "coffee", credits: "5" },
+            metadata: { packId: "coffee", credits: "15" },
             client_reference_id: null,
           } as Stripe.Checkout.Session,
         },
@@ -329,7 +328,7 @@ describe("Stripe Webhook", () => {
       expect(res.status).toBe(200);
       expect(addCredits).toHaveBeenCalledWith(
         "user-123",
-        5, // Coffee pack = 5 credits
+        15, // Coffee pack = 15 credits
         expect.any(String),
         expect.any(Object)
       );

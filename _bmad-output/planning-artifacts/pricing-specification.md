@@ -53,23 +53,21 @@ For each article:
 
 | Pack | Credits | Price | Per Credit |
 |------|---------|-------|------------|
-| 🍬 Candy | 3 | $2.99 | $1.00 |
-| ☕ Coffee | 5 | $4.99 | $1.00 |
-| 🥙 Kebab | 10 | $8.99 | $0.90 |
-| 🍕 Pizza | 20 | $16.99 | $0.85 |
-| 🍱 Feast | 50 | $39.99 | $0.80 |
+| ☕ Coffee | 15 | $4.99 | $0.33 |
+| 🥙 Kebab | 30 | $8.99 | $0.30 |
+| 🍕 Pizza | 60 | $16.99 | $0.28 |
+| 🍱 Feast | 150 | $39.99 | $0.27 |
 
 ### Unit Economics (Web Payments via Stripe)
 
 | Pack | Price | Stripe Fee (2.9% + $0.30) | Net Revenue | Your Cost | Margin |
 |------|-------|---------------------------|-------------|-----------|--------|
-| 🍬 Candy | $2.99 | $0.39 | $2.60 | $1.26 | +$1.34 (52%) |
-| ☕ Coffee | $4.99 | $0.44 | $4.55 | $2.10 | +$2.45 (54%) |
-| 🥙 Kebab | $8.99 | $0.56 | $8.43 | $4.20 | +$4.23 (50%) |
-| 🍕 Pizza | $16.99 | $0.79 | $16.20 | $8.40 | +$7.80 (48%) |
-| 🍱 Feast | $39.99 | $1.46 | $38.53 | $21.00 | +$17.53 (46%) |
+| ☕ Coffee | $4.99 | $0.44 | $4.55 | $0.08 | +$4.47 (98%) |
+| 🥙 Kebab | $8.99 | $0.56 | $8.43 | $0.15 | +$8.28 (98%) |
+| 🍕 Pizza | $16.99 | $0.79 | $16.20 | $0.30 | +$15.90 (98%) |
+| 🍱 Feast | $39.99 | $1.46 | $38.53 | $0.75 | +$37.78 (98%) |
 
-**Cost basis:** Fish Audio TTS = ~$0.42 per 20 minutes (~$0.021/min)
+**Cost basis:** Kokoro TTS (RunPod) = ~$0.005 per 20 minutes (~$0.00025/min)
 **Payment:** Web-based Stripe checkout (bypasses App Store fees)
 
 ---
@@ -218,15 +216,13 @@ Want a different voice? [🎙️ 1 credit]
 │                                                          │
 │   🎫 1 credit = 1 article                               │
 │                                                          │
-│   🍬 Candy       $2.99       3 articles                 │
+│   ☕ Coffee      $4.99      15 articles          ⭐     │
 │                                                          │
-│   ☕ Coffee      $4.99       5 articles          ⭐     │
+│   🥙 Kebab       $8.99      30 articles                 │
 │                                                          │
-│   🥙 Kebab       $8.99      10 articles                 │
+│   🍕 Pizza       $16.99     60 articles                 │
 │                                                          │
-│   🍕 Pizza       $16.99     20 articles                 │
-│                                                          │
-│   🍱 Feast       $39.99     50 articles          💎    │
+│   🍱 Feast       $39.99    150 articles          💎    │
 │                                                          │
 ├─────────────────────────────────────────────────────────┤
 │                                                          │
@@ -250,7 +246,7 @@ tsucast - Articles to Podcast
 Paste any article. Pick a voice. Listen while you walk.
 
 🎫 1 credit = 1 article
-☕ 5 articles for $4.99
+☕ 15 articles for $4.99
 
 No subscription. Credits never expire.
 Try demo articles free before you buy.

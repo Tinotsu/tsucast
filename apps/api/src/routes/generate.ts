@@ -383,8 +383,8 @@ app.post('/', async (c) => {
     logger.info({ url, title, wordCount }, 'Content extracted successfully');
 
     // Check if TTS is configured
-    if (!process.env.FISH_AUDIO_API_KEY) {
-      logger.warn('Fish Audio API key not configured - returning extraction only');
+    if (!process.env.KOKORO_API_URL) {
+      logger.warn('Kokoro TTS not configured - returning extraction only');
       return c.json({
         status: 'extraction_only',
         title,

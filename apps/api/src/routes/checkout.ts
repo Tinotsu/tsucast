@@ -65,14 +65,15 @@ function getStripe(): Stripe | null {
   return stripe;
 }
 
-// Stripe price IDs (configured via environment)
-const STRIPE_PRICE_IDS: Record<CreditPackId, string> = {
-  candy: process.env.STRIPE_PRICE_CANDY || '',
-  coffee: process.env.STRIPE_PRICE_COFFEE || '',
-  kebab: process.env.STRIPE_PRICE_KEBAB || '',
-  pizza: process.env.STRIPE_PRICE_PIZZA || '',
-  feast: process.env.STRIPE_PRICE_FEAST || '',
-};
+// Stripe price IDs — read lazily so env vars can be set after module load
+function getStripePriceIds(): Record<CreditPackId, string> {
+  return {
+    coffee: process.env.STRIPE_PRICE_COFFEE || '',
+    kebab: process.env.STRIPE_PRICE_KEBAB || '',
+    pizza: process.env.STRIPE_PRICE_PIZZA || '',
+    feast: process.env.STRIPE_PRICE_FEAST || '',
+  };
+}
 
 /**
  * Create a Stripe checkout session for credit purchase
@@ -115,7 +116,7 @@ app.post('/credits', async (c) => {
   }
 
   const pack = CREDIT_PACKS[packId as CreditPackId];
-  const priceId = STRIPE_PRICE_IDS[packId as CreditPackId];
+  const priceId = getStripePriceIds()[packId as CreditPackId];
 
   if (!priceId) {
     logger.error({ packId }, 'Stripe price ID not configured for pack');

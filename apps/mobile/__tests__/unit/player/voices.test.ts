@@ -21,7 +21,7 @@ describe('voices', () => {
         expect(['male', 'female', 'neutral']).toContain(voice.gender);
         expect(voice.style).toBeTruthy();
         expect(voice.previewUrl).toBeTruthy();
-        expect(voice.fishAudioId).toBeTruthy();
+        expect(voice.kokoroVoiceId).toBeTruthy();
       });
     });
 
@@ -31,10 +31,10 @@ describe('voices', () => {
       expect(ids.length).toBe(uniqueIds.length);
     });
 
-    it('should have unique Fish Audio IDs', () => {
-      const fishIds = VOICES.map((v) => v.fishAudioId);
-      const uniqueFishIds = [...new Set(fishIds)];
-      expect(fishIds.length).toBe(uniqueFishIds.length);
+    it('should have unique Kokoro voice IDs', () => {
+      const kokoroIds = VOICES.map((v) => v.kokoroVoiceId);
+      const uniqueKokoroIds = [...new Set(kokoroIds)];
+      expect(kokoroIds.length).toBe(uniqueKokoroIds.length);
     });
 
     it('should have valid preview URLs', () => {

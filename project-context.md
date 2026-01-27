@@ -56,7 +56,7 @@ npm run mobile
 | Auth | Supabase Auth | `@supabase/supabase-js ^2.45.0` |
 | Database | Supabase PostgreSQL | via Supabase JS client |
 | Storage | Cloudflare R2 | `@aws-sdk/client-s3 ^3.600.0` |
-| TTS | Fish Audio API | via API server |
+| TTS | Kokoro TTS | via RunPod Serverless |
 | Payments | RevenueCat + Stripe | `react-native-purchases ^9.7.1`, `stripe ^20.2.0` |
 | Validation (API) | Zod | `zod ^3.23.0` |
 | Logging (API) | Pino | `pino ^9.2.0` |
@@ -148,7 +148,7 @@ tsucast/
 ### Credits & Rate Limiting
 Two independent layers control API access:
 
-- **Credit-based** (`services/credits.ts`): Each generation costs 1 credit. Credits checked before generation (`getUserCreditBalance`), deducted after successful audio generation (`deductCredits`). TOCTOU race handled — if credits drained between check and deduction, returns HTTP 402 `INSUFFICIENT_CREDITS`. Users purchase credit packs (candy/coffee/kebab/pizza/feast) via Stripe checkout. Time bank tracks unused duration minutes.
+- **Credit-based** (`services/credits.ts`): Each generation costs 1 credit. Credits checked before generation (`getUserCreditBalance`), deducted after successful audio generation (`deductCredits`). TOCTOU race handled — if credits drained between check and deduction, returns HTTP 402 `INSUFFICIENT_CREDITS`. Users purchase credit packs (coffee/kebab/pizza/feast) via Stripe checkout. Time bank tracks unused duration minutes.
 - **IP-based** (`middleware/ip-rate-limit.ts`): In-memory sliding window — 60 requests per 60 seconds by default. LRU eviction at 10k entries (~1 MB cap). Returns `429` with `X-RateLimit-Limit`, `X-RateLimit-Remaining`, `X-RateLimit-Reset`, and `Retry-After` headers. **Single-process only** — needs Redis for multi-instance deployments.
 
 ### NativeWind (Mobile Styling)
@@ -231,7 +231,8 @@ EXPO_PUBLIC_REVENUECAT_ANDROID=      # RevenueCat Android API key
 ```
 SUPABASE_URL=
 SUPABASE_SERVICE_ROLE_KEY=
-FISH_AUDIO_API_KEY=
+KOKORO_API_URL=
+KOKORO_API_KEY=
 R2_ACCESS_KEY_ID=
 R2_SECRET_ACCESS_KEY=
 REVENUECAT_WEBHOOK_AUTH_KEY=         # RevenueCat webhook authentication key
@@ -406,27 +407,27 @@ Operational context for each service/concern. Use this when modifying or debuggi
 - Respect the state machine — never skip states
 - Stale detection threshold is 5 minutes for `processing` rows
 
-### 4. Fish Audio (TTS)
-**What it does** — Converts extracted article text to spoken audio via Fish Audio's API.
+### 4. Kokoro TTS (Self-Hosted)
+**What it does** — Converts extracted article text to spoken audio via Kokoro TTS running on RunPod Serverless.
 
 **Key files:** `apps/api/src/services/tts.ts`
 
-**Env vars:** `FISH_AUDIO_API_KEY` (API)
+**Env vars:** `KOKORO_API_URL`, `KOKORO_API_KEY` (API)
 
-**How it works** — Sends HTTP POST to `api.fish.audio/v1/tts` with the text content and voice ID. Returns MP3 audio at 128kbps. The request has a 120-second timeout via `AbortSignal`. Duration is estimated from word count (not measured from the audio stream), so `duration_seconds` in the cache is approximate.
+**How it works** — Sends HTTP POST to the RunPod Serverless `/runsync` endpoint with the text content and voice ID. Returns base64-encoded MP3 audio at 64kbps. The request has a 120-second timeout via `AbortSignal`. Duration is estimated from word count (not measured from the audio stream), so `duration_seconds` in the cache is approximate.
 
 **Checklist:**
 - Always use `AbortSignal` with timeout for TTS requests
 - Duration values are estimates — do not rely on exact accuracy
 - Handle API errors gracefully (rate limits, timeouts, service outages)
-- Voice IDs must match valid Fish Audio voice identifiers
+- Ensure `KOKORO_API_URL` and `KOKORO_API_KEY` are configured correctly
 
 ### 5. Stripe (Web Payments)
 **What it does** — Processes one-time credit pack purchases on the web via Stripe Checkout.
 
 **Key files:** `apps/api/src/routes/checkout.ts`, `apps/api/src/services/credits.ts`, `apps/api/src/routes/webhooks.ts`
 
-**How it works** — Five credit packs are available (candy/coffee/kebab/pizza/feast) at different price points. The checkout route creates a Stripe Checkout session; on successful payment, a Stripe webhook (`checkout.session.completed`) triggers credit addition via the `credits` service. Webhook payloads are verified using HMAC signature validation, which requires the raw request body (not parsed JSON).
+**How it works** — Four credit packs are available (coffee/kebab/pizza/feast) at different price points. The checkout route creates a Stripe Checkout session; on successful payment, a Stripe webhook (`checkout.session.completed`) triggers credit addition via the `credits` service. Webhook payloads are verified using HMAC signature validation, which requires the raw request body (not parsed JSON).
 
 **Checklist:**
 - Always verify webhook signatures using `stripe.webhooks.constructEvent()` with raw body
