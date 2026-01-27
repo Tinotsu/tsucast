@@ -6,11 +6,13 @@ import * as SplashScreen from 'expo-splash-screen';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { PostHogProvider } from 'posthog-react-native';
 import Toast from 'react-native-toast-message';
-import { View, ActivityIndicator } from 'react-native';
+import { View, ActivityIndicator, AppState, Platform } from 'react-native';
 import { useAuth } from '@/hooks/useAuth';
 import { queryClient } from '@/services/queryClient';
 import { setupPlayer } from '@/services/trackPlayer';
+import { posthogClient, identifyUser, resetUser, flushPostHog } from '@/services/posthog';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { toastConfig } from '@/components/ui/Toast';
 import { MiniPlayer } from '@/components/player/MiniPlayer';
@@ -50,8 +52,44 @@ function AuthNavigationHandler({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+// Side-effect-only component: identifies/resets PostHog user based on auth state.
+// Rendered once at top level to avoid redundant identify calls from multiple useAuth listeners.
+// Note: subscription_tier is not available on the auth user object and would require
+// an extra network call. Server-side PostHog events already include tier context.
+function PostHogIdentify() {
+  const { user } = useAuth();
+
+  useEffect(() => {
+    if (user?.id) {
+      identifyUser(user.id, {
+        email: user.email,
+        createdAt: user.created_at,
+        platform: Platform.OS,
+      });
+    } else {
+      resetUser();
+    }
+  }, [user?.id]);
+
+  return null;
+}
+
+// Flush PostHog events when the app goes to background to prevent data loss.
+function usePostHogFlushOnBackground() {
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (nextState) => {
+      if (nextState === 'background' || nextState === 'inactive') {
+        flushPostHog();
+      }
+    });
+    return () => subscription.remove();
+  }, []);
+}
+
 export default function RootLayout() {
   const [appIsReady, setAppIsReady] = useState(false);
+
+  usePostHogFlushOnBackground();
 
   useEffect(() => {
     async function prepare() {
@@ -77,11 +115,12 @@ export default function RootLayout() {
     return null;
   }
 
-  return (
+  const content = (
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
         <GestureHandlerRootView style={{ flex: 1 }}>
           <SafeAreaProvider>
+            <PostHogIdentify />
             <AuthNavigationHandler>
               <View className="flex-1 bg-black">
                 <Stack screenOptions={{ headerShown: false }}>
@@ -115,5 +154,12 @@ export default function RootLayout() {
         </GestureHandlerRootView>
       </QueryClientProvider>
     </ErrorBoundary>
+  );
+
+  // Wrap with PostHogProvider if client is available, otherwise render directly
+  return posthogClient ? (
+    <PostHogProvider client={posthogClient}>{content}</PostHogProvider>
+  ) : (
+    content
   );
 }

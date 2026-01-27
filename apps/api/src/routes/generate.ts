@@ -27,6 +27,7 @@ import {
 } from '../services/cache.js';
 import { ErrorCodes, createApiError, LIMITS } from '../utils/errors.js';
 import { getSupabase } from '../lib/supabase.js';
+import { getPostHog } from '../lib/posthog.js';
 import { getUserFromToken } from '../middleware/auth.js';
 import {
   previewCreditCost,
@@ -417,6 +418,14 @@ app.post('/', async (c) => {
       const errorMsg = error instanceof Error ? error.message : 'TTS failed';
       await updateCacheFailed(urlHash, errorMsg);
 
+      if (userId) {
+        getPostHog()?.capture({
+          distinctId: userId,
+          event: 'article_generation_failed',
+          properties: { url_hash: urlHash, error_code: errorMsg },
+        });
+      }
+
       if (errorMsg === ErrorCodes.TIMEOUT) {
         return c.json({ error: createApiError(ErrorCodes.TIMEOUT) }, 408);
       }
@@ -501,6 +510,29 @@ app.post('/', async (c) => {
       { url, title, audioUrl: uploadResult.url, duration: ttsResult.durationSeconds },
       'Generation complete'
     );
+
+    // Analytics: track successful generation
+    if (userId) {
+      getPostHog()?.capture({
+        distinctId: userId,
+        event: 'article_generated',
+        properties: {
+          url_hash: urlHash,
+          duration_seconds: ttsResult.durationSeconds,
+          word_count: wordCount,
+          voice_id: voiceId,
+          cached: false,
+        },
+      });
+
+      // Track credits_depleted if balance dropped to zero
+      if (creditBalance && creditBalance.credits === 0) {
+        getPostHog()?.capture({
+          distinctId: userId,
+          event: 'credits_depleted',
+        });
+      }
+    }
 
     return c.json({
       status: 'ready',

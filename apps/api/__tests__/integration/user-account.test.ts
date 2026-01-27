@@ -220,6 +220,13 @@ describe('User Account API Endpoints', () => {
         }),
       });
 
+      // Mock deleting email state
+      mockFrom.mockReturnValueOnce({
+        delete: vi.fn().mockReturnValue({
+          eq: vi.fn().mockResolvedValue({ error: null }),
+        }),
+      });
+
       // Mock deleting user profile
       mockFrom.mockReturnValueOnce({
         delete: vi.fn().mockReturnValue({
@@ -268,6 +275,13 @@ describe('User Account API Endpoints', () => {
         }),
       });
 
+      // Mock deleting email state
+      mockFrom.mockReturnValueOnce({
+        delete: vi.fn().mockReturnValue({
+          eq: vi.fn().mockResolvedValue({ error: null }),
+        }),
+      });
+
       // Mock deleting user profile
       mockFrom.mockReturnValueOnce({
         delete: vi.fn().mockReturnValue({
@@ -299,6 +313,13 @@ describe('User Account API Endpoints', () => {
         }),
       });
 
+      mockFrom.mockReturnValueOnce({
+        delete: vi.fn().mockReturnValue({
+          eq: vi.fn().mockResolvedValue({ error: null }),
+        }),
+      });
+
+      // Mock deleting email state
       mockFrom.mockReturnValueOnce({
         delete: vi.fn().mockReturnValue({
           eq: vi.fn().mockResolvedValue({ error: null }),

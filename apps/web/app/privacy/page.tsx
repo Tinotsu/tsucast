@@ -100,6 +100,14 @@ export default function PrivacyPage() {
                 <h4 className="font-bold text-[#1a1a1a]">App Store / Google Play</h4>
                 <p className="mt-1 text-sm leading-relaxed text-[#1a1a1a]">Payment processing for credit purchases (mobile)</p>
               </div>
+              <div className="rounded-lg border border-[#e5e5e5] p-4">
+                <h4 className="font-bold text-[#1a1a1a]">PostHog</h4>
+                <p className="mt-1 text-sm leading-relaxed text-[#1a1a1a]">Product analytics to understand how users interact with tsucast. We track events such as article generation, playback, and feature usage. Analytics data is stored on PostHog&apos;s servers. On the web, tracking only occurs after you consent via the cookie banner. You can opt out at any time by clearing your consent preference.</p>
+              </div>
+              <div className="rounded-lg border border-[#e5e5e5] p-4">
+                <h4 className="font-bold text-[#1a1a1a]">Resend</h4>
+                <p className="mt-1 text-sm leading-relaxed text-[#1a1a1a]">Email delivery service for transactional and onboarding emails. We send emails to the address associated with your account. You can unsubscribe from non-transactional emails at any time via the unsubscribe link in each email.</p>
+              </div>
             </div>
 
             <p className="mt-4 leading-relaxed text-[#1a1a1a]">
@@ -145,15 +153,16 @@ export default function PrivacyPage() {
           <section className="mb-12">
             <h2 className="mb-4 text-xl font-bold text-[#1a1a1a]">8. Cookie Policy</h2>
             <p className="leading-relaxed text-[#1a1a1a]">
-              We use essential cookies to operate the Service:
+              We use the following types of cookies and local storage:
             </p>
             <ul className="mt-3 list-disc space-y-2 pl-6 leading-relaxed text-[#1a1a1a]">
-              <li><strong>Authentication cookies:</strong> Keep you signed in securely</li>
-              <li><strong>Session cookies:</strong> Maintain your session state</li>
+              <li><strong>Authentication cookies:</strong> Keep you signed in securely (essential)</li>
+              <li><strong>Session cookies:</strong> Maintain your session state (essential)</li>
+              <li><strong>Analytics (PostHog):</strong> Product analytics to understand feature usage and improve the Service. Analytics data is stored in localStorage and only collected after you provide consent via the cookie banner. You can opt out at any time by clearing your browser&apos;s local storage or declining the consent banner.</li>
             </ul>
             <p className="mt-3 leading-relaxed text-[#1a1a1a]">
-              We do not use advertising or tracking cookies. You can manage cookies through your browser
-              settings, but disabling essential cookies may affect Service functionality.
+              We do not use advertising cookies. You can manage cookies and local storage through your
+              browser settings, but disabling essential cookies may affect Service functionality.
             </p>
           </section>
 

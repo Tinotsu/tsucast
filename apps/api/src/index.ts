@@ -1,6 +1,12 @@
 import { initSentry, captureException, flush as sentryFlush } from './lib/sentry.js';
 initSentry();
 
+import { initPostHog, shutdownPostHog } from './lib/posthog.js';
+initPostHog();
+
+import { initEmail } from './lib/email.js';
+initEmail();
+
 import { serve } from '@hono/node-server';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
@@ -20,6 +26,8 @@ import userRoutes from './routes/user.js';
 import webhookRoutes from './routes/webhooks.js';
 import playlistRoutes from './routes/playlists.js';
 import checkoutRoutes from './routes/checkout.js';
+import emailRoutes from './routes/email.js';
+import { processEmailQueue } from './services/email-sequences.js';
 
 type AppEnv = {
   Variables: {
@@ -66,6 +74,7 @@ app.route('/api/user', userRoutes);
 app.route('/api/webhooks', webhookRoutes);
 app.route('/api/playlists', playlistRoutes);
 app.route('/api/checkout', checkoutRoutes);
+app.route('/api/email', emailRoutes);
 
 // Root route
 app.get('/', (c) => {
@@ -98,16 +107,31 @@ const server = serve({
   port,
 });
 
+// Email queue cron interval
+let emailQueueRunning = false;
+const emailQueueEnabled = process.env.EMAIL_QUEUE_ENABLED !== 'false';
+const emailInterval: ReturnType<typeof setInterval> | null = emailQueueEnabled ? setInterval(async () => {
+  if (emailQueueRunning) return;
+  emailQueueRunning = true;
+  try { await processEmailQueue(); }
+  catch (e) { logger.error(e, 'Email queue processing failed'); }
+  finally { emailQueueRunning = false; }
+}, 60 * 60 * 1000) : null;
+if (!emailQueueEnabled) logger.info('Email queue disabled via EMAIL_QUEUE_ENABLED=false');
+
 // Graceful shutdown
 async function shutdown(signal: string) {
   logger.info({ signal }, `Received ${signal}, shutting down gracefully...`);
 
   clearRateLimitInterval();
+  if (emailInterval) clearInterval(emailInterval);
 
   server.close(() => {
     logger.info('Server closed');
   });
 
+  // Flush PostHog before Sentry (PostHog buffers events)
+  await shutdownPostHog().catch(() => {});
   // Flush any buffered Sentry events before exit
   await sentryFlush(2000).catch(() => {});
 
@@ -127,8 +151,8 @@ process.on('uncaughtException', (err) => {
   logger.fatal({ err }, 'Uncaught exception');
   captureException(err);
   // Flush with a hard timeout — async ops are unreliable after uncaught exceptions
-  sentryFlush(2000)
-    .catch(() => {})
+  shutdownPostHog().catch(() => {})
+    .then(() => sentryFlush(2000).catch(() => {}))
     .finally(() => process.exit(1));
   // Hard fallback if flush promise never settles
   setTimeout(() => process.exit(1), 3000).unref();
@@ -137,8 +161,8 @@ process.on('uncaughtException', (err) => {
 process.on('unhandledRejection', (reason) => {
   logger.fatal({ err: reason }, 'Unhandled rejection');
   captureException(reason);
-  sentryFlush(2000)
-    .catch(() => {})
+  shutdownPostHog().catch(() => {})
+    .then(() => sentryFlush(2000).catch(() => {}))
     .finally(() => process.exit(1));
   setTimeout(() => process.exit(1), 3000).unref();
 });

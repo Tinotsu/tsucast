@@ -15,6 +15,7 @@ import TrackPlayer, {
 import { usePlayerStore, Track } from '@/stores/playerStore';
 import type { LibraryItem } from '@/services/api';
 import type { PlaylistItem } from '@/hooks/usePlaylists';
+import { trackEvent } from '@/services/posthog';
 
 export function useAudioPlayer() {
   const playbackState = usePlaybackState();
@@ -139,6 +140,7 @@ export function useAudioPlayer() {
 
         // Start playing
         await TrackPlayer.play();
+        trackEvent('article_played', { audio_id: track.id, source: 'fresh' });
       } catch (error) {
         if (__DEV__) {
           console.error('Failed to load track:', error);
@@ -196,6 +198,7 @@ export function useAudioPlayer() {
 
         // Start playing
         await TrackPlayer.play();
+        trackEvent('article_played', { audio_id: libraryItem.audio.id, source: 'library' });
       } catch (error) {
         if (__DEV__) {
           console.error('Failed to load from library:', error);

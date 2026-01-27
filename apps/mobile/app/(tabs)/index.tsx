@@ -23,6 +23,7 @@ import { CreditPreview } from '../../components/add/CreditPreview';
 import { CreditPurchaseModal } from '../../components/ui/CreditPurchaseModal';
 import { isValidUrl, getUrlValidationError } from '../../utils/validation';
 import { normalizeAndHashUrl } from '../../utils/urlNormalization';
+import { trackEvent } from '@/services/posthog';
 import { checkCache, CacheResult, previewGeneration, GenerationPreview } from '../../services/api';
 import { useVoicePreference } from '../../hooks/useVoicePreference';
 import { useSubscription } from '../../hooks/useSubscription';
@@ -218,6 +219,7 @@ export default function AddScreen() {
       if (__DEV__) {
         console.log('Starting generation for:', state.normalizedUrl, 'with voice:', selectedVoiceId);
       }
+      trackEvent('article_submitted', { voice_id: selectedVoiceId });
       // TODO: Navigate to generation flow with normalizedUrl, urlHash, and selectedVoiceId
     }
   };

@@ -25,7 +25,10 @@
     "pdf-parse": "^1.1.1",
     "pino": "^9.2.0",
     "pino-pretty": "^11.2.0",
+    "posthog-node": "^5.21.2",
+    "resend": "^6.9.1",
     "stripe": "^20.2.0",
+    "svix": "^1.84.1",
     "zod": "^3.23.0"
   },
   "devDependencies": {

@@ -9,6 +9,7 @@
 import TrackPlayer, { Event } from 'react-native-track-player';
 import { usePlayerStore } from '@/stores/playerStore';
 import { updatePlaybackPosition } from '@/services/api';
+import { trackEvent } from '@/services/posthog';
 
 /**
  * Remote playback event handlers
@@ -50,7 +51,17 @@ export async function PlaybackService() {
 
   // Handle playback ending - mark as played
   TrackPlayer.addEventListener(Event.PlaybackQueueEnded, async () => {
-    const { currentLibraryId } = usePlayerStore.getState();
+    const { currentLibraryId, currentTrack } = usePlayerStore.getState();
+
+    try {
+      const duration = await TrackPlayer.getDuration();
+      trackEvent('article_completed', {
+        audio_id: currentTrack?.id ?? null,
+        duration_seconds: Math.floor(duration),
+      });
+    } catch (_) {
+      // Non-critical — analytics event only
+    }
 
     if (currentLibraryId) {
       try {

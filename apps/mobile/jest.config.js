@@ -24,6 +24,8 @@ module.exports = {
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/$1',
     '^expo-crypto$': '<rootDir>/__mocks__/expo-crypto.ts',
+    '^posthog-react-native$': '<rootDir>/__mocks__/posthog-react-native.ts',
+    '^expo/virtual/env$': '<rootDir>/__mocks__/expo-virtual-env.ts',
   },
 
   // Coverage configuration

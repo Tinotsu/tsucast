@@ -13,6 +13,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Link } from 'expo-router';
 import { useAuth, getAuthErrorMessage } from '@/hooks/useAuth';
+import { trackEvent } from '@/services/posthog';
 import { AppleSignInButton } from '@/components/auth/AppleSignInButton';
 import { GoogleSignInButton } from '@/components/auth/GoogleSignInButton';
 
@@ -54,8 +55,9 @@ export default function SignupScreen() {
 
       if (signUpError) {
         setError(getAuthErrorMessage(signUpError));
+      } else {
+        trackEvent('user_signed_up', { method: 'email' });
       }
-      // Success - navigation handled by auth state change in root layout
     } catch (err) {
       setError('An unexpected error occurred. Please try again.');
     } finally {

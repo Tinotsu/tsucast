@@ -12,6 +12,7 @@ import { getUserFromToken } from '../middleware/auth.js';
 import { getRateLimitStatus } from '../services/rate-limit.js';
 import { getSubscriptionDetails, isRevenueCatConfigured, deleteSubscriber } from '../services/revenuecat.js';
 import { getUserCreditBalance } from '../services/credits.js';
+import { enrollUser } from '../services/email-sequences.js';
 
 const app = new Hono();
 
@@ -137,6 +138,11 @@ app.get('/profile', async (c) => {
     return c.json({ error: { code: 'FETCH_FAILED', message: 'Failed to get profile' } }, 500);
   }
 
+  // Auto-enroll in onboarding sequence (idempotent — no-ops if already enrolled)
+  enrollUser(userId, 'onboarding').catch((err) => {
+    logger.error({ error: err, userId }, 'Failed to auto-enroll user in onboarding sequence');
+  });
+
   return c.json({ profile });
 });
 
@@ -194,6 +200,12 @@ app.delete('/account', async (c) => {
     // Delete library items
     await client
       .from('user_library')
+      .delete()
+      .eq('user_id', userId);
+
+    // Delete email state
+    await client
+      .from('user_email_state')
       .delete()
       .eq('user_id', userId);
 

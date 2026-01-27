@@ -10,7 +10,9 @@ import { timingSafeEqual } from 'crypto';
 import Stripe from 'stripe';
 import { logger } from '../lib/logger.js';
 import { getSupabase } from '../lib/supabase.js';
+import { getPostHog } from '../lib/posthog.js';
 import { addCredits, CREDIT_PACKS, type CreditPackId } from '../services/credits.js';
+import { sendTransactionalEmail } from '../services/email-sequences.js';
 
 /**
  * Timing-safe string comparison to prevent timing attacks.
@@ -269,6 +271,32 @@ webhooks.post('/stripe', async (c) => {
         { userId, credits, newBalance: balance?.credits, sessionId: session.id },
         'Credits added successfully'
       );
+
+      // Analytics: track purchase event
+      getPostHog()?.capture({
+        distinctId: userId,
+        event: 'credit_pack_purchased',
+        properties: {
+          pack_id: packId,
+          credits,
+          amount_cents: session.amount_total,
+        },
+      });
+
+      // Send purchase confirmation email (failure must not affect webhook response)
+      try {
+        const packName = packId || 'credits';
+        const amount = session.amount_total
+          ? (session.amount_total / 100).toFixed(2)
+          : '0.00';
+        await sendTransactionalEmail(userId, 'purchase-confirmation', {
+          credits: String(credits),
+          packName,
+          amount,
+        });
+      } catch (emailError) {
+        logger.error({ error: emailError, userId, sessionId: session.id }, 'Failed to send purchase confirmation email');
+      }
     } catch (error) {
       logger.error({ error, userId, credits, sessionId: session.id }, 'Failed to add credits');
       // Return 500 to have Stripe retry - idempotency check above prevents duplicates
@@ -331,9 +359,7 @@ webhooks.post('/stripe', async (c) => {
 
     if (creditsToRemove > 0) {
       try {
-        // TODO: Create `deduct_credits_for_refund` RPC in Supabase to make this atomic.
-        // The fallback path below has a race condition (read-then-update) if two
-        // refund webhooks fire concurrently for the same user.
+        // Atomic credit deduction via RPC (see migration 009_credits_rpc_and_indexes.sql)
         const { error: refundError } = await supabase.rpc('deduct_credits_for_refund', {
           p_user_id: originalTx.user_id,
           p_credits: creditsToRemove,
@@ -347,45 +373,25 @@ webhooks.post('/stripe', async (c) => {
         });
 
         if (refundError) {
-          // If RPC function doesn't exist yet, fall back to manual update
-          logger.warn({ error: refundError }, 'deduct_credits_for_refund RPC failed, using manual update');
-
-          // Get current balance first
-          const { data: currentProfile } = await supabase
-            .from('user_profiles')
-            .select('credits_balance')
-            .eq('id', originalTx.user_id)
-            .single();
-
-          const currentBalance = currentProfile?.credits_balance ?? 0;
-          const newBalance = Math.max(0, currentBalance - creditsToRemove);
-
-          await supabase
-            .from('user_profiles')
-            .update({ credits_balance: newBalance })
-            .eq('id', originalTx.user_id);
-
-          // Record the refund transaction
-          await supabase
-            .from('credit_transactions')
-            .insert({
-              user_id: originalTx.user_id,
-              type: 'refund',
-              credits: -creditsToRemove,
-              description: `Refund for charge ${charge.id}`,
-              metadata: {
-                stripeChargeId: charge.id,
-                stripePaymentIntent: paymentIntentId,
-                originalCredits,
-                refundedAmount,
-              },
-            });
+          logger.error({ error: refundError, chargeId: charge.id }, 'deduct_credits_for_refund RPC failed');
+          throw refundError;
         }
 
         logger.info(
           { userId: originalTx.user_id, creditsRemoved: creditsToRemove, chargeId: charge.id },
           'Credits removed for refund'
         );
+
+        // Analytics: track refund event
+        getPostHog()?.capture({
+          distinctId: originalTx.user_id,
+          event: 'credit_pack_refunded',
+          properties: {
+            pack_id: (originalTx.metadata as Record<string, unknown>)?.packId,
+            credits: creditsToRemove,
+            amount_cents: refundedAmount,
+          },
+        });
       } catch (error) {
         logger.error({ error, chargeId: charge.id }, 'Failed to process refund credit removal');
       }
