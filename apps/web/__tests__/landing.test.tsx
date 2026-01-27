@@ -58,9 +58,11 @@ describe("Landing Page Components", () => {
       render(<Pricing />);
 
       expect(screen.getByText("Coffee")).toBeInTheDocument();
+      expect(screen.getByText("Kebab")).toBeInTheDocument();
       expect(screen.getByText("Pizza")).toBeInTheDocument();
       expect(screen.getByText("Feast")).toBeInTheDocument();
       expect(screen.getByText("$4.99")).toBeInTheDocument();
+      expect(screen.getByText("$8.99")).toBeInTheDocument();
       expect(screen.getByText("$16.99")).toBeInTheDocument();
       expect(screen.getByText("$39.99")).toBeInTheDocument();
     });
@@ -69,6 +71,7 @@ describe("Landing Page Components", () => {
       render(<Pricing />);
 
       expect(screen.getByText(/5 credits \(\$1\.00\/article\)/)).toBeInTheDocument();
+      expect(screen.getByText(/10 credits \(\$0\.90\/article\)/)).toBeInTheDocument();
       expect(screen.getByText(/20 credits \(\$0\.85\/article\)/)).toBeInTheDocument();
       expect(screen.getByText(/50 credits \(\$0\.80\/article\)/)).toBeInTheDocument();
       expect(screen.getByText("Credits never expire")).toBeInTheDocument();

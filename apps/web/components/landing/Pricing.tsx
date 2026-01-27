@@ -12,6 +12,15 @@ const packs = [
     highlighted: true,
   },
   {
+    emoji: "\ud83e\udd59",
+    name: "Kebab",
+    credits: 10,
+    price: "$8.99",
+    pricePerArticle: "$0.90",
+    description: "Great value",
+    highlighted: false,
+  },
+  {
     emoji: "\ud83c\udf55",
     name: "Pizza",
     credits: 20,
@@ -57,7 +66,7 @@ export function Pricing() {
         </div>
 
         {/* Credit Packs */}
-        <div className="mx-auto mt-16 grid max-w-5xl gap-8 lg:grid-cols-3">
+        <div className="mx-auto mt-16 grid max-w-5xl gap-8 sm:grid-cols-2 lg:grid-cols-4">
           {packs.map((pack) => (
             <div
               key={pack.name}
