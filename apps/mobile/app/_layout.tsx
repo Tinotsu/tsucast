@@ -30,9 +30,11 @@ function AuthNavigationHandler({ children }: { children: React.ReactNode }) {
     if (!isInitialized) return;
 
     const inAuthGroup = segments[0] === '(auth)';
+    const inTabsGroup = segments[0] === '(tabs)';
+    const isPlayerRoute = segments[0] === 'player';
 
-    if (!isAuthenticated && !inAuthGroup) {
-      // Not authenticated and not on auth screen -> redirect to login
+    if (!isAuthenticated && !inAuthGroup && !inTabsGroup && !isPlayerRoute) {
+      // Not authenticated and not on an allowed route -> redirect to login
       router.replace('/(auth)/login');
     } else if (isAuthenticated && inAuthGroup) {
       // Authenticated but on auth screen -> redirect to main app

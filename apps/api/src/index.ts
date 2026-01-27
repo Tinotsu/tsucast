@@ -27,6 +27,7 @@ import webhookRoutes from './routes/webhooks.js';
 import playlistRoutes from './routes/playlists.js';
 import checkoutRoutes from './routes/checkout.js';
 import emailRoutes from './routes/email.js';
+import freeContentRoutes from './routes/free-content.js';
 import { processEmailQueue } from './services/email-sequences.js';
 
 type AppEnv = {
@@ -75,6 +76,7 @@ app.route('/api/webhooks', webhookRoutes);
 app.route('/api/playlists', playlistRoutes);
 app.route('/api/checkout', checkoutRoutes);
 app.route('/api/email', emailRoutes);
+app.route('/api/free-content', freeContentRoutes);
 
 // Root route
 app.get('/', (c) => {

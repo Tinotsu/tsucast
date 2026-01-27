@@ -130,6 +130,48 @@ export async function updateReportStatus(
   });
 }
 
+// Free Content
+export interface FreeContentItem {
+  id: string;
+  title: string;
+  voice_id: string;
+  source_url: string | null;
+  audio_url: string | null;
+  duration_seconds: number | null;
+  word_count: number | null;
+  file_size_bytes: number | null;
+  status: "pending" | "processing" | "ready" | "failed";
+  error_message: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export async function getAdminFreeContent(): Promise<{
+  items: FreeContentItem[];
+}> {
+  return fetchAdminApi("/api/free-content/admin");
+}
+
+export async function createAdminFreeContent(data: {
+  title: string;
+  text?: string;
+  url?: string;
+  voiceId?: string;
+}): Promise<{ item: FreeContentItem }> {
+  return fetchAdminApi("/api/free-content/admin", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteAdminFreeContent(
+  id: string
+): Promise<{ success: boolean }> {
+  return fetchAdminApi(`/api/free-content/admin/${id}`, {
+    method: "DELETE",
+  });
+}
+
 export type {
   AdminUser,
   AdminMetrics,

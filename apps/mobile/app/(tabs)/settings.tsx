@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -78,6 +78,20 @@ function SettingsItem({
 }
 
 export default function SettingsScreen() {
+  const { isAuthenticated, isInitialized } = useAuth();
+
+  useEffect(() => {
+    if (isInitialized && !isAuthenticated) {
+      router.replace('/(auth)/login');
+    }
+  }, [isAuthenticated, isInitialized]);
+
+  if (!isAuthenticated) return null;
+
+  return <SettingsScreenContent />;
+}
+
+function SettingsScreenContent() {
   const { user, profile, signOut, isPro, isLoading } = useAuth();
   const { credits, timeBank, isLoading: creditsLoading } = useCredits();
   const [isSigningOut, setIsSigningOut] = useState(false);

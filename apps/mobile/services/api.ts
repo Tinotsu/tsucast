@@ -491,6 +491,37 @@ export async function reorderPlaylistItems(playlistId: string, itemIds: string[]
 }
 
 // ============================================================
+// Free Content API Functions
+// ============================================================
+
+/**
+ * Free content item from the API
+ */
+export interface FreeContentItem {
+  id: string;
+  title: string;
+  voice_id: string;
+  source_url: string | null;
+  audio_url: string | null;
+  duration_seconds: number | null;
+  word_count: number | null;
+  file_size_bytes: number | null;
+  status: 'pending' | 'processing' | 'ready' | 'failed';
+  error_message: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+/**
+ * Get public free content (no auth required)
+ */
+export async function getFreeContent(): Promise<{ items: FreeContentItem[] }> {
+  const response = await fetch(`${API_URL}/api/free-content`);
+  if (!response.ok) throw new Error('Failed to fetch free content');
+  return response.json();
+}
+
+// ============================================================
 // Credit System API Functions
 // Story: 10-2 Mobile Article Credit Pricing
 // ============================================================

@@ -17,6 +17,7 @@ const navigation = [
   { name: "Users", href: "/admin/users", icon: Users },
   { name: "Reports", href: "/admin/reports", icon: FileWarning },
   { name: "Moderation", href: "/admin/moderation", icon: Shield },
+  { name: "Free Content", href: "/admin/free-content", icon: Headphones },
 ];
 
 export function AdminSidebar() {

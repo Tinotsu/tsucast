@@ -52,9 +52,10 @@ export async function uploadAudio(
   options: {
     urlHash?: string;
     contentType?: string;
+    keyPrefix?: string;
   } = {}
 ): Promise<UploadResult> {
-  const { urlHash, contentType = 'audio/mpeg' } = options;
+  const { urlHash, contentType = 'audio/mpeg', keyPrefix = 'audio' } = options;
 
   const bucket = process.env.R2_BUCKET;
   const publicUrl = process.env.R2_PUBLIC_URL;
@@ -65,7 +66,7 @@ export async function uploadAudio(
 
   // Generate unique key using URL hash or random UUID
   const fileId = urlHash || randomUUID();
-  const key = `audio/${fileId}.mp3`;
+  const key = `${keyPrefix}/${fileId}.mp3`;
 
   try {
     const client = getR2Client();

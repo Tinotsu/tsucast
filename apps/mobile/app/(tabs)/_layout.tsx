@@ -1,7 +1,10 @@
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useAuth } from '@/hooks/useAuth';
 
 export default function TabLayout() {
+  const { isAuthenticated } = useAuth();
+
   return (
     <Tabs
       screenOptions={{
@@ -21,6 +24,7 @@ export default function TabLayout() {
         name="index"
         options={{
           title: 'Add',
+          href: isAuthenticated ? undefined : null,
           tabBarIcon: ({ color, size }: { color: string; size: number }) => (
             <Ionicons name="add-circle" size={size} color={color} />
           ),
@@ -39,6 +43,7 @@ export default function TabLayout() {
         name="settings"
         options={{
           title: 'Settings',
+          href: isAuthenticated ? undefined : null,
           tabBarIcon: ({ color, size }: { color: string; size: number }) => (
             <Ionicons name="settings" size={size} color={color} />
           ),

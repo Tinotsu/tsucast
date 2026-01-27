@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
+import { useAuth } from '@/hooks/useAuth';
 import { PasteInput } from '../../components/add/PasteInput';
 import { VoiceSelector } from '../../components/add/VoiceSelector';
 import { GenerateButton } from '../../components/add/GenerateButton';
@@ -50,6 +51,20 @@ type AddScreenState =
 const VALIDATION_DEBOUNCE_MS = 300;
 
 export default function AddScreen() {
+  const { isAuthenticated, isInitialized } = useAuth();
+
+  useEffect(() => {
+    if (isInitialized && !isAuthenticated) {
+      router.replace('/(auth)/login');
+    }
+  }, [isAuthenticated, isInitialized]);
+
+  if (!isAuthenticated) return null;
+
+  return <AddScreenContent />;
+}
+
+function AddScreenContent() {
   const [url, setUrl] = useState('');
   const [state, setState] = useState<AddScreenState>({ status: 'idle' });
   const [showPurchaseModal, setShowPurchaseModal] = useState(false);

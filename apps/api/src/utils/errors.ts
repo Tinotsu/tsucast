@@ -28,7 +28,11 @@ export const ErrorCodes = {
   // Credit errors
   INSUFFICIENT_CREDITS: 'INSUFFICIENT_CREDITS',
 
+  // Free content errors
+  DUPLICATE_CONTENT: 'DUPLICATE_CONTENT',
+
   // Generic errors
+  VALIDATION_ERROR: 'VALIDATION_ERROR',
   INVALID_URL: 'INVALID_URL',
   TIMEOUT: 'TIMEOUT',
   INTERNAL_ERROR: 'INTERNAL_ERROR',
@@ -48,6 +52,9 @@ export const ErrorMessages: Record<string, string> = {
   [ErrorCodes.TTS_FAILED]: 'Audio generation failed. Please try again.',
   [ErrorCodes.INSUFFICIENT_CREDITS]:
     'Insufficient credits. Purchase credits to generate audio.',
+  [ErrorCodes.DUPLICATE_CONTENT]:
+    'Content with this URL and voice already exists.',
+  [ErrorCodes.VALIDATION_ERROR]: 'Invalid request data.',
   [ErrorCodes.INVALID_URL]: 'Please enter a valid URL',
   [ErrorCodes.TIMEOUT]: 'Request timed out. Please try again.',
   [ErrorCodes.INTERNAL_ERROR]: 'Something went wrong. Please try again.',
