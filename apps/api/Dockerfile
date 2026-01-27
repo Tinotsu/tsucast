@@ -24,8 +24,9 @@ FROM node:22-alpine AS runner
 
 WORKDIR /app
 
-# Create non-root user for security
-RUN addgroup --system --gid 1001 nodejs && \
+# Install curl for health checks and create non-root user
+RUN apk add --no-cache curl && \
+    addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 hono
 
 # Copy workspace structure for production install
