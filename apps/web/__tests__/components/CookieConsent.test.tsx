@@ -24,8 +24,8 @@ vi.mock("@/lib/posthog", () => ({
 }));
 
 describe("CookieConsent Component", () => {
-  let getItemSpy: ReturnType<typeof vi.spyOn>;
-  let setItemSpy: ReturnType<typeof vi.spyOn>;
+  let getItemSpy: ReturnType<typeof vi.spyOn<Storage, "getItem">>;
+  let setItemSpy: ReturnType<typeof vi.spyOn<Storage, "setItem">>;
 
   beforeEach(() => {
     vi.clearAllMocks();

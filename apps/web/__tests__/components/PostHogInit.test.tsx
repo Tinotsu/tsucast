@@ -59,7 +59,7 @@ vi.mock("@/lib/sentry", () => ({
 const { Providers } = await import("@/components/Providers");
 
 describe("PostHog Initialization in Providers", () => {
-  let getItemSpy: ReturnType<typeof vi.spyOn>;
+  let getItemSpy: ReturnType<typeof vi.spyOn<Storage, "getItem">>;
 
   beforeEach(() => {
     vi.clearAllMocks();
