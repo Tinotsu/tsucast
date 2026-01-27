@@ -9,6 +9,9 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { Hono } from 'hono';
 import generateRoutes from '../../src/routes/generate.js';
 import { ErrorCodes, LIMITS } from '../../src/utils/errors.js';
+import { getSupabase } from '../../src/lib/supabase.js';
+import { getUserCreditBalance } from '../../src/services/credits.js';
+import { getUserFromToken } from '../../src/middleware/auth.js';
 
 // Mock fetch globally
 const mockFetch = vi.fn();
@@ -33,10 +36,13 @@ vi.mock('../../src/lib/supabase.js', () => ({
   getSupabase: vi.fn().mockReturnValue(null),
 }));
 
-// Mock rate limit service - always allow
-vi.mock('../../src/services/rate-limit.js', () => ({
-  checkRateLimit: vi.fn().mockResolvedValue({ allowed: true, remaining: 3, resetAt: null, isPro: false }),
-  incrementGenerationCount: vi.fn().mockResolvedValue(2),
+// Mock credit service - user has credits by default
+vi.mock('../../src/services/credits.js', () => ({
+  getUserCreditBalance: vi.fn().mockResolvedValue({ credits: 10, timeBank: 0, totalPurchased: 10, totalUsed: 0 }),
+  deductCredits: vi.fn().mockResolvedValue({ credits: 9, timeBank: 0, totalPurchased: 10, totalUsed: 1 }),
+  previewCreditCost: vi.fn().mockResolvedValue({ isCached: false, estimatedMinutes: 5, creditsNeeded: 1, currentCredits: 10, currentTimeBank: 0, hasSufficientCredits: true }),
+  estimateDurationFromWords: vi.fn().mockReturnValue(5),
+  calculateCreditsNeeded: vi.fn().mockReturnValue({ creditsNeeded: 1, timeBankUsed: 0 }),
 }));
 
 // Mock the cache service (not configured in tests)
@@ -252,6 +258,47 @@ describe('POST /api/generate', () => {
       expect(typeof json.title).toBe('string');
       expect(typeof json.wordCount).toBe('number');
       // When TTS/storage not configured, returns extraction_only
+      expect(json.status).toBe('extraction_only');
+    });
+  });
+
+  describe('credit system', () => {
+    it('should return 402 when user has no credits', async () => {
+      // Enable Supabase for this test
+      vi.mocked(getSupabase).mockReturnValue({} as ReturnType<typeof getSupabase>);
+      // Ensure getUserFromToken returns a user (mocked at module level but re-assert here)
+      vi.mocked(getUserFromToken).mockResolvedValueOnce('test-user-id');
+      vi.mocked(getUserCreditBalance).mockResolvedValueOnce({ credits: 0, timeBank: 0, totalPurchased: 0, totalUsed: 0 });
+
+      const res = await app.request('/api/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer test-token' },
+        body: JSON.stringify({ url: 'https://example.com/article', voiceId: 'voice-1' }),
+      });
+
+      expect(res.status).toBe(402);
+      const json = await res.json();
+      expect(json.error.code).toBe('INSUFFICIENT_CREDITS');
+      expect(json.error.message).toBe('Insufficient credits. Purchase credits to generate audio.');
+
+      // Reset Supabase mock
+      vi.mocked(getSupabase).mockReturnValue(null);
+    });
+
+    it('should allow generation when user has credits and Supabase is disabled', async () => {
+      // Default mock: getSupabase returns null (dev/testing mode)
+      // Credits check is skipped when Supabase is not configured
+      mockFetch.mockResolvedValueOnce(createHtmlResponse(validArticleHtml));
+
+      const res = await app.request('/api/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: 'https://example.com/article', voiceId: 'voice-1' }),
+      });
+
+      // extraction_only because TTS/storage not configured, but no 402
+      expect(res.status).toBe(200);
+      const json = await res.json();
       expect(json.status).toBe('extraction_only');
     });
   });

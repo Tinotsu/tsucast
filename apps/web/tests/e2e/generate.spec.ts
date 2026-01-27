@@ -43,12 +43,12 @@ test.describe("Generate Flow", () => {
     await expect(page.getByText(/valid url|invalid/i)).toBeVisible();
   });
 
-  test("shows remaining generations for free tier", async ({ authenticatedPage }) => {
+  test("shows credit balance on generate page", async ({ authenticatedPage }) => {
     const page = authenticatedPage;
 
     await page.goto("/generate");
 
-    // Should show generation count/limit
-    await expect(page.getByText(/remaining|left|generation/i)).toBeVisible();
+    // Should show credit count
+    await expect(page.getByText(/credits/i)).toBeVisible();
   });
 });

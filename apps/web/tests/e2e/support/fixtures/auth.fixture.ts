@@ -11,8 +11,8 @@ import { BrowserContext, Route } from "@playwright/test";
  * User profile options for authenticated context
  */
 interface UserProfile {
-  daily_generations?: number;
-  is_pro?: boolean;
+  credits_balance?: number;
+  time_bank_minutes?: number;
   email?: string;
 }
 
@@ -54,7 +54,7 @@ export async function authenticatedContext(
   context: BrowserContext,
   profile: UserProfile = {}
 ): Promise<void> {
-  const { daily_generations = 0, is_pro = false, email = "test@example.com" } = profile;
+  const { credits_balance = 5, time_bank_minutes = 0, email = "test@example.com" } = profile;
 
   const session = createMockSession(email);
 
@@ -84,23 +84,23 @@ export async function authenticatedContext(
       body: JSON.stringify({
         id: "mock-user-id",
         email,
-        daily_generations,
-        is_pro,
+        credits_balance,
+        time_bank_minutes,
         created_at: new Date().toISOString(),
       }),
     });
   });
 
-  // Mock usage/limits endpoint
-  await context.route("**/api/usage*", (route) => {
+  // Mock credits endpoint
+  await context.route("**/api/user/credits*", (route) => {
     route.fulfill({
       status: 200,
       contentType: "application/json",
       body: JSON.stringify({
-        daily_generations,
-        daily_limit: is_pro ? 999 : 3,
-        is_pro,
-        remaining: is_pro ? 999 : Math.max(0, 3 - daily_generations),
+        credits: credits_balance,
+        timeBank: time_bank_minutes,
+        totalPurchased: credits_balance + 5,
+        totalUsed: 5,
       }),
     });
   });
@@ -208,16 +208,16 @@ export async function mockFailedLogin(route: Route): Promise<void> {
 }
 
 /**
- * Mock rate limit response
+ * Mock insufficient credits response
  */
-export async function mockRateLimitResponse(route: Route): Promise<void> {
+export async function mockInsufficientCreditsResponse(route: Route): Promise<void> {
   await route.fulfill({
-    status: 429,
+    status: 402,
     contentType: "application/json",
     body: JSON.stringify({
       error: {
-        code: "RATE_LIMITED",
-        message: "Daily limit exceeded. Upgrade to Pro for unlimited generations.",
+        code: "INSUFFICIENT_CREDITS",
+        message: "Insufficient credits. Purchase credits to generate audio.",
       },
     }),
   });

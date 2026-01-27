@@ -246,8 +246,8 @@ describe('Rate Limit Service', () => {
   });
 });
 
-describe('Rate Limit in Generate Endpoint', () => {
-  // Test that the generate endpoint actually respects rate limits
+describe('Credit Check in Generate Endpoint', () => {
+  // Test that the generate endpoint requires credits
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -257,28 +257,16 @@ describe('Rate Limit in Generate Endpoint', () => {
     vi.restoreAllMocks();
   });
 
-  it('should return 429 when rate limit exceeded', async () => {
+  it('should return 402 when user has no credits', async () => {
     // Mock auth to return a valid user
     vi.doMock('../../src/middleware/auth.js', () => ({
-      getUserFromToken: vi.fn().mockResolvedValue('rate-limited-user'),
+      getUserFromToken: vi.fn().mockResolvedValue('no-credits-user'),
     }));
 
-    // Mock supabase to indicate user is at limit
+    // Mock supabase as configured
     vi.doMock('../../src/lib/supabase.js', () => ({
       getSupabase: vi.fn(() => ({
         from: vi.fn().mockReturnValue({
-          select: vi.fn().mockReturnValue({
-            eq: vi.fn().mockReturnValue({
-              single: vi.fn().mockResolvedValue({
-                data: {
-                  subscription_tier: 'free',
-                  daily_generations: FREE_TIER_LIMIT,
-                  daily_generations_reset_at: new Date(Date.now() + 86400000).toISOString(),
-                },
-                error: null,
-              }),
-            }),
-          }),
           upsert: vi.fn().mockReturnValue({
             select: vi.fn().mockReturnValue({
               single: vi.fn().mockResolvedValue({ data: null, error: null }),
@@ -287,6 +275,15 @@ describe('Rate Limit in Generate Endpoint', () => {
         }),
       })),
       isSupabaseConfigured: vi.fn(() => true),
+    }));
+
+    // Mock credit service - user has 0 credits
+    vi.doMock('../../src/services/credits.js', () => ({
+      getUserCreditBalance: vi.fn().mockResolvedValue({ credits: 0, timeBank: 0, totalPurchased: 0, totalUsed: 0 }),
+      deductCredits: vi.fn(),
+      previewCreditCost: vi.fn(),
+      estimateDurationFromWords: vi.fn(),
+      calculateCreditsNeeded: vi.fn(),
     }));
 
     // Re-import generate routes with new mocks
@@ -308,8 +305,9 @@ describe('Rate Limit in Generate Endpoint', () => {
       }),
     });
 
-    expect(res.status).toBe(429);
+    expect(res.status).toBe(402);
     const body = await res.json();
-    expect(body.error.code).toBe('RATE_LIMITED');
+    expect(body.error.code).toBe('INSUFFICIENT_CREDITS');
+    expect(body.error.message).toBe('Insufficient credits. Purchase credits to generate audio.');
   });
 });

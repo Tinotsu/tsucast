@@ -10,7 +10,7 @@
  */
 
 import { test, expect } from "@playwright/test";
-import { authenticatedContext, mockGenerateResponse, mockLibraryResponse } from "../support/fixtures/auth.fixture";
+import { authenticatedContext, mockGenerateResponse, mockLibraryResponse, mockInsufficientCreditsResponse } from "../support/fixtures/auth.fixture";
 
 test.describe("Generate Journey - First Magic Moment", () => {
   test.describe("AC1: URL Input & Generation", () => {
@@ -296,39 +296,39 @@ test.describe("Generate Journey - First Magic Moment", () => {
     });
   });
 
-  test.describe("Free User Limits", () => {
-    test("should display remaining generations for free users", async ({
+  test.describe("Credit Limits", () => {
+    test("should display credit balance for users", async ({
       page,
       context,
     }) => {
-      // GIVEN: Free user with 1 generation used
-      await authenticatedContext(context, { daily_generations: 1, is_pro: false });
+      // GIVEN: User with 3 credits
+      await authenticatedContext(context, { credits_balance: 3 });
       await page.goto("/generate");
 
-      // THEN: Shows remaining count
+      // THEN: Shows credit count
       await expect(
-        page.getByText(/2 of 3|generations.*left/i)
+        page.getByText(/credits/i)
       ).toBeVisible({ timeout: 10000 });
     });
 
-    test("should show upgrade prompt when at limit", async ({ page, context }) => {
-      // GIVEN: Free user at limit
-      await authenticatedContext(context, { daily_generations: 3, is_pro: false });
+    test("should show buy credits prompt when no credits", async ({ page, context }) => {
+      // GIVEN: User with no credits
+      await authenticatedContext(context, { credits_balance: 0 });
       await page.goto("/generate");
 
-      // THEN: Shows limit reached and upgrade prompt
-      await expect(page.getByText(/limit|reached/i)).toBeVisible({ timeout: 10000 });
+      // THEN: Shows no credits and buy prompt
+      await expect(page.getByText(/no credits/i)).toBeVisible({ timeout: 10000 });
       await expect(
-        page.getByRole("link", { name: /upgrade/i })
+        page.getByRole("link", { name: /buy credits/i })
       ).toBeVisible();
     });
 
-    test("should disable generate button when at limit", async ({
+    test("should disable generate button when no credits", async ({
       page,
       context,
     }) => {
-      // GIVEN: Free user at limit
-      await authenticatedContext(context, { daily_generations: 3, is_pro: false });
+      // GIVEN: User with no credits
+      await authenticatedContext(context, { credits_balance: 0 });
       await page.goto("/generate");
 
       // Fill in URL
@@ -338,40 +338,15 @@ test.describe("Generate Journey - First Magic Moment", () => {
       const generateButton = page.getByRole("button", { name: /generate/i });
       await expect(generateButton).toBeDisabled();
     });
-
-    test("should not show limit banner for pro users", async ({
-      page,
-      context,
-    }) => {
-      // GIVEN: Pro user
-      await authenticatedContext(context, { daily_generations: 0, is_pro: true });
-      await page.goto("/generate");
-
-      // THEN: No limit banner
-      await expect(
-        page.getByText(/generations.*left/i)
-      ).not.toBeVisible({ timeout: 5000 });
-    });
   });
 
   test.describe("Error Recovery", () => {
-    test("should handle rate limit (429) gracefully", async ({ page, context }) => {
+    test("should handle insufficient credits (402) gracefully", async ({ page, context }) => {
       // GIVEN: User is authenticated
       await authenticatedContext(context);
 
-      // Mock rate limit
-      await context.route("**/api/generate*", (route) => {
-        route.fulfill({
-          status: 429,
-          contentType: "application/json",
-          body: JSON.stringify({
-            error: {
-              code: "RATE_LIMITED",
-              message: "Daily limit exceeded",
-            },
-          }),
-        });
-      });
+      // Mock insufficient credits
+      await context.route("**/api/generate*", mockInsufficientCreditsResponse);
 
       await page.goto("/generate");
 
@@ -379,9 +354,9 @@ test.describe("Generate Journey - First Magic Moment", () => {
       await page.getByPlaceholder(/url|paste|article/i).fill("https://example.com/article");
       await page.getByRole("button", { name: /generate|create/i }).click();
 
-      // THEN: Shows limit message
+      // THEN: Shows insufficient credits message
       await expect(
-        page.getByText(/limit|upgrade|pro/i)
+        page.getByText(/insufficient credits|purchase.*credit/i)
       ).toBeVisible({ timeout: 10000 });
     });
 

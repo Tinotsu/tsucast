@@ -3,11 +3,13 @@
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useAuth } from "@/hooks/useAuth";
+import { useCredits } from "@/hooks/useCredits";
 import { getLibrary } from "@/lib/api";
 import { PlusCircle, Library, Headphones, ArrowRight, Loader2 } from "lucide-react";
 
 export default function DashboardPage() {
-  const { profile, isPro, isAuthenticated, isLoading: authLoading } = useAuth();
+  const { profile, isAuthenticated, isLoading: authLoading } = useAuth();
+  const { credits, timeBank, isLoading: creditsLoading } = useCredits();
   const [libraryCount, setLibraryCount] = useState<number | null>(null);
   const [isLoadingCount, setIsLoadingCount] = useState(true);
 
@@ -30,10 +32,6 @@ export default function DashboardPage() {
     }
   }, [authLoading, isAuthenticated, loadLibraryCount]);
 
-  const remainingGenerations = isPro
-    ? "Unlimited"
-    : `${3 - (profile?.daily_generations || 0)} of 3`;
-
   return (
     <div className="mx-auto max-w-4xl px-4 py-12 sm:px-6 lg:px-8">
       {/* Welcome */}
@@ -55,10 +53,10 @@ export default function DashboardPage() {
             </div>
             <div>
               <p className="text-sm text-zinc-400">
-                Generations Today
+                Credits
               </p>
               <p className="text-xl font-bold text-white">
-                {remainingGenerations}
+                {creditsLoading ? "..." : credits}
               </p>
             </div>
           </div>
@@ -71,10 +69,10 @@ export default function DashboardPage() {
             </div>
             <div>
               <p className="text-sm text-zinc-400">
-                Subscription
+                Time Bank
               </p>
               <p className="text-xl font-bold text-white">
-                {isPro ? "Pro" : "Free"}
+                {creditsLoading ? "..." : `${timeBank} min`}
               </p>
             </div>
           </div>
@@ -138,23 +136,23 @@ export default function DashboardPage() {
         </Link>
       </div>
 
-      {/* Upgrade Banner (for free users) */}
-      {!isPro && (
+      {/* Credits Banner (for users with no credits) */}
+      {credits === 0 && (
         <div className="mt-12 rounded-2xl bg-gradient-to-r from-amber-500/10 to-amber-600/10 p-6">
           <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
             <div>
               <h3 className="font-bold text-white">
-                Want unlimited articles?
+                Need more credits?
               </h3>
               <p className="text-sm text-zinc-400">
-                Upgrade to Pro for unlimited daily generations.
+                Purchase a credit pack to generate more articles.
               </p>
             </div>
             <Link
               href="/upgrade"
               className="rounded-lg bg-amber-500 px-6 py-2 font-semibold text-black transition-colors hover:bg-amber-400"
             >
-              Upgrade to Pro
+              Buy Credits
             </Link>
           </div>
         </div>

@@ -2,10 +2,11 @@
 
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
+import { useCredits } from "@/hooks/useCredits";
 import {
   User,
   Mail,
-  Crown,
+  Ticket,
   LogOut,
   ExternalLink,
   Loader2,
@@ -18,7 +19,8 @@ import { useState, useEffect } from "react";
 import { deleteAccount } from "@/lib/api";
 
 export default function SettingsPage() {
-  const { profile, isPro, signOut, isLoading, isAuthenticated } = useAuth();
+  const { profile, signOut, isLoading, isAuthenticated } = useAuth();
+  const { credits, timeBank, isLoading: creditsLoading } = useCredits();
   const router = useRouter();
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -112,73 +114,35 @@ export default function SettingsPage() {
         </div>
       </section>
 
-      {/* Subscription Section */}
+      {/* Credits Section */}
       <section className="mb-8">
         <h2 className="mb-4 text-lg font-semibold text-white">
-          Subscription
+          Credits
         </h2>
         <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div
-                className={`flex h-10 w-10 items-center justify-center rounded-full ${
-                  isPro
-                    ? "bg-amber-500"
-                    : "bg-amber-500/10"
-                }`}
-              >
-                <Crown
-                  className={`h-5 w-5 ${isPro ? "text-black" : "text-amber-500"}`}
-                />
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-amber-500/10">
+                <Ticket className="h-5 w-5 text-amber-500" />
               </div>
               <div>
                 <p className="font-semibold text-white">
-                  {isPro ? "Pro Plan" : "Free Plan"}
+                  {creditsLoading ? "…" : `${credits} credits available`}
                 </p>
-                <p className="text-sm text-zinc-400">
-                  {isPro
-                    ? "Unlimited generations"
-                    : `${3 - (profile?.daily_generations || 0)} of 3 generations left today`}
-                </p>
+                {timeBank > 0 && (
+                  <p className="text-sm text-zinc-400">
+                    {timeBank} min banked
+                  </p>
+                )}
               </div>
             </div>
-            {!isPro && (
-              <Link
-                href="/upgrade"
-                className="rounded-lg bg-amber-500 px-4 py-2 font-medium text-black hover:bg-amber-400"
-              >
-                Upgrade
-              </Link>
-            )}
+            <Link
+              href="/upgrade"
+              className="rounded-lg bg-amber-500 px-4 py-2 font-medium text-black hover:bg-amber-400"
+            >
+              Buy more credits
+            </Link>
           </div>
-
-          {isPro && (
-            <div className="mt-4 border-t border-zinc-800 pt-4">
-              <p className="mb-2 text-sm text-zinc-400">
-                Manage your subscription through your app store:
-              </p>
-              <div className="flex gap-3">
-                <a
-                  href="https://apps.apple.com/account/subscriptions"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-2 rounded-lg border border-zinc-800 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800"
-                >
-                  App Store
-                  <ExternalLink className="h-4 w-4" />
-                </a>
-                <a
-                  href="https://play.google.com/store/account/subscriptions"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-2 rounded-lg border border-zinc-800 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800"
-                >
-                  Google Play
-                  <ExternalLink className="h-4 w-4" />
-                </a>
-              </div>
-            </div>
-          )}
         </div>
       </section>
 

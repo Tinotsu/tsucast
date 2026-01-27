@@ -190,8 +190,8 @@ test.describe("Account Deletion Flow", () => {
         body: JSON.stringify({
           id: "test-user-id",
           email: "test@example.com",
-          daily_generations: 0,
-          subscription_tier: "free",
+          credits_balance: 5,
+          time_bank_minutes: 0,
         }),
       });
     });
@@ -223,8 +223,8 @@ test.describe("Account Deletion Flow", () => {
         body: JSON.stringify({
           id: "test-user-id",
           email: "test@example.com",
-          daily_generations: 0,
-          subscription_tier: "free",
+          credits_balance: 5,
+          time_bank_minutes: 0,
         }),
       });
     });
@@ -261,8 +261,8 @@ test.describe("Account Deletion Flow", () => {
         body: JSON.stringify({
           id: "test-user-id",
           email: "test@example.com",
-          daily_generations: 0,
-          subscription_tier: "free",
+          credits_balance: 5,
+          time_bank_minutes: 0,
         }),
       });
     });
@@ -308,8 +308,8 @@ test.describe("Account Deletion Flow", () => {
         body: JSON.stringify({
           id: "test-user-id",
           email: "test@example.com",
-          daily_generations: 0,
-          subscription_tier: "free",
+          credits_balance: 5,
+          time_bank_minutes: 0,
         }),
       });
     });
@@ -348,8 +348,8 @@ test.describe("Account Deletion Flow", () => {
         body: JSON.stringify({
           id: "test-user-id",
           email: "test@example.com",
-          daily_generations: 0,
-          subscription_tier: "free",
+          credits_balance: 5,
+          time_bank_minutes: 0,
         }),
       });
     });
@@ -409,8 +409,8 @@ test.describe("Account Deletion Flow", () => {
         body: JSON.stringify({
           id: "test-user-id",
           email: "test@example.com",
-          daily_generations: 0,
-          subscription_tier: "free",
+          credits_balance: 5,
+          time_bank_minutes: 0,
         }),
       });
     });

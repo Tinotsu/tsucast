@@ -9,8 +9,8 @@ export interface UserProfile {
   id: string;
   email: string;
   display_name: string | null;
-  subscription_tier: "free" | "pro";
-  daily_generations: number;
+  credits_balance: number;
+  time_bank_minutes: number;
   is_admin: boolean;
   created_at: string;
 }
@@ -189,7 +189,6 @@ export function useAuth() {
     profile,
     isLoading,
     isAuthenticated: !!user,
-    isPro: profile?.subscription_tier === "pro",
     isAdmin: profile?.is_admin ?? false,
     signInWithEmail,
     signUpWithEmail,

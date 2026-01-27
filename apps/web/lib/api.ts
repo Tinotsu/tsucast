@@ -11,7 +11,6 @@ interface GenerateResponse {
   title: string;
   duration: number;
   wordCount: number;
-  remaining?: number;
 }
 
 interface CacheCheckResponse {
@@ -20,14 +19,6 @@ interface CacheCheckResponse {
   audioId?: string;
   title?: string;
   duration?: number;
-}
-
-interface LimitStatusResponse {
-  tier: "free" | "pro";
-  used: number;
-  limit: number | null;
-  remaining: number | null;
-  resetAt: string | null;
 }
 
 interface LibraryItem {
@@ -153,7 +144,6 @@ interface GenerateStatusResponse {
   error?: { message: string };
   message?: string;
   cached?: boolean;
-  remaining?: number;
 }
 
 async function pollGenerationStatus(
@@ -215,12 +205,12 @@ export async function generateAudio(
 
     const data = await response.json();
 
-    // Handle rate limiting
-    if (response.status === 429) {
+    // Handle insufficient credits
+    if (response.status === 402) {
       throw new ApiError(
-        data.error?.message || "Rate limited",
-        data.error?.code || "RATE_LIMITED",
-        429
+        data.error?.message || "Insufficient credits",
+        data.error?.code || "INSUFFICIENT_CREDITS",
+        402
       );
     }
 
@@ -246,7 +236,6 @@ export async function generateAudio(
         title: data.title || "Untitled",
         duration: data.duration || 0,
         wordCount: data.wordCount || 0,
-        remaining: data.remaining,
       };
     }
 
@@ -264,10 +253,7 @@ export async function generateAudio(
   }
 }
 
-export async function getLimitStatus(): Promise<LimitStatusResponse> {
-  return fetchApi<LimitStatusResponse>("/api/user/limit");
-}
-
+// TODO: Remove when mobile migrates to credits
 interface SubscriptionStatusResponse {
   tier: "free" | "pro";
   isPro: boolean;
@@ -283,6 +269,7 @@ interface SubscriptionStatusResponse {
   } | null;
 }
 
+// TODO: Remove when mobile migrates to credits
 export async function getSubscriptionStatus(): Promise<SubscriptionStatusResponse> {
   return fetchApi<SubscriptionStatusResponse>("/api/user/subscription");
 }
@@ -373,7 +360,6 @@ export type {
   GenerateRequest,
   GenerateResponse,
   CacheCheckResponse,
-  LimitStatusResponse,
   LibraryItem,
   SubscriptionStatusResponse,
 };

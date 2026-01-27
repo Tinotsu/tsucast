@@ -145,10 +145,10 @@ tsucast/
 - Zod validates request body/query inside route handlers
 - Global middleware order: CORS → logger → logging → timeout (120s) → body limit (1MB)
 
-### Rate Limiting
-Two independent rate limiting layers protect the API:
+### Credits & Rate Limiting
+Two independent layers control API access:
 
-- **User-based** (`services/rate-limit.ts`): Free tier daily generation limit tracked in `user_profiles.daily_generations`. Pro users unlimited. Counter resets at midnight UTC (`daily_generations_reset_at`). Checked before each generation.
+- **Credit-based** (`services/credits.ts`): Each generation costs 1 credit. Credits checked before generation (`getUserCreditBalance`), deducted after successful audio generation (`deductCredits`). TOCTOU race handled — if credits drained between check and deduction, returns HTTP 402 `INSUFFICIENT_CREDITS`. Users purchase credit packs (Starter/Regular/Power) via Stripe checkout. Time bank tracks unused duration minutes.
 - **IP-based** (`middleware/ip-rate-limit.ts`): In-memory sliding window — 60 requests per 60 seconds by default. LRU eviction at 10k entries (~1 MB cap). Returns `429` with `X-RateLimit-Limit`, `X-RateLimit-Remaining`, `X-RateLimit-Reset`, and `Retry-After` headers. **Single-process only** — needs Redis for multi-instance deployments.
 
 ### NativeWind (Mobile Styling)
@@ -309,7 +309,7 @@ NEXT_PUBLIC_API_URL=
 
 | Table | Purpose | Key Details |
 |-------|---------|-------------|
-| `user_profiles` | User account data | 1:1 with `auth.users` (PK = user UUID). Tracks `subscription_tier` (free/pro), `daily_generations` count, `credits_balance`, `time_bank_minutes`. Auto-created on signup via `handle_new_user()` trigger. |
+| `user_profiles` | User account data | 1:1 with `auth.users` (PK = user UUID). Tracks `credits_balance`, `time_bank_minutes`, `is_admin`. Legacy fields `subscription_tier`, `daily_generations` still exist for mobile backward compatibility. Auto-created on signup via `handle_new_user()` trigger. |
 | `audio_cache` | Generated audio entries | Status pipeline: `pending` → `processing` → `ready` → `failed`. Keyed by `url_hash` (unique). Stores `audio_url`, `duration_seconds`, `word_count`, `voice_id`. Public read for `ready` entries. |
 | `user_library` | User's saved articles | Links `user_id` → `audio_id`. Tracks `playback_position` (seconds) and `is_played` flag. Unique constraint on `(user_id, audio_id)`. |
 | `playlists` | User-created playlists | Owned by `user_id`. Contains `name` and timestamps. |

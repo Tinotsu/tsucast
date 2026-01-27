@@ -4,8 +4,8 @@ interface AdminUser {
   id: string;
   email: string;
   display_name: string | null;
-  subscription_tier: "free" | "pro";
-  daily_generations: number;
+  credits_balance: number;
+  time_bank_minutes: number;
   is_admin: boolean;
   created_at: string;
   last_sign_in: string | null;
@@ -14,8 +14,6 @@ interface AdminUser {
 
 interface AdminMetrics {
   totalUsers: number;
-  proUsers: number;
-  freeUsers: number;
   totalGenerations: number;
   generationsToday: number;
   activeUsersToday: number;

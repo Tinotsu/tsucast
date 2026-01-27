@@ -54,20 +54,31 @@ describe("Landing Page Components", () => {
   });
 
   describe("Pricing", () => {
-    it("renders free and pro plans", () => {
+    it("renders credit packs", () => {
       render(<Pricing />);
 
-      expect(screen.getByText("Free")).toBeInTheDocument();
-      expect(screen.getByText("Pro")).toBeInTheDocument();
-      expect(screen.getByText("$0")).toBeInTheDocument();
+      expect(screen.getByText("Starter")).toBeInTheDocument();
+      expect(screen.getByText("Regular")).toBeInTheDocument();
+      expect(screen.getByText("Power")).toBeInTheDocument();
+      expect(screen.getByText("$4.99")).toBeInTheDocument();
       expect(screen.getByText("$9.99")).toBeInTheDocument();
+      expect(screen.getByText("$24.99")).toBeInTheDocument();
     });
 
-    it("shows features for each plan", () => {
+    it("shows credit counts and features", () => {
       render(<Pricing />);
 
-      expect(screen.getByText("3 articles per day")).toBeInTheDocument();
-      expect(screen.getByText("Unlimited articles")).toBeInTheDocument();
+      expect(screen.getByText(/5 credits \(\$1\.00\/article\)/)).toBeInTheDocument();
+      expect(screen.getByText(/15 credits \(\$0\.67\/article\)/)).toBeInTheDocument();
+      expect(screen.getByText(/50 credits \(\$0\.50\/article\)/)).toBeInTheDocument();
+      expect(screen.getByText("Credits never expire")).toBeInTheDocument();
+      expect(screen.getByText("Cache hits are free")).toBeInTheDocument();
+    });
+
+    it("shows Best Value badge on Regular pack", () => {
+      render(<Pricing />);
+
+      expect(screen.getByText("Best Value")).toBeInTheDocument();
     });
   });
 

@@ -126,7 +126,6 @@ describe("API Client", () => {
           title: responseData.title,
           duration: responseData.duration,
           wordCount: responseData.wordCount,
-          remaining: responseData.remaining,
         }),
       });
 
@@ -151,20 +150,20 @@ describe("API Client", () => {
       );
     });
 
-    it("[P1] should throw ApiError on rate limit", async () => {
-      // GIVEN: API returns rate limit error
+    it("[P1] should throw ApiError on insufficient credits", async () => {
+      // GIVEN: API returns insufficient credits error
       global.fetch = vi.fn().mockResolvedValue({
         ok: false,
-        status: 429,
+        status: 402,
         json: () =>
           Promise.resolve({
-            error: { code: "RATE_LIMITED", message: "Daily limit exceeded" },
+            error: { code: "INSUFFICIENT_CREDITS", message: "Insufficient credits. Purchase credits to generate audio." },
           }),
       });
 
       const { generateAudio, ApiError } = await import("@/lib/api");
 
-      // WHEN: Generating audio and getting rate limited
+      // WHEN: Generating audio with insufficient credits
       // THEN: Throws ApiError with correct code
       await expect(
         generateAudio({ url: "https://example.com/article" })
@@ -174,8 +173,8 @@ describe("API Client", () => {
         await generateAudio({ url: "https://example.com/article" });
       } catch (err) {
         expect(err).toBeInstanceOf(ApiError);
-        expect((err as InstanceType<typeof ApiError>).code).toBe("RATE_LIMITED");
-        expect((err as InstanceType<typeof ApiError>).status).toBe(429);
+        expect((err as InstanceType<typeof ApiError>).code).toBe("INSUFFICIENT_CREDITS");
+        expect((err as InstanceType<typeof ApiError>).status).toBe(402);
       }
     });
   });

@@ -150,8 +150,8 @@ test.describe("Authentication Journey", () => {
           body: JSON.stringify({
             id: "test-user-id",
             email: "test@example.com",
-            daily_generations: 0,
-            is_pro: false,
+            credits_balance: 5,
+            time_bank_minutes: 0,
           }),
         });
       });
@@ -275,8 +275,8 @@ test.describe("Authentication Journey", () => {
           body: JSON.stringify({
             id: "test-user-id",
             email: "test@example.com",
-            daily_generations: 0,
-            is_pro: false,
+            credits_balance: 5,
+            time_bank_minutes: 0,
           }),
         });
       });

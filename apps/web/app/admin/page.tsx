@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { getAdminMetrics, type AdminMetrics } from "@/lib/admin-api";
 import {
   Users,
-  Crown,
   Headphones,
   Activity,
   Clock,
@@ -62,8 +61,6 @@ export default function AdminDashboard() {
   // Use mock data if API not available yet
   const data = metrics || {
     totalUsers: 0,
-    proUsers: 0,
-    freeUsers: 0,
     totalGenerations: 0,
     generationsToday: 0,
     activeUsersToday: 0,
@@ -76,43 +73,26 @@ export default function AdminDashboard() {
       name: "Total Users",
       value: data.totalUsers.toLocaleString(),
       icon: Users,
-      change: "+12%",
-      changeType: "positive" as const,
-    },
-    {
-      name: "Pro Users",
-      value: data.proUsers.toLocaleString(),
-      icon: Crown,
-      change: "+8%",
-      changeType: "positive" as const,
     },
     {
       name: "Total Generations",
       value: data.totalGenerations.toLocaleString(),
       icon: Headphones,
-      change: "+24%",
-      changeType: "positive" as const,
     },
     {
       name: "Generations Today",
       value: data.generationsToday.toLocaleString(),
       icon: TrendingUp,
-      change: "+15%",
-      changeType: "positive" as const,
     },
     {
       name: "Active Today",
       value: data.activeUsersToday.toLocaleString(),
       icon: Activity,
-      change: "+5%",
-      changeType: "positive" as const,
     },
     {
       name: "Avg Latency",
       value: `${data.avgLatency}ms`,
       icon: Clock,
-      change: "-10%",
-      changeType: "positive" as const,
     },
   ];
 
@@ -134,19 +114,8 @@ export default function AdminDashboard() {
             key={stat.name}
             className="rounded-2xl border border-zinc-800 bg-zinc-900 p-6"
           >
-            <div className="flex items-center justify-between">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-amber-500/10">
-                <stat.icon className="h-6 w-6 text-amber-500" />
-              </div>
-              <span
-                className={`text-sm font-medium ${
-                  stat.changeType === "positive"
-                    ? "text-green-500"
-                    : "text-red-500"
-                }`}
-              >
-                {stat.change}
-              </span>
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-amber-500/10">
+              <stat.icon className="h-6 w-6 text-amber-500" />
             </div>
             <div className="mt-4">
               <p className="text-2xl font-bold text-white">

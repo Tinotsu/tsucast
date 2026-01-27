@@ -9,7 +9,7 @@ import { VoiceSelector } from "@/components/app/VoiceSelector";
 import { WebPlayer } from "@/components/app/WebPlayer";
 import { generateAudio, previewCreditCost, ApiError, type CreditPreview } from "@/lib/api";
 import { isValidUrl } from "@/lib/utils";
-import { Loader2, Sparkles, AlertCircle, RotateCcw, Ticket, Clock, Zap } from "lucide-react";
+import { Loader2, AlertCircle, RotateCcw, Ticket, Zap } from "lucide-react";
 import Link from "next/link";
 
 interface GenerationResult {
@@ -20,7 +20,7 @@ interface GenerationResult {
 }
 
 export default function GeneratePage() {
-  const { profile, isPro, isLoading, isAuthenticated } = useAuth();
+  const { isLoading, isAuthenticated } = useAuth();
   const { credits, timeBank, invalidateCredits, isLoading: creditsLoading } = useCredits();
   const router = useRouter();
 
@@ -90,17 +90,12 @@ export default function GeneratePage() {
     return null;
   }
 
-  // Check if user has credits or is on legacy rate limit
   const hasCredits = credits > 0;
-  const remainingGenerations = isPro
-    ? null
-    : 3 - (profile?.daily_generations || 0);
-  const isAtLimit = !isPro && !hasCredits && remainingGenerations !== null && remainingGenerations <= 0;
 
-  // Determine if user can generate based on credits or rate limit
+  // Determine if user can generate based on credit balance
   const canAfford = preview
-    ? preview.isCached || preview.hasSufficientCredits || isPro
-    : hasCredits || isPro || (remainingGenerations !== null && remainingGenerations > 0);
+    ? preview.isCached || preview.hasSufficientCredits
+    : hasCredits;
 
   const handleGenerate = async () => {
     if (!url || isGenerating || !canAfford) return;
@@ -125,8 +120,8 @@ export default function GeneratePage() {
         if (err.code === "UNAUTHORIZED" || err.status === 401) {
           router.push("/login?redirect=/generate");
           return;
-        } else if (err.code === "RATE_LIMITED") {
-          setError("You've reached your limit. Buy credits to continue.");
+        } else if (err.code === "INSUFFICIENT_CREDITS") {
+          setError("Insufficient credits. Purchase a credit pack to continue.");
         } else {
           setError(err.message);
         }
@@ -171,8 +166,7 @@ export default function GeneratePage() {
       </div>
 
       {/* Credit Balance Banner */}
-      {!isPro && (
-        <div className="mb-6 rounded-xl border border-amber-500/30 bg-amber-500/5 p-4">
+      <div className="mb-6 rounded-xl border border-amber-500/30 bg-amber-500/5 p-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <Ticket className="h-5 w-5 text-amber-500" />
@@ -194,11 +188,10 @@ export default function GeneratePage() {
               {credits === 0 ? "Buy Credits" : "Get More"}
             </Link>
           </div>
-        </div>
-      )}
+      </div>
 
       {/* No Credits Message */}
-      {!isPro && credits === 0 && remainingGenerations !== null && remainingGenerations <= 0 && (
+      {credits === 0 && (
         <div className="mb-6 rounded-xl border border-red-500/30 bg-red-500/10 p-6 text-center">
           <AlertCircle className="mx-auto mb-3 h-8 w-8 text-red-500" />
           <h3 className="mb-2 font-semibold text-red-400">
@@ -291,7 +284,7 @@ export default function GeneratePage() {
                           )}
                         </span>
                       </div>
-                      {!preview.hasSufficientCredits && !isPro && (
+                      {!preview.hasSufficientCredits && (
                         <div className="mt-2 rounded-lg bg-red-500/10 p-2 text-center text-sm text-red-400">
                           Not enough credits.{" "}
                           <Link href="/upgrade" className="font-medium underline">

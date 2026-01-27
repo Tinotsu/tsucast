@@ -77,14 +77,15 @@ export default function TermsPage() {
           </section>
 
           <section className="mb-10">
-            <h2 className="mb-4 text-xl font-semibold text-white">6. Subscription and Payments</h2>
+            <h2 className="mb-4 text-xl font-semibold text-white">6. Credits and Payments</h2>
             <p className="text-zinc-300">
-              tsucast offers both free and paid subscription tiers. For paid subscriptions:
+              tsucast uses an article credit system. Credits are purchased via Stripe and never expire.
             </p>
             <ul className="mt-3 list-disc space-y-2 pl-6 text-zinc-300">
-              <li>Payments are processed through the App Store (iOS) or Google Play (Android)</li>
-              <li>Subscriptions automatically renew unless cancelled before the renewal date</li>
-              <li>Refunds are handled according to the respective app store policies</li>
+              <li>1 credit = 1 article conversion (most articles under 20 minutes)</li>
+              <li>Payments are processed securely through Stripe</li>
+              <li>Credits are non-transferable and tied to your account</li>
+              <li>7-day money-back guarantee. Refunds processed via Stripe.</li>
               <li>Prices may change with reasonable notice</li>
             </ul>
           </section>

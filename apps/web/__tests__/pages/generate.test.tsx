@@ -7,7 +7,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import GeneratePage from "@/app/(app)/generate/page";
-import { createUserProfile, createProUser, createGenerateResponse } from "../factories";
+import { createUserProfile, createGenerateResponse } from "../factories";
 
 // Mock useRouter
 const mockPush = vi.fn();
@@ -20,7 +20,6 @@ vi.mock("next/navigation", () => ({
 // Mock useAuth
 let mockUseAuthReturn = {
   profile: null as ReturnType<typeof createUserProfile> | null,
-  isPro: false,
   isLoading: false,
   isAuthenticated: false,
 };
@@ -111,7 +110,6 @@ describe("Generate Page", () => {
     vi.clearAllMocks();
     mockUseAuthReturn = {
       profile: null,
-      isPro: false,
       isLoading: false,
       isAuthenticated: false,
     };
@@ -182,13 +180,13 @@ describe("Generate Page", () => {
     });
   });
 
-  describe("Generation Limit (Free Users)", () => {
-    it("[P1] should show remaining generations for free users", () => {
-      // GIVEN: Free user with 1 generation used
+  describe("Credit Balance Display", () => {
+    it("[P1] should show credit balance for users", () => {
+      // GIVEN: User with credits
       mockUseAuthReturn = {
         ...mockUseAuthReturn,
-        profile: createUserProfile({ daily_generations: 1 }),
-        isPro: false,
+        profile: createUserProfile({ credits_balance: 5 }),
+      
         isLoading: false,
         isAuthenticated: true,
       };
@@ -204,8 +202,8 @@ describe("Generate Page", () => {
       // GIVEN: Free user with no credits
       mockUseAuthReturn = {
         ...mockUseAuthReturn,
-        profile: createUserProfile({ daily_generations: 3 }),
-        isPro: false,
+        profile: createUserProfile({ credits_balance: 0 }),
+      
         isLoading: false,
         isAuthenticated: true,
       };
@@ -226,8 +224,8 @@ describe("Generate Page", () => {
       // GIVEN: Free user with no credits and at daily limit
       mockUseAuthReturn = {
         ...mockUseAuthReturn,
-        profile: createUserProfile({ daily_generations: 3 }),
-        isPro: false,
+        profile: createUserProfile({ credits_balance: 0 }),
+      
         isLoading: false,
         isAuthenticated: true,
       };
@@ -256,8 +254,8 @@ describe("Generate Page", () => {
       // GIVEN: Free user with no credits
       mockUseAuthReturn = {
         ...mockUseAuthReturn,
-        profile: createUserProfile({ daily_generations: 3 }),
-        isPro: false,
+        profile: createUserProfile({ credits_balance: 0 }),
+      
         isLoading: false,
         isAuthenticated: true,
       };
@@ -275,22 +273,26 @@ describe("Generate Page", () => {
     });
   });
 
-  describe("Generation Limit (Pro Users)", () => {
-    it("[P1] should not show credit banner for pro users", () => {
-      // GIVEN: Pro user
+  describe("Credit Display (All Users)", () => {
+    it("[P1] should show credit banner for all users", () => {
+      // GIVEN: User with credits
       mockUseAuthReturn = {
         ...mockUseAuthReturn,
-        profile: createProUser(),
-        isPro: true,
+        profile: createUserProfile({ credits_balance: 5 }),
+
         isLoading: false,
         isAuthenticated: true,
+      };
+      mockUseCreditsReturn = {
+        ...mockUseCreditsReturn,
+        credits: 5,
       };
 
       // WHEN: Rendering generate page
       render(<GeneratePage />);
 
-      // THEN: No credit banner for pro users
-      expect(screen.queryByText(/\d+ credits/i)).not.toBeInTheDocument();
+      // THEN: Credit banner is visible for all users including pro
+      expect(screen.getByText(/\d+ credits/i)).toBeInTheDocument();
     });
   });
 
@@ -300,7 +302,7 @@ describe("Generate Page", () => {
       mockUseAuthReturn = {
         ...mockUseAuthReturn,
         profile: createUserProfile(),
-        isPro: false,
+      
         isLoading: false,
         isAuthenticated: true,
       };
@@ -329,7 +331,7 @@ describe("Generate Page", () => {
       mockUseAuthReturn = {
         ...mockUseAuthReturn,
         profile: createUserProfile(),
-        isPro: false,
+      
         isLoading: false,
         isAuthenticated: true,
       };
@@ -356,7 +358,7 @@ describe("Generate Page", () => {
       mockUseAuthReturn = {
         ...mockUseAuthReturn,
         profile: createUserProfile(),
-        isPro: false,
+      
         isLoading: false,
         isAuthenticated: true,
       };
@@ -384,7 +386,7 @@ describe("Generate Page", () => {
       mockUseAuthReturn = {
         ...mockUseAuthReturn,
         profile: createUserProfile(),
-        isPro: false,
+      
         isLoading: false,
         isAuthenticated: true,
       };
@@ -409,12 +411,12 @@ describe("Generate Page", () => {
   });
 
   describe("Error Handling", () => {
-    it("[P1] should show rate limit error", async () => {
+    it("[P1] should show insufficient credits error", async () => {
       // GIVEN: Authenticated user
       mockUseAuthReturn = {
         ...mockUseAuthReturn,
         profile: createUserProfile(),
-        isPro: false,
+      
         isLoading: false,
         isAuthenticated: true,
       };
@@ -422,21 +424,21 @@ describe("Generate Page", () => {
       // Import ApiError to create proper instance
       const { ApiError } = await import("@/lib/api");
       mockGenerateAudio.mockRejectedValue(
-        new ApiError("Rate limited", "RATE_LIMITED", 429)
+        new ApiError("Insufficient credits", "INSUFFICIENT_CREDITS", 402)
       );
 
       render(<GeneratePage />);
 
-      // WHEN: Generation fails with rate limit
+      // WHEN: Generation fails with insufficient credits
       const urlInput = screen.getByTestId("url-input");
       fireEvent.change(urlInput, { target: { value: "https://example.com/article" } });
 
       const generateButton = screen.getByRole("button", { name: /generate/i });
       fireEvent.click(generateButton);
 
-      // THEN: Shows rate limit message (now credits-based)
+      // THEN: Shows insufficient credits message
       await waitFor(() => {
-        expect(screen.getByText(/reached your limit.*Buy credits/i)).toBeInTheDocument();
+        expect(screen.getByText(/Insufficient credits.*Purchase a credit pack/i)).toBeInTheDocument();
       });
     });
 
@@ -445,7 +447,7 @@ describe("Generate Page", () => {
       mockUseAuthReturn = {
         ...mockUseAuthReturn,
         profile: createUserProfile(),
-        isPro: false,
+      
         isLoading: false,
         isAuthenticated: true,
       };
@@ -473,7 +475,7 @@ describe("Generate Page", () => {
       mockUseAuthReturn = {
         ...mockUseAuthReturn,
         profile: createUserProfile(),
-        isPro: false,
+      
         isLoading: false,
         isAuthenticated: true,
       };
@@ -501,7 +503,7 @@ describe("Generate Page", () => {
       mockUseAuthReturn = {
         ...mockUseAuthReturn,
         profile: createUserProfile(),
-        isPro: false,
+      
         isLoading: false,
         isAuthenticated: true,
       };
@@ -529,7 +531,7 @@ describe("Generate Page", () => {
       mockUseAuthReturn = {
         ...mockUseAuthReturn,
         profile: createUserProfile(),
-        isPro: false,
+      
         isLoading: false,
         isAuthenticated: true,
       };

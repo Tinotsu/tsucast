@@ -7,7 +7,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import SettingsPage from "@/app/(app)/settings/page";
-import { createUserProfile, createProUser } from "../factories";
+import { createUserProfile } from "../factories";
 
 // Mock useRouter
 const mockPush = vi.fn();
@@ -21,7 +21,6 @@ vi.mock("next/navigation", () => ({
 const mockSignOut = vi.fn();
 let mockUseAuthReturn = {
   profile: null as ReturnType<typeof createUserProfile> | null,
-  isPro: false,
   signOut: mockSignOut,
   isLoading: false,
   isAuthenticated: false,
@@ -31,15 +30,38 @@ vi.mock("@/hooks/useAuth", () => ({
   useAuth: () => mockUseAuthReturn,
 }));
 
+// Mock useCredits
+let mockUseCreditsReturn = {
+  credits: 5,
+  timeBank: 0,
+  totalPurchased: 10,
+  totalUsed: 5,
+  isLoading: false,
+  error: null,
+  invalidateCredits: vi.fn(),
+};
+
+vi.mock("@/hooks/useCredits", () => ({
+  useCredits: () => mockUseCreditsReturn,
+}));
+
 describe("Settings Page", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockUseAuthReturn = {
       profile: null,
-      isPro: false,
       signOut: mockSignOut,
       isLoading: false,
       isAuthenticated: false,
+    };
+    mockUseCreditsReturn = {
+      credits: 5,
+      timeBank: 0,
+      totalPurchased: 10,
+      totalUsed: 5,
+      isLoading: false,
+      error: null,
+      invalidateCredits: vi.fn(),
     };
   });
 
@@ -219,50 +241,53 @@ describe("Settings Page", () => {
     });
   });
 
-  describe("Subscription Status", () => {
-    it("[P1] should show Free Plan for free users", () => {
-      // GIVEN: Free user
-      const profile = createUserProfile({ subscription_tier: "free" });
+  describe("Credits Display", () => {
+    it("[P1] should show credit balance", () => {
+      // GIVEN: Authenticated user with credits
       mockUseAuthReturn = {
         ...mockUseAuthReturn,
-        profile,
-        isPro: false,
+        profile: createUserProfile(),
         isLoading: false,
         isAuthenticated: true,
+      };
+      mockUseCreditsReturn = {
+        ...mockUseCreditsReturn,
+        credits: 5,
       };
 
       // WHEN: Rendering settings page
       render(<SettingsPage />);
 
-      // THEN: Free Plan is shown
-      expect(screen.getByText("Free Plan")).toBeInTheDocument();
+      // THEN: Credits are shown
+      expect(screen.getByText(/5 credits available/i)).toBeInTheDocument();
     });
 
-    it("[P1] should show Pro Plan for pro users", () => {
-      // GIVEN: Pro user
-      const profile = createProUser();
+    it("[P1] should show time bank when available", () => {
+      // GIVEN: User with time bank minutes
       mockUseAuthReturn = {
         ...mockUseAuthReturn,
-        profile,
-        isPro: true,
+        profile: createUserProfile(),
         isLoading: false,
         isAuthenticated: true,
+      };
+      mockUseCreditsReturn = {
+        ...mockUseCreditsReturn,
+        credits: 3,
+        timeBank: 12,
       };
 
       // WHEN: Rendering settings page
       render(<SettingsPage />);
 
-      // THEN: Pro Plan is shown
-      expect(screen.getByText("Pro Plan")).toBeInTheDocument();
+      // THEN: Time bank is shown
+      expect(screen.getByText(/12 min banked/i)).toBeInTheDocument();
     });
 
-    it("[P1] should show Upgrade button for free users", () => {
-      // GIVEN: Free user
-      const profile = createUserProfile({ subscription_tier: "free" });
+    it("[P1] should show Buy more credits link", () => {
+      // GIVEN: Authenticated user
       mockUseAuthReturn = {
         ...mockUseAuthReturn,
-        profile,
-        isPro: false,
+        profile: createUserProfile(),
         isLoading: false,
         isAuthenticated: true,
       };
@@ -270,17 +295,15 @@ describe("Settings Page", () => {
       // WHEN: Rendering settings page
       render(<SettingsPage />);
 
-      // THEN: Upgrade button is visible
-      expect(screen.getByRole("link", { name: /upgrade/i })).toBeInTheDocument();
+      // THEN: Buy more credits link is visible
+      expect(screen.getByRole("link", { name: /buy more credits/i })).toBeInTheDocument();
     });
 
-    it("[P1] should not show Upgrade button for pro users", () => {
-      // GIVEN: Pro user
-      const profile = createProUser();
+    it("[P1] should show Credits heading", () => {
+      // GIVEN: Authenticated user
       mockUseAuthReturn = {
         ...mockUseAuthReturn,
-        profile,
-        isPro: true,
+        profile: createUserProfile(),
         isLoading: false,
         isAuthenticated: true,
       };
@@ -288,29 +311,8 @@ describe("Settings Page", () => {
       // WHEN: Rendering settings page
       render(<SettingsPage />);
 
-      // THEN: Upgrade button is not visible
-      expect(screen.queryByRole("link", { name: /upgrade/i })).not.toBeInTheDocument();
-    });
-
-    it("[P2] should show remaining generations for free users", () => {
-      // GIVEN: Free user with 1 generation used
-      const profile = createUserProfile({
-        subscription_tier: "free",
-        daily_generations: 1,
-      });
-      mockUseAuthReturn = {
-        ...mockUseAuthReturn,
-        profile,
-        isPro: false,
-        isLoading: false,
-        isAuthenticated: true,
-      };
-
-      // WHEN: Rendering settings page
-      render(<SettingsPage />);
-
-      // THEN: Shows remaining count
-      expect(screen.getByText(/2 of 3 generations left today/i)).toBeInTheDocument();
+      // THEN: Credits section heading is shown
+      expect(screen.getByText("Credits")).toBeInTheDocument();
     });
   });
 

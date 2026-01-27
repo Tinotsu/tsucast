@@ -61,8 +61,8 @@ export interface UserProfileData {
   id: string;
   email: string;
   display_name: string | null;
-  subscription_tier: "free" | "pro";
-  daily_generations: number;
+  credits_balance: number;
+  time_bank_minutes: number;
   is_admin: boolean;
   created_at: string;
 }
@@ -73,17 +73,17 @@ export function createUserProfile(overrides: Partial<UserProfileData> = {}): Use
     id,
     email: generateEmail(),
     display_name: `Test User ${id}`,
-    subscription_tier: "free",
-    daily_generations: 0,
+    credits_balance: 0,
+    time_bank_minutes: 0,
     is_admin: false,
     created_at: new Date().toISOString(),
     ...overrides,
   };
 }
 
-export function createProUser(overrides: Partial<UserProfileData> = {}): UserProfileData {
+export function createUserWithCredits(credits: number, overrides: Partial<UserProfileData> = {}): UserProfileData {
   return createUserProfile({
-    subscription_tier: "pro",
+    credits_balance: credits,
     ...overrides,
   });
 }
@@ -97,7 +97,6 @@ export interface GenerateResponseData {
   title: string;
   duration: number;
   wordCount: number;
-  remaining?: number;
 }
 
 export function createGenerateResponse(overrides: Partial<GenerateResponseData> = {}): GenerateResponseData {
@@ -108,7 +107,6 @@ export function createGenerateResponse(overrides: Partial<GenerateResponseData> 
     title: `Generated Article ${id}`,
     duration: 300 + Math.floor(Math.random() * 600),
     wordCount: 1000 + Math.floor(Math.random() * 2000),
-    remaining: 3,
     ...overrides,
   };
 }

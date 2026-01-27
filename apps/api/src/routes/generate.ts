@@ -28,7 +28,6 @@ import {
 import { ErrorCodes, createApiError, LIMITS } from '../utils/errors.js';
 import { getSupabase } from '../lib/supabase.js';
 import { getUserFromToken } from '../middleware/auth.js';
-import { checkRateLimit, incrementGenerationCount } from '../services/rate-limit.js';
 import {
   previewCreditCost,
   deductCredits,
@@ -197,7 +196,6 @@ app.post('/', async (c) => {
     // Authentication check - require login to generate
     const supabase = getSupabase();
     let userId: string | null = null;
-    let rateLimit: { allowed: boolean; remaining: number; resetAt: string | null; isPro: boolean } | null = null;
 
     if (supabase) {
       userId = await getUserFromToken(c.req.header('Authorization'));
@@ -212,22 +210,13 @@ app.post('/', async (c) => {
         }, 401);
       }
 
-      rateLimit = await checkRateLimit(userId, supabase);
-
-      // Check if user has credits (credit system bypasses rate limit)
+      // Check if user has credits
       const userCredits = await getUserCreditBalance(userId);
       const hasCredits = userCredits && userCredits.credits > 0;
 
-      if (!rateLimit.allowed && !hasCredits) {
-        logger.info({ userId, hasCredits }, 'Rate limit exceeded and no credits');
-        return c.json({
-          error: {
-            code: 'RATE_LIMITED',
-            message: "You've reached your daily limit. Buy credits or upgrade to Pro for unlimited access.",
-          },
-          remaining: 0,
-          resetAt: rateLimit.resetAt,
-        }, 429);
+      if (!hasCredits) {
+        logger.info({ userId }, 'Insufficient credits');
+        return c.json({ error: createApiError(ErrorCodes.INSUFFICIENT_CREDITS) }, 402);
       }
     }
 
@@ -478,16 +467,12 @@ app.post('/', async (c) => {
       }
     }
 
-    // Deduct credits (new credit system) or increment generation counter (legacy rate limit)
+    // Deduct credits
     let creditBalance = null;
     const durationMinutes = Math.round(ttsResult.durationSeconds / 60);
 
     if (supabase && userId) {
-      // Try credit system first
-      const userCredits = await getUserCreditBalance(userId);
-
-      if (userCredits && userCredits.credits > 0) {
-        // User has credits - deduct them
+      try {
         creditBalance = await deductCredits(
           userId,
           durationMinutes,
@@ -496,17 +481,19 @@ app.post('/', async (c) => {
         );
 
         if (!creditBalance) {
-          // This shouldn't happen since we checked credits above, but handle it
-          logger.warn({ userId }, 'Credit deduction failed - insufficient credits');
-        } else {
-          logger.info(
-            { userId, creditsUsed: userCredits.credits - creditBalance.credits, newBalance: creditBalance.credits },
-            'Credits deducted'
-          );
+          // TOCTOU: credits were drained between initial check and deduction
+          logger.warn({ userId }, 'Credit deduction failed - insufficient credits (TOCTOU)');
+          return c.json({ error: createApiError(ErrorCodes.INSUFFICIENT_CREDITS) }, 402);
         }
-      } else if (rateLimit && !rateLimit.isPro) {
-        // Fall back to legacy rate limit system
-        await incrementGenerationCount(userId, supabase);
+
+        logger.info(
+          { userId, newBalance: creditBalance.credits },
+          'Credits deducted'
+        );
+      } catch (error) {
+        // DB error during deduction — do not serve audio URL
+        logger.error({ userId, error }, 'Credit deduction threw an error');
+        return c.json({ error: createApiError(ErrorCodes.INTERNAL_ERROR, 'Failed to process credits. Please try again.') }, 500);
       }
     }
 
@@ -515,11 +502,6 @@ app.post('/', async (c) => {
       'Generation complete'
     );
 
-    // Calculate remaining after this generation
-    const newRemaining = rateLimit && !rateLimit.isPro
-      ? Math.max(0, rateLimit.remaining - 1)
-      : null;
-
     return c.json({
       status: 'ready',
       audioUrl: uploadResult.url,
@@ -527,8 +509,6 @@ app.post('/', async (c) => {
       duration: ttsResult.durationSeconds,
       wordCount,
       contentType: isPdf ? 'pdf' : 'html',
-      remaining: newRemaining,
-      // Include credit info if using credit system
       credits: creditBalance ? {
         balance: creditBalance.credits,
         timeBank: creditBalance.timeBank,

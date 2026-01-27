@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
+import { useCredits } from "@/hooks/useCredits";
 import {
   Headphones,
   PlusCircle,
@@ -10,7 +11,7 @@ import {
   Settings,
   LogOut,
   User,
-  Crown,
+  Ticket,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -22,7 +23,8 @@ const navigation = [
 
 export function AppHeader() {
   const pathname = usePathname();
-  const { profile, signOut, isPro } = useAuth();
+  const { profile, signOut } = useAuth();
+  const { credits, isLoading: creditsLoading } = useCredits();
 
   return (
     <header className="sticky top-0 z-50 border-b border-zinc-800 bg-black/80 backdrop-blur-lg">
@@ -62,20 +64,19 @@ export function AppHeader() {
 
         {/* Right side */}
         <div className="flex items-center gap-4">
-          {/* Subscription badge */}
-          {isPro ? (
-            <div className="hidden items-center gap-1 rounded-full bg-amber-500/10 px-3 py-1 text-sm font-medium text-amber-500 sm:flex" aria-label="Pro subscription active">
-              <Crown className="h-4 w-4" aria-hidden="true" />
-              Pro
+          {/* Credit balance + upgrade */}
+          <div className="hidden items-center gap-3 sm:flex">
+            <div className="flex items-center gap-1 text-sm text-zinc-400">
+              <Ticket className="h-4 w-4 text-amber-500" aria-hidden="true" />
+              <span>{creditsLoading ? "..." : `${credits} credits`}</span>
             </div>
-          ) : (
             <Link
               href="/upgrade"
-              className="hidden rounded-lg bg-amber-500 px-4 py-2 text-sm font-semibold text-black transition-colors hover:bg-amber-400 sm:block"
+              className="rounded-lg bg-amber-500 px-4 py-2 text-sm font-semibold text-black transition-colors hover:bg-amber-400"
             >
               Upgrade
             </Link>
-          )}
+          </div>
 
           {/* User menu */}
           <div className="group relative">

@@ -5,7 +5,7 @@ import { getAdminUsers, type AdminUser, type PaginatedResponse } from "@/lib/adm
 import {
   Search,
   Loader2,
-  Crown,
+  Ticket,
   User,
   ChevronLeft,
   ChevronRight,
@@ -61,8 +61,8 @@ export default function AdminUsersPage() {
       id: "1",
       email: "user1@example.com",
       display_name: "John Doe",
-      subscription_tier: "pro",
-      daily_generations: 2,
+      credits_balance: 12,
+      time_bank_minutes: 5,
       is_admin: false,
       created_at: new Date().toISOString(),
       last_sign_in: new Date().toISOString(),
@@ -72,8 +72,8 @@ export default function AdminUsersPage() {
       id: "2",
       email: "user2@example.com",
       display_name: null,
-      subscription_tier: "free",
-      daily_generations: 3,
+      credits_balance: 0,
+      time_bank_minutes: 0,
       is_admin: false,
       created_at: new Date(Date.now() - 86400000 * 7).toISOString(),
       last_sign_in: new Date(Date.now() - 86400000).toISOString(),
@@ -130,7 +130,7 @@ export default function AdminUsersPage() {
                     <thead>
                       <tr className="border-b border-zinc-800 text-left text-sm text-zinc-400">
                         <th className="px-6 py-4 font-medium">User</th>
-                        <th className="px-6 py-4 font-medium">Plan</th>
+                        <th className="px-6 py-4 font-medium">Credits</th>
                         <th className="px-6 py-4 font-medium">Generations</th>
                         <th className="px-6 py-4 font-medium">Joined</th>
                       </tr>
@@ -166,15 +166,13 @@ export default function AdminUsersPage() {
                             <span
                               className={cn(
                                 "inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs font-medium",
-                                user.subscription_tier === "pro"
+                                user.credits_balance > 0
                                   ? "bg-amber-500/10 text-amber-500"
                                   : "bg-zinc-800 text-zinc-400"
                               )}
                             >
-                              {user.subscription_tier === "pro" && (
-                                <Crown className="h-3 w-3" />
-                              )}
-                              {user.subscription_tier}
+                              <Ticket className="h-3 w-3" />
+                              {user.credits_balance}
                             </span>
                           </td>
                           <td className="px-6 py-4 text-white">
@@ -232,15 +230,13 @@ export default function AdminUsersPage() {
                   <span
                     className={cn(
                       "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium",
-                      selectedUser.subscription_tier === "pro"
+                      selectedUser.credits_balance > 0
                         ? "bg-amber-500/10 text-amber-500"
                         : "bg-zinc-800 text-zinc-400"
                     )}
                   >
-                    {selectedUser.subscription_tier === "pro" && (
-                      <Crown className="h-3 w-3" />
-                    )}
-                    {selectedUser.subscription_tier}
+                    <Ticket className="h-3 w-3" />
+                    {selectedUser.credits_balance} credits
                   </span>
                 </div>
               </div>
@@ -268,28 +264,25 @@ export default function AdminUsersPage() {
 
               <div className="mt-6 border-t border-zinc-800 pt-6">
                 <h4 className="mb-3 text-sm font-medium text-zinc-400">
-                  Today&apos;s Usage
+                  Credits
                 </h4>
                 <div className="rounded-lg bg-amber-500/5 p-4">
                   <div className="mb-2 flex justify-between text-sm">
                     <span className="text-zinc-400">
-                      Generations
+                      Balance
                     </span>
                     <span className="font-medium text-white">
-                      {selectedUser.daily_generations} /{" "}
-                      {selectedUser.subscription_tier === "pro" ? "∞" : "3"}
+                      {selectedUser.credits_balance} credits
                     </span>
                   </div>
-                  {selectedUser.subscription_tier === "free" && (
-                    <div className="h-2 overflow-hidden rounded-full bg-amber-500/20">
-                      <div
-                        className="h-full rounded-full bg-amber-500"
-                        style={{
-                          width: `${(selectedUser.daily_generations / 3) * 100}%`,
-                        }}
-                      />
-                    </div>
-                  )}
+                  <div className="flex justify-between text-sm">
+                    <span className="text-zinc-400">
+                      Time Bank
+                    </span>
+                    <span className="font-medium text-white">
+                      {selectedUser.time_bank_minutes} min
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>

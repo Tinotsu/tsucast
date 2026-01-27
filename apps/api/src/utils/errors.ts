@@ -25,6 +25,9 @@ export const ErrorCodes = {
   // TTS errors (for future use)
   TTS_FAILED: 'TTS_FAILED',
 
+  // Credit errors
+  INSUFFICIENT_CREDITS: 'INSUFFICIENT_CREDITS',
+
   // Generic errors
   INVALID_URL: 'INVALID_URL',
   TIMEOUT: 'TIMEOUT',
@@ -43,6 +46,8 @@ export const ErrorMessages: Record<string, string> = {
     'This PDF is password-protected and cannot be processed.',
   [ErrorCodes.PDF_TOO_LARGE]: 'This PDF is too large (max 50MB)',
   [ErrorCodes.TTS_FAILED]: 'Audio generation failed. Please try again.',
+  [ErrorCodes.INSUFFICIENT_CREDITS]:
+    'Insufficient credits. Purchase credits to generate audio.',
   [ErrorCodes.INVALID_URL]: 'Please enter a valid URL',
   [ErrorCodes.TIMEOUT]: 'Request timed out. Please try again.',
   [ErrorCodes.INTERNAL_ERROR]: 'Something went wrong. Please try again.',
