@@ -37,20 +37,35 @@ npm run mobile
 
 **NEVER skip these steps. NEVER trust that previous work is complete without verifying.**
 
-## Tech Stack
+## Tech Stack & Versions
 
-| Layer | Technology |
-|-------|------------|
-| Mobile | Expo SDK 54, React Native, expo-router v6 |
-| Web Frontend | Next.js 14+ (App Router) |
-| Styling | NativeWind v4 (mobile), Tailwind CSS (web) |
-| State | React Query (server), Zustand (client) |
-| Auth | Supabase Auth |
-| Database | Supabase PostgreSQL |
-| API Server | Node.js + Hono (Hetzner VPS) |
-| TTS | Fish Audio API |
-| Storage | Cloudflare R2 |
-| Payments | RevenueCat |
+| Layer | Technology | Version |
+|-------|-----------|---------|
+| Runtime | Node.js | >=20 (API), >=18 (root) |
+| Language | TypeScript (strict mode) | 5.9 (mobile), 5.4+ (api), 5.7+ (web) |
+| React | React | 19.1.0 (all workspaces) |
+| Mobile | Expo SDK 54, React Native | `expo ~54.0.31`, `react-native 0.81.5` |
+| Mobile Navigation | expo-router v6 | `expo-router ~6.0.22` |
+| Web | Next.js 15 (App Router) | `next 15.5.9` |
+| API Server | Hono v4 on Node.js (Hetzner VPS) | `hono ^4.4.0` |
+| Styling (mobile) | NativeWind v4 + Tailwind v3 | `nativewind ^4.1.23`, `tailwindcss ^3.4.4` |
+| Styling (web) | Tailwind CSS v4 | `tailwindcss ^4.0.0` |
+| Server State | TanStack React Query v5 | `@tanstack/react-query ^5.51.0` |
+| Client State | Zustand v4 | `zustand ^4.5.4` |
+| Audio | react-native-track-player v4 + expo-av | `react-native-track-player ^4.1.2` |
+| Auth | Supabase Auth | `@supabase/supabase-js ^2.45.0` |
+| Database | Supabase PostgreSQL | via Supabase JS client |
+| Storage | Cloudflare R2 | `@aws-sdk/client-s3 ^3.600.0` |
+| TTS | Fish Audio API | via API server |
+| Payments | RevenueCat + Stripe | `react-native-purchases ^9.7.1`, `stripe ^20.2.0` |
+| Validation (API) | Zod | `zod ^3.23.0` |
+| Logging (API) | Pino | `pino ^9.2.0` |
+| Testing (mobile) | Jest | `jest ^29.7.0` |
+| Testing (api/web) | Vitest | `vitest ^3.0.4` |
+| E2E (web) | Playwright | `@playwright/test ^1.50.0` |
+| Deploy (web) | Cloudflare Pages via OpenNext | `@opennextjs/cloudflare ^1.0.0` |
+
+**Version constraints:** Mobile uses Tailwind v3 (NativeWind v4 requirement), web uses Tailwind v4. React 19.1.0 is enforced via root `overrides`.
 
 ## Project Structure
 
@@ -79,52 +94,121 @@ tsucast/
 └── _bmad-output/        # Planning artifacts
 ```
 
-## Critical Patterns
+## Language-Specific Rules
 
-### 1. File Naming
-- Components: `PascalCase.tsx` (e.g., `VoiceSelector.tsx`)
-- Hooks: `camelCase.ts` with `use` prefix (e.g., `useAuth.ts`)
-- Routes: `kebab-case` directories in expo-router
+### TypeScript Configuration
+- Strict mode enabled in all workspaces — no implicit `any`, strict null checks
+- Mobile: `moduleResolution: "bundler"`, `@/*` maps to `./*` (project root-relative)
+- API: `moduleResolution: "bundler"`, `@/*` maps to `./src/*`
+- API is ESM (`"type": "module"`) — **relative imports require `.js` extension** (e.g., `import { logger } from '../lib/logger.js'`)
+- Mobile imports need no file extension (e.g., `import { cn } from '@/utils/cn'`)
 
-### 2. Authentication
-- Auth is handled by Supabase directly from mobile app
-- VPS validates Supabase JWT tokens via middleware
-- Never store auth tokens in AsyncStorage - use `expo-secure-store`
+### Import Conventions
+- Use `@/` path alias for all internal imports (never `../../..` deep relative paths)
+- API: use relative imports within same module, `@/` for cross-module
+- Use dynamic `await import()` to break circular dependencies (see `services/api.ts`)
+- External npm packages use bare specifiers
 
-### 3. Database Access
-- Mobile app uses Supabase client with RLS policies
-- VPS uses service role key for admin operations
-- All tables have Row Level Security enabled
+### Error Handling
+- API routes **never throw** — always return `c.json({ error: { code, message } }, statusCode)`
+- Use centralized `ErrorCodes` constant and `createApiError()` from `src/utils/errors.ts`
+- Mobile service functions throw errors; React Query `onError` handles them
+- Pino logger auto-redacts: `authorization`, `token`, `password`, `api_key`, `secret`
 
-### 4. API Patterns
-```typescript
-// All API responses follow this shape
-interface ApiResponse<T> {
-  data?: T;
-  error?: {
-    code: string;
-    message: string;
-  };
-}
-```
+### Type Conventions
+- `any` triggers ESLint warning — requires comment justification if suppressed
+- Unused function params: prefix with `_` (e.g., `_event`)
+- Use `interface` for component props, `type` for unions/utility types
+- Zod schemas for all API input validation on the server side
 
-### 5. Error Handling
-- Map technical errors to user-friendly messages
-- Never expose stack traces or internal errors to users
-- Log errors server-side with request IDs
+## Framework-Specific Rules
 
-### 6. Styling (NativeWind)
-- Use Tailwind classes via `className` prop
-- Theme: Monochrome dark (black/white/gray only for MVP)
+### React / React Native (Mobile)
+- Functional components only with typed props interfaces — no class components
+- Hooks encapsulate all business logic; components are thin UI wrappers
+- `useAuth()` manages auth state with `useState` + `useEffect` + Supabase `onAuthStateChange` listener — not React Query
+- All other server data uses React Query (`useQuery`/`useMutation`)
+- Player state lives in Zustand (`usePlayerStore`) — it is client-only state, not server state
+- Use `cn()` utility (clsx + tailwind-merge) from `@/utils/cn` for conditional class merging
+- Feature directories have barrel exports via `index.ts` (e.g., `components/player/index.ts`)
+
+### Expo Router
+- File-based routing in `apps/mobile/app/`
+- Layout groups: `(tabs)` for main nav, `(auth)` for unauthenticated screens
+- Dynamic routes: `player/[id].tsx`, `playlist/[id].tsx`
+- Root `_layout.tsx` handles auth gate — redirects to login if no session
+
+### Hono (API Server)
+- Each route file creates `new Hono()` and exports as default
+- Routes mounted in `src/index.ts`: `app.route('/api/generate', generateRoutes)`
+- Auth via `getUserFromToken()` helper or `requireAuth` middleware — not Hono's built-in auth
+- Zod validates request body/query inside route handlers
+- Global middleware order: CORS → logger → logging → timeout (120s) → body limit (1MB)
+
+### NativeWind (Mobile Styling)
+- Tailwind classes via `className` prop on RN components
+- Inline `style` prop only for dynamic computed values (e.g., `style={{ width: buttonSize }}`)
+- No `StyleSheet.create()` — NativeWind classes for all static styles
+
+### Next.js (Web)
+- App Router with server components by default
+- Supabase SSR via `@supabase/ssr`
+- Deployed to Cloudflare Pages via `@opennextjs/cloudflare`
+
+## Testing Rules
+
+### Frameworks & Commands
+- Mobile: Jest — `npm run test:mobile`
+- API: Vitest — `npm run test:api` (excludes E2E)
+- API E2E: Vitest with 30s timeout — `npm run test:e2e`
+- Web: Vitest — `npm run test:web`
+- All: `npm run test` (all workspaces), `npm run typecheck` (all workspaces)
+
+### Test Organization
+- Tests live in `__tests__/` directories — **not** co-located next to source files
+- Mobile: `apps/mobile/__tests__/unit/{domain}/{name}.test.ts`
+- API: `apps/api/__tests__/integration/{name}.test.ts`
+- API E2E: `apps/api/__tests__/e2e/{name}.test.ts`
+
+### Test Conventions
+- `describe`/`it` block structure grouped by scenario
+- Mobile tests focus on isolated pure logic (validation, store) — no component rendering tests
+- API integration tests create minimal inline Hono app instances to test route behavior
+- Reference story IDs in comments when applicable (e.g., `// Story: 1-1 Email Registration & Login`)
+- Always run `npm run typecheck` in addition to tests before completing work
+
+## Code Quality & Style Rules
+
+### Linting
+- Mobile: extends `expo` + `@typescript-eslint/recommended`
+- API: extends `eslint:recommended` + `@typescript-eslint/recommended`
+- No Prettier — formatting handled by ESLint only
+- `no-explicit-any: warn`, `no-unused-vars: warn` (allows `_` prefix)
+
+### File & Folder Naming
+- Components: `PascalCase.tsx` (e.g., `PlayButton.tsx`, `LibraryItem.tsx`)
+- Hooks: `camelCase.ts` with `use` prefix (e.g., `useAuth.ts`, `useCredits.ts`)
+- Services/utils (mobile): `camelCase.ts` (e.g., `api.ts`, `urlNormalization.ts`)
+- Routes/services/middleware (API): `kebab-case.ts` (e.g., `rate-limit.ts`)
+- Stores: `camelCase.ts` (e.g., `playerStore.ts`)
+- Expo Router pages: lowercase with `(group)` layouts and `[param]` dynamics
+
+### Code Organization
+- Mobile components grouped by feature: `player/`, `library/`, `add/`, `auth/`, `ui/`
+- API grouped by concern: `routes/`, `services/`, `middleware/`, `lib/`, `utils/`
+- API `lib/` = singletons (logger, supabase client); `utils/` = pure functions (errors, url helpers)
+
+### Logging
+- API: Pino structured logger via `src/lib/logger.ts` — JSON in prod, pretty in dev
+- Pino auto-redacts: `authorization`, `token`, `password`, `api_key`, `secret`
+- Mobile: no formal logger — no `console.log` in production code
+
+## Theme (Mobile MVP)
+- Monochrome dark (black/white/gray only)
 - Background: `bg-black`
 - Surface/Cards: `bg-zinc-900` with `border border-zinc-800`
 - Text: `text-white` (primary) / `text-zinc-400` (secondary)
 - Buttons: `bg-white text-black` or `border border-white text-white`
-
-### 7. State Management
-- Server state: React Query (`useQuery`, `useMutation`)
-- Client state: Zustand (player state, UI state)
-- Auth state: `useAuth` hook (wraps Supabase)
 
 ## Environment Variables
 
@@ -154,24 +238,70 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=
 NEXT_PUBLIC_API_URL=
 ```
 
-## Do NOT
+## Critical Don't-Miss Rules
 
-- Use `console.log` in production code (use proper logger)
+### Anti-Patterns
+- **Never use `AsyncStorage` for auth tokens** — `expo-secure-store` is configured in `services/supabase.ts`
+- **Never use `StyleSheet.create()`** in mobile — NativeWind `className` for all static styles
+- **Never use raw `fetch()` in mobile components** — wrap in service functions, consume via React Query hooks
+- **Never throw from API route handlers** — always `return c.json({ error: {...} }, status)`
+- **Never create `/lib/` in mobile** — use `services/` for clients, `utils/` for pure functions
+- **API relative imports must include `.js` extension** (ESM) — mobile imports do not
+
+### Edge Cases
+- Mobile uses Tailwind **v3** (NativeWind requirement), web uses Tailwind **v4** — config and class syntax may differ
+- `react-native-track-player` requires custom dev client — **cannot run in Expo Go**
+- `services/api.ts` uses dynamic `await import('./supabase')` to avoid circular deps — follow this pattern for new service cross-references
+- `packages/shared/` exists but is currently empty — no shared code across apps yet
+
+### Security
+- All Supabase tables have RLS — never bypass from mobile client
+- API uses `service_role` key for admin operations only — never expose to client
+- Always use Pino logger (auto-redacts sensitive fields), not `console.log`
+- RevenueCat webhook authenticates via Bearer token (`REVENUECAT_WEBHOOK_AUTH_KEY`)
+
+### Performance
+- Use `@shopify/flash-list` for large lists — not `FlatList`
+- React Query caching handles server data freshness — no manual cache invalidation unless needed
+- Audio files served from R2 CDN — never proxy audio through the API server
+
+## Do / Do NOT
+
+**Do:**
+- Run `npm run typecheck` before committing
+- Follow existing patterns in the codebase
+- Keep components small and focused
+- Handle loading and error states in UI
+- Test on both iOS and Android
+
+**Do NOT:**
 - Store secrets in code or commit `.env` files
-- Skip TypeScript types (strict mode enabled)
-- Use `any` type without justification
 - Create new files when editing existing ones suffices
 - Add features not in the current story scope
 - Add mobile-only features to web (background audio, lock screen controls, sleep timer with screen-off)
 
-## Do
+## Development Workflow Rules
 
-- Run `npm run typecheck` before committing
-- Follow existing patterns in the codebase
-- Keep components small and focused
-- Use meaningful variable names
-- Handle loading and error states in UI
-- Test on both iOS and Android
+### Monorepo Commands (run from project root)
+- `npm run mobile` — Expo dev server (mobile)
+- `npm run api` — Hono API with tsx watch + .env auto-loaded
+- `npm run web` — Next.js dev server
+- `npm run typecheck` — TypeScript check across all workspaces
+- `npm run test` — all workspace tests
+- `npm run web:deploy` — OpenNext build + Wrangler deploy to Cloudflare Pages
+- `npm run api:build` — tsc compile to `dist/` for Hetzner VPS
+
+### Database Migrations
+- Location: `supabase/migrations/`
+- Naming: `{timestamp}_{description}.sql` (e.g., `20260120000001_initial_schema.sql`)
+- All tables: UUID primary keys, `created_at`/`updated_at` timestamps
+- RLS enabled on all user-facing tables
+- Triggers for auto-operations (e.g., auto-create user profile on signup via `handle_new_user()`)
+
+### Build & Deploy
+- Mobile: EAS Build (cloud builds for iOS — Linux dev environment)
+- Web: Cloudflare Pages via `@opennextjs/cloudflare`
+- API: Node.js on Hetzner VPS
 
 ## Code Review Checklist
 
@@ -244,3 +374,19 @@ See `_bmad-output/planning-artifacts/sprint-status.yaml` for:
 - PRD: `_bmad-output/planning-artifacts/prd.md`
 - UX Design: `_bmad-output/planning-artifacts/ux-design-specification.md`
 - Stories: `_bmad-output/stories/`
+
+---
+
+## Usage Guidelines
+
+**For AI Agents:**
+- Read this file before implementing any code
+- Follow ALL rules exactly as documented
+- When in doubt, prefer the more restrictive option
+
+**For Humans:**
+- Keep this file lean and focused on agent needs
+- Update when technology stack or patterns change
+- Remove rules that become obvious over time
+
+Last Updated: 2026-01-27
