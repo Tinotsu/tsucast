@@ -61,7 +61,7 @@ export async function generateSpeech(options: TtsOptions): Promise<TtsResult> {
       text,
       reference_id: fishAudioVoiceId,
       format: 'mp3',
-      mp3_bitrate: 128,
+      mp3_bitrate: 64,
     };
 
     logger.info({ requestBody: { ...requestBody, text: `${text.substring(0, 100)}...` } }, 'Fish Audio request');
@@ -92,9 +92,9 @@ export async function generateSpeech(options: TtsOptions): Promise<TtsResult> {
 
     const audioBuffer = Buffer.from(await response.arrayBuffer());
 
-    // Estimate duration from file size (MP3 at 128kbps)
-    // 128 kbps = 16 KB/s, so duration = size / 16000
-    const durationSeconds = Math.round(audioBuffer.length / 16000);
+    // Estimate duration from file size (MP3 at 64kbps)
+    // 64 kbps = 8 KB/s, so duration = size / 8000
+    const durationSeconds = Math.round(audioBuffer.length / 8000);
 
     logger.info(
       { durationSeconds, fileSizeBytes: audioBuffer.length },
