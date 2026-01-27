@@ -57,28 +57,28 @@ describe("Landing Page Components", () => {
     it("renders credit packs", () => {
       render(<Pricing />);
 
-      expect(screen.getByText("Starter")).toBeInTheDocument();
-      expect(screen.getByText("Regular")).toBeInTheDocument();
-      expect(screen.getByText("Power")).toBeInTheDocument();
+      expect(screen.getByText("Coffee")).toBeInTheDocument();
+      expect(screen.getByText("Pizza")).toBeInTheDocument();
+      expect(screen.getByText("Feast")).toBeInTheDocument();
       expect(screen.getByText("$4.99")).toBeInTheDocument();
-      expect(screen.getByText("$9.99")).toBeInTheDocument();
-      expect(screen.getByText("$24.99")).toBeInTheDocument();
+      expect(screen.getByText("$16.99")).toBeInTheDocument();
+      expect(screen.getByText("$39.99")).toBeInTheDocument();
     });
 
     it("shows credit counts and features", () => {
       render(<Pricing />);
 
       expect(screen.getByText(/5 credits \(\$1\.00\/article\)/)).toBeInTheDocument();
-      expect(screen.getByText(/15 credits \(\$0\.67\/article\)/)).toBeInTheDocument();
-      expect(screen.getByText(/50 credits \(\$0\.50\/article\)/)).toBeInTheDocument();
+      expect(screen.getByText(/20 credits \(\$0\.85\/article\)/)).toBeInTheDocument();
+      expect(screen.getByText(/50 credits \(\$0\.80\/article\)/)).toBeInTheDocument();
       expect(screen.getByText("Credits never expire")).toBeInTheDocument();
       expect(screen.getByText("Cache hits are free")).toBeInTheDocument();
     });
 
-    it("shows Best Value badge on Regular pack", () => {
+    it("shows Popular badge on Coffee pack", () => {
       render(<Pricing />);
 
-      expect(screen.getByText("Best Value")).toBeInTheDocument();
+      expect(screen.getByText("Popular")).toBeInTheDocument();
     });
   });
 

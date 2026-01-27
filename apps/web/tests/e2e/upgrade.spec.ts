@@ -13,8 +13,7 @@ test.describe("Upgrade Page", () => {
       // GIVEN: User navigates to upgrade page
       await page.goto("/upgrade");
 
-      // THEN: All 5 credit packs are visible
-      await expect(page.getByText("Candy")).toBeVisible();
+      // THEN: All 4 credit packs are visible (Candy removed)
       await expect(page.getByText("Coffee")).toBeVisible();
       await expect(page.getByText("Kebab")).toBeVisible();
       await expect(page.getByText("Pizza")).toBeVisible();
@@ -26,7 +25,6 @@ test.describe("Upgrade Page", () => {
       await page.goto("/upgrade");
 
       // THEN: Prices are displayed
-      await expect(page.getByText("$2.99")).toBeVisible();
       await expect(page.getByText("$4.99")).toBeVisible();
       await expect(page.getByText("$8.99")).toBeVisible();
       await expect(page.getByText("$16.99")).toBeVisible();
@@ -101,7 +99,7 @@ test.describe("Upgrade Page", () => {
 
       // THEN: All Buy Now buttons are visible
       const buyButtons = authenticatedPage.getByRole("button", { name: /buy now/i });
-      await expect(buyButtons).toHaveCount(5);
+      await expect(buyButtons).toHaveCount(4);
     });
 
     test("[P1] should not show sign in prompt when logged in", async ({ authenticatedPage }) => {

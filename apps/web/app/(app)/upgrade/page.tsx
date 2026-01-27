@@ -8,16 +8,8 @@ import Link from "next/link";
 import { useState } from "react";
 import { createCreditCheckout } from "@/lib/api";
 
-// Credit pack definitions matching pricing-specification.md
+// Credit pack definitions — must match API CREDIT_PACKS in services/credits.ts
 const CREDIT_PACKS = [
-  {
-    id: "candy",
-    emoji: "\ud83c\udf6c",
-    name: "Candy",
-    credits: 3,
-    price: 2.99,
-    description: "Perfect for trying out",
-  },
   {
     id: "coffee",
     emoji: "\u2615",

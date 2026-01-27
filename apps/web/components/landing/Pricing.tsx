@@ -3,27 +3,30 @@ import Link from "next/link";
 
 const packs = [
   {
-    name: "Starter",
+    emoji: "\u2615",
+    name: "Coffee",
     credits: 5,
     price: "$4.99",
     pricePerArticle: "$1.00",
-    description: "Try it out",
-    highlighted: false,
-  },
-  {
-    name: "Regular",
-    credits: 15,
-    price: "$9.99",
-    pricePerArticle: "$0.67",
-    description: "Best value for casual listeners",
+    description: "Most popular choice",
     highlighted: true,
   },
   {
-    name: "Power",
+    emoji: "\ud83c\udf55",
+    name: "Pizza",
+    credits: 20,
+    price: "$16.99",
+    pricePerArticle: "$0.85",
+    description: "For regular readers",
+    highlighted: false,
+  },
+  {
+    emoji: "\ud83c\udf71",
+    name: "Feast",
     credits: 50,
-    price: "$24.99",
-    pricePerArticle: "$0.50",
-    description: "For power users",
+    price: "$39.99",
+    pricePerArticle: "$0.80",
+    description: "Best per-article price",
     highlighted: false,
   },
 ];
@@ -66,12 +69,13 @@ export function Pricing() {
             >
               {pack.highlighted && (
                 <div className="absolute -top-4 left-1/2 -translate-x-1/2 rounded-full bg-amber-500 px-4 py-1 text-sm font-medium text-black">
-                  Best Value
+                  Popular
                 </div>
               )}
 
               <div className="mb-6">
-                <h3 className="text-xl font-bold text-white">
+                <span className="text-4xl">{pack.emoji}</span>
+                <h3 className="mt-2 text-xl font-bold text-white">
                   {pack.name}
                 </h3>
                 <p className="mt-1 text-sm text-zinc-400">
