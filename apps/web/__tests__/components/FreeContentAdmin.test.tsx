@@ -122,7 +122,7 @@ describe("AdminFreeContentPage", () => {
       expect(screen.getByPlaceholderText(/paul graham/i)).toBeInTheDocument();
     });
 
-    it("[P1] should call API and add processing item on submit", async () => {
+    it("[P0] should call API and add processing item on submit", async () => {
       // GIVEN: Form is filled with valid data
       mockCreateAdminFreeContent.mockResolvedValue({
         item: {

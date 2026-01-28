@@ -16,6 +16,7 @@ function formatDuration(seconds: number | null): string {
 
 function AudioPlayer({ item }: { item: FreeContentItem }) {
   const [isPlaying, setIsPlaying] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const audioRef = useRef<HTMLAudioElement>(null);
 
@@ -25,13 +26,19 @@ function AudioPlayer({ item }: { item: FreeContentItem }) {
 
     const handleTimeUpdate = () => setCurrentTime(audio.currentTime);
     const handleEnded = () => setIsPlaying(false);
+    const handleWaiting = () => setIsLoading(true);
+    const handleCanPlay = () => setIsLoading(false);
 
     audio.addEventListener("timeupdate", handleTimeUpdate);
     audio.addEventListener("ended", handleEnded);
+    audio.addEventListener("waiting", handleWaiting);
+    audio.addEventListener("canplay", handleCanPlay);
 
     return () => {
       audio.removeEventListener("timeupdate", handleTimeUpdate);
       audio.removeEventListener("ended", handleEnded);
+      audio.removeEventListener("waiting", handleWaiting);
+      audio.removeEventListener("canplay", handleCanPlay);
     };
   }, []);
 
@@ -41,10 +48,27 @@ function AudioPlayer({ item }: { item: FreeContentItem }) {
 
     if (isPlaying) {
       audio.pause();
+      setIsPlaying(false);
     } else {
-      audio.play();
+      setIsLoading(true);
+      audio.play().catch(() => {
+        setIsPlaying(false);
+        setIsLoading(false);
+      });
+      setIsPlaying(true);
     }
-    setIsPlaying(!isPlaying);
+  };
+
+  const handleSeek = (e: React.MouseEvent<HTMLDivElement>) => {
+    const audio = audioRef.current;
+    if (!audio || !item.duration_seconds) return;
+
+    const rect = e.currentTarget.getBoundingClientRect();
+    const clickX = e.clientX - rect.left;
+    const percentage = clickX / rect.width;
+    const newTime = percentage * item.duration_seconds;
+    audio.currentTime = newTime;
+    setCurrentTime(newTime);
   };
 
   const progress = item.duration_seconds
@@ -56,10 +80,13 @@ function AudioPlayer({ item }: { item: FreeContentItem }) {
       <div className="flex items-start gap-4">
         <button
           onClick={togglePlay}
-          disabled={!item.audio_url}
+          disabled={!item.audio_url || isLoading}
+          aria-label={isPlaying ? `Pause ${item.title}` : `Play ${item.title}`}
           className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-full bg-[#1a1a1a] text-white transition-transform hover:scale-105 disabled:opacity-50"
         >
-          {isPlaying ? (
+          {isLoading ? (
+            <Loader2 className="h-6 w-6 animate-spin" />
+          ) : isPlaying ? (
             <Pause className="h-6 w-6" />
           ) : (
             <Play className="h-6 w-6 ml-1" />
@@ -80,9 +107,17 @@ function AudioPlayer({ item }: { item: FreeContentItem }) {
           </div>
 
           {/* Progress bar */}
-          <div className="mt-3 h-1 w-full rounded-full bg-[#e5e5e5]">
+          <div
+            className="mt-3 h-1 w-full cursor-pointer rounded-full bg-[#e5e5e5]"
+            onClick={handleSeek}
+            role="slider"
+            aria-label={`Seek ${item.title}`}
+            aria-valuenow={Math.round(progress)}
+            aria-valuemin={0}
+            aria-valuemax={100}
+          >
             <div
-              className="h-full rounded-full bg-[#1a1a1a] transition-all"
+              className="pointer-events-none h-full rounded-full bg-[#1a1a1a] transition-all"
               style={{ width: `${progress}%` }}
             />
           </div>
@@ -175,7 +210,7 @@ export default function FreeContentPage() {
               Get Started Free
             </Link>
             <Link
-              href="https://apps.apple.com/app/tsucast"
+              href="https://tsucast.com/download"
               className="rounded-lg border border-[#333] px-6 py-3 font-semibold text-white transition-colors hover:bg-[#333]"
             >
               Download App
