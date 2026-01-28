@@ -38,13 +38,12 @@ USER hono
 
 # Environment defaults
 ENV NODE_ENV=production
-ENV PORT=3001
 ENV LOG_LEVEL=info
 
 EXPOSE 3001
 
-# Health check
+# Health check (PORT defaults to 3001 locally; Railway injects its own)
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-    CMD curl -f http://localhost:3001/health/ready || exit 1
+    CMD curl -f http://localhost:${PORT:-3001}/health/ready || exit 1
 
 CMD ["node", "dist/index.js"]

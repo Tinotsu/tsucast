@@ -8,36 +8,27 @@ on:
       - 'packages/**'
   workflow_dispatch:
 
+concurrency:
+  group: deploy-api
+  cancel-in-progress: true
+
 jobs:
-  deploy:
-    name: Deploy to VPS
+  smoke-test:
+    name: Post-Deploy Smoke Test
     runs-on: ubuntu-latest
+    # Railway auto-deploys via GitHub integration on push to main.
+    # This workflow only verifies the deploy succeeded.
+    # On workflow_dispatch (manual), it smoke-tests the current live deploy.
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Build API
-        run: npm run build --workspace=apps/api
-
-      - name: Deploy to Dokploy
+      - name: Wait for Railway deploy
         run: |
-          curl -X POST "${{ secrets.DOKPLOY_WEBHOOK_URL }}" \
-            -H "Content-Type: application/json" \
-            -d '{"ref": "${{ github.ref }}", "sha": "${{ github.sha }}"}'
+          echo "Railway auto-deploys on push. Waiting 90s for build + deploy..."
+          sleep 90
 
-      - name: Wait for deployment
+      - name: Wait for health check
         run: |
-          for i in $(seq 1 12); do
+          for i in $(seq 1 24); do
             if curl -sf https://api.tsucast.com/health/ready; then
               echo "Health check passed on attempt $i"
               exit 0
@@ -45,7 +36,7 @@ jobs:
             echo "Attempt $i failed, retrying in 10s..."
             sleep 10
           done
-          echo "Health check failed after 12 attempts (2 minutes)"
+          echo "Health check failed after 24 attempts (4 minutes)"
           exit 1
 
       - name: Smoke test
@@ -55,23 +46,9 @@ jobs:
             exit 1
           }
           echo "$RESPONSE"
-          if echo "$RESPONSE" | grep -qE '"status"\s*:\s*"(ok|degraded)"'; then
+          if echo "$RESPONSE" | grep -qE '"status"\s*:\s*"ok"'; then
             echo "Smoke test passed"
           else
-            echo "Smoke test failed: health check did not return ok or degraded status"
+            echo "Smoke test failed: health check did not return ok status"
             exit 1
           fi
-
-      # Alternative: Direct SSH deploy
-      # - name: Deploy via SSH
-      #   uses: appleboy/ssh-action@v1.0.0
-      #   with:
-      #     host: ${{ secrets.VPS_HOST }}
-      #     username: ${{ secrets.VPS_USER }}
-      #     key: ${{ secrets.VPS_SSH_KEY }}
-      #     script: |
-      #       cd /app/tsucast
-      #       git pull origin main
-      #       npm ci --workspace=apps/api
-      #       npm run build --workspace=apps/api
-      #       pm2 restart tsucast-api

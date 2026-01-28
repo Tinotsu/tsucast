@@ -47,7 +47,7 @@ npm run mobile
 | Mobile | Expo SDK 54, React Native | `expo ~54.0.31`, `react-native 0.81.5` |
 | Mobile Navigation | expo-router v6 | `expo-router ~6.0.22` |
 | Web | Next.js 15 (App Router) | `next 15.5.9` |
-| API Server | Hono v4 on Node.js (Hetzner VPS) | `hono ^4.4.0` |
+| API Server | Hono v4 on Node.js (Railway) | `hono ^4.4.0` |
 | Styling (mobile) | NativeWind v4 + Tailwind v3 | `nativewind ^4.1.23`, `tailwindcss ^3.4.4` |
 | Styling (web) | Tailwind CSS v4 | `tailwindcss ^4.0.0` |
 | Server State | TanStack React Query v5 | `@tanstack/react-query ^5.51.0` |
@@ -297,7 +297,7 @@ NEXT_PUBLIC_API_URL=
 - `npm run typecheck` — TypeScript check across all workspaces
 - `npm run test` — all workspace tests
 - `npm run web:deploy` — OpenNext build + Wrangler deploy to Cloudflare Pages
-- `npm run api:build` — tsc compile to `dist/` for Hetzner VPS
+- `npm run api:build` — tsc compile to `dist/` for production (Railway builds via Dockerfile)
 
 ### Database Migrations
 - Location: `supabase/migrations/`
@@ -336,7 +336,7 @@ auth.users
 ### Build & Deploy
 - Mobile: EAS Build (cloud builds for iOS — Linux dev environment)
 - Web: Cloudflare Pages via `@opennextjs/cloudflare`
-- API: Node.js on Hetzner VPS
+- API: Docker on Railway (Hobby plan)
 
 ### CI/CD Pipeline
 
@@ -346,7 +346,7 @@ auth.users
 3. **Test** — runs API and web test suites
 4. **Expo Doctor** — runs `npx expo-doctor` on mobile (`continue-on-error`)
 
-**Deploy API** (`.github/workflows/deploy-api.yml`): Triggers on push to `main` when `apps/api/**` or `packages/**` change (+ manual `workflow_dispatch`). Builds the API then POSTs to a Dokploy webhook (`DOKPLOY_WEBHOOK_URL` secret) for deployment to Hetzner VPS.
+**Deploy API** (`.github/workflows/deploy-api.yml`): Triggers on push to `main` when `apps/api/**` or `packages/**` change (+ manual `workflow_dispatch`). Railway auto-deploys via GitHub integration; this workflow runs a post-deploy smoke test (health check polling + status verification).
 
 ### Error Monitoring (Sentry)
 - API integrates Sentry via `src/lib/sentry.ts` (`@sentry/node`)
@@ -451,7 +451,7 @@ Operational context for each service/concern. Use this when modifying or debuggi
 - Initialize RevenueCat only after successful authentication
 
 ### 7. API Server (Hono)
-**What it does** — Central API server handling all backend logic, running on Hetzner VPS.
+**What it does** — Central API server handling all backend logic, running on Railway.
 
 **Key files:** `apps/api/src/index.ts`, `apps/api/src/routes/`, `apps/api/src/middleware/`
 
@@ -461,7 +461,7 @@ Operational context for each service/concern. Use this when modifying or debuggi
 - ESM module — all relative imports must use `.js` extension
 - Route handlers never throw — always return `c.json({ error }, status)`
 - Maintain middleware order exactly (CORS first, body limit last)
-- Port 3001 — do not change without updating deploy configs
+- Railway injects PORT at runtime — app falls back to 3001 for local dev
 - New routes must be mounted in `src/index.ts`
 
 ### 8. Cloudflare Workers (Web Deployment)
