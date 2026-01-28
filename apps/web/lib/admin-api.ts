@@ -46,10 +46,9 @@ interface PaginatedResponse<T> {
 async function getAuthToken(): Promise<string | null> {
   const { createClient } = await import("@/lib/supabase/client");
   const supabase = createClient();
-  // getUser() (no args) validates the token server-side in one call
-  const { data: { user }, error } = await supabase.auth.getUser();
-  if (error || !user) return null;
-
+  // getSession() reads from local storage — the API server re-validates
+  // the token via getUserFromToken() on every request, so client-side
+  // pre-validation is unnecessary and adds latency.
   const { data: { session } } = await supabase.auth.getSession();
   return session?.access_token ?? null;
 }

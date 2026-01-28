@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import {
   getExtractionReports,
   updateReportStatus,
@@ -36,11 +36,7 @@ export default function AdminReportsPage() {
   const [selectedReport, setSelectedReport] = useState<ExtractionReport | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
 
-  useEffect(() => {
-    loadReports();
-  }, [page, statusFilter]);
-
-  const loadReports = async () => {
+  const loadReports = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
@@ -51,7 +47,11 @@ export default function AdminReportsPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [page, statusFilter]);
+
+  useEffect(() => {
+    loadReports();
+  }, [loadReports]);
 
   const handleUpdateStatus = async (
     reportId: string,

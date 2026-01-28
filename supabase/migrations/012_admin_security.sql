@@ -28,3 +28,16 @@ RETURNS TABLE(count BIGINT) AS $$
   FROM public.credit_transactions
   WHERE type = 'generation' AND created_at >= since;
 $$ LANGUAGE sql SECURITY DEFINER;
+
+-- 6. RPC function for batch generation counts per user (used by admin users list)
+CREATE OR REPLACE FUNCTION public.batch_generation_counts(user_ids UUID[])
+RETURNS TABLE(user_id UUID, generation_count BIGINT) AS $$
+  SELECT ct.user_id, COUNT(*) AS generation_count
+  FROM public.credit_transactions ct
+  WHERE ct.user_id = ANY(user_ids) AND ct.type = 'generation'
+  GROUP BY ct.user_id;
+$$ LANGUAGE sql SECURITY DEFINER;
+
+-- 7. Restrict execute on admin-only RPC functions to service_role
+REVOKE EXECUTE ON FUNCTION public.count_active_users_today(TIMESTAMPTZ) FROM PUBLIC, authenticated, anon;
+REVOKE EXECUTE ON FUNCTION public.batch_generation_counts(UUID[]) FROM PUBLIC, authenticated, anon;

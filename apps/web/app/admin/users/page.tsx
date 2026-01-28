@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { getAdminUsers, type AdminUser, type PaginatedResponse } from "@/lib/admin-api";
 import {
   Search,
@@ -22,28 +22,30 @@ export default function AdminUsersPage() {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [selectedUser, setSelectedUser] = useState<AdminUser | null>(null);
+  // Track the submitted search term separately so typing doesn't trigger fetches
+  const [submittedSearch, setSubmittedSearch] = useState("");
 
-  useEffect(() => {
-    loadUsers();
-  }, [page]);
-
-  const loadUsers = async () => {
+  const loadUsers = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
-      const data = await getAdminUsers(page, 20, search || undefined);
+      const data = await getAdminUsers(page, 20, submittedSearch || undefined);
       setUsers(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load users");
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [page, submittedSearch]);
+
+  useEffect(() => {
+    loadUsers();
+  }, [loadUsers]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     setPage(1);
-    loadUsers();
+    setSubmittedSearch(search);
   };
 
   const formatDate = (dateString: string | null) => {

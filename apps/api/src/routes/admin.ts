@@ -58,19 +58,18 @@ app.get('/users', async (c) => {
       total_generations: 0,
     }));
 
-    // Batch-fetch generation counts for this page of users
+    // Batch-fetch generation counts in a single RPC call
     if (users.length > 0) {
       const userIds = users.map((u) => u.id);
-      const countPromises = userIds.map((uid) =>
-        supabase
-          .from('credit_transactions')
-          .select('*', { count: 'exact', head: true })
-          .eq('user_id', uid)
-          .eq('type', 'generation')
-      );
-      const results = await Promise.all(countPromises);
-      for (let i = 0; i < users.length; i++) {
-        users[i].total_generations = results[i].count || 0;
+      const { data: genCounts } = await supabase.rpc('batch_generation_counts', { user_ids: userIds });
+      if (genCounts) {
+        const countsMap: Record<string, number> = {};
+        for (const row of genCounts as { user_id: string; generation_count: number }[]) {
+          countsMap[row.user_id] = Number(row.generation_count);
+        }
+        for (const user of users) {
+          user.total_generations = countsMap[user.id] || 0;
+        }
       }
     }
 

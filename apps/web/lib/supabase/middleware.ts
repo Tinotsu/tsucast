@@ -122,7 +122,7 @@ export async function updateSession(request: NextRequest) {
 
     // Validate redirect to prevent open redirect attacks
     // Must be a relative path starting with / and within allowed routes
-    const allowedRedirects = ["/dashboard", "/library", "/generate", "/upgrade", "/settings"];
+    const allowedRedirects = ["/dashboard", "/library", "/generate", "/upgrade", "/settings", "/admin"];
     const isValidRedirect = redirect &&
       redirect.startsWith("/") &&
       !redirect.startsWith("//") &&

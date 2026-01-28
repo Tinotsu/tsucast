@@ -6,6 +6,7 @@
 
 import type { Context, Next } from 'hono';
 import { getSupabase } from '../lib/supabase.js';
+import { createApiError } from '../utils/errors.js';
 
 /**
  * Extract user ID from Supabase JWT token in Authorization header.
@@ -68,12 +69,12 @@ export async function optionalAuth(c: Context, next: Next) {
 export async function requireAdmin(c: Context, next: Next) {
   const userId = await getUserFromToken(c.req.header('Authorization'));
   if (!userId) {
-    return c.json({ error: { code: 'UNAUTHORIZED', message: 'Authentication required' } }, 401);
+    return c.json({ error: createApiError('UNAUTHORIZED', 'Authentication required') }, 401);
   }
 
   const client = getSupabase();
   if (!client) {
-    return c.json({ error: { code: 'INTERNAL_ERROR', message: 'Database not configured' } }, 500);
+    return c.json({ error: createApiError('INTERNAL_ERROR', 'Database not configured') }, 500);
   }
 
   try {
@@ -84,10 +85,10 @@ export async function requireAdmin(c: Context, next: Next) {
       .single();
 
     if (profileError || !profile?.is_admin) {
-      return c.json({ error: { code: 'FORBIDDEN', message: 'Admin access required' } }, 403);
+      return c.json({ error: createApiError('FORBIDDEN', 'Admin access required') }, 403);
     }
   } catch {
-    return c.json({ error: { code: 'INTERNAL_ERROR', message: 'Failed to verify admin status' } }, 500);
+    return c.json({ error: createApiError('INTERNAL_ERROR', 'Failed to verify admin status') }, 500);
   }
 
   c.set('userId', userId);
