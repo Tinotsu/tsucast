@@ -110,13 +110,13 @@ R2_BUCKET=tsucast-audio
 
 - **CI**: Runs on every push/PR - lints, typechecks, builds
 - **Migrations**: Auto-run when `supabase/migrations/*` changes
-- **API Deploy**: Auto-deploys to VPS when `apps/api/*` changes
+- **API Deploy**: Railway auto-deploys when `apps/api/*` changes, GitHub Actions runs smoke test
 
 ## Architecture
 
 ```
 ┌─────────────┐     ┌─────────────┐     ┌─────────────┐
-│   Mobile    │────▶│     VPS     │────▶│  Supabase   │
+│   Mobile    │────▶│   Railway   │────▶│  Supabase   │
 │     App     │     │  (Hono API) │     │  (Auth+DB)  │
 └─────────────┘     └──────┬──────┘     └─────────────┘
                            │

@@ -1,7 +1,7 @@
 /**
- * tsucast VPS API Client
+ * tsucast API Client
  *
- * Handles all communication with the VPS backend API.
+ * Handles all communication with the backend API.
  */
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
