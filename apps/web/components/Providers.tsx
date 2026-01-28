@@ -30,6 +30,16 @@ export function Providers({ children }: { children: React.ReactNode }) {
               return failureCount < 3;
             },
           },
+          mutations: {
+            retry: (_failureCount, error) => {
+              // Never retry auth errors on mutations either
+              if (error instanceof Error && "status" in error) {
+                const status = (error as { status: number }).status;
+                if (status === 0 || status === 401 || status === 403) return false;
+              }
+              return false; // Mutations don't retry by default
+            },
+          },
         },
       })
   );

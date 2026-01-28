@@ -11,15 +11,21 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const mockGetUser = vi.fn();
 const mockCookiesSet = vi.fn();
-const mockCookiesDelete = vi.fn();
 const mockCookiesGetAll = vi.fn();
 
 // Track cookies set on the response
 let responseCookieOps: { type: "set" | "delete"; name: string }[];
 
+// Capture the cookie options passed to createServerClient so tests can
+// verify the middleware wires them correctly to request/response cookies.
+let capturedCookieOptions: {
+  getAll: () => any[];
+  setAll: (cookies: { name: string; value: string; options?: any }[]) => void;
+} | null = null;
+
 vi.mock("@supabase/ssr", () => ({
   createServerClient: (_url: string, _key: string, options: any) => {
-    // Wire up the cookie methods so middleware can call them
+    capturedCookieOptions = options?.cookies ?? null;
     return {
       auth: {
         getUser: mockGetUser,
@@ -84,6 +90,7 @@ describe("Middleware: updateSession", () => {
     vi.clearAllMocks();
     vi.resetModules();
     responseCookieOps = [];
+    capturedCookieOptions = null;
     mockCookiesGetAll.mockReturnValue([]);
 
     // Provide env vars
@@ -254,6 +261,8 @@ describe("Middleware: updateSession", () => {
         { name: "sb-access-token", value: "tok" },
       ]);
       mockGetUser.mockRejectedValue(new Error("fetch failed"));
+      // Suppress expected console.error from middleware catch block
+      const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
       const { NextRequest } = await import("next/server");
       const request = new NextRequest("https://tsucast.com/dashboard");
@@ -265,6 +274,54 @@ describe("Middleware: updateSession", () => {
       const deletions = responseCookieOps.filter((op) => op.type === "delete");
       expect(deletions).toHaveLength(0);
       expect(mockRedirect).not.toHaveBeenCalled();
+
+      // AND: Error was logged (not silently swallowed)
+      expect(consoleSpy).toHaveBeenCalledWith("Middleware auth check failed:", expect.any(Error));
+      consoleSpy.mockRestore();
+    });
+  });
+
+  describe("Cookie callback wiring", () => {
+    it("[P1] should pass cookie callbacks to createServerClient", async () => {
+      // GIVEN: Middleware runs with any auth result
+      mockCookiesGetAll.mockReturnValue([]);
+      mockGetUser.mockResolvedValue({
+        data: { user: { id: "user-123" } },
+        error: null,
+      });
+
+      const { NextRequest } = await import("next/server");
+      const request = new NextRequest("https://tsucast.com/");
+
+      // WHEN: Middleware runs
+      await updateSession(request as any);
+
+      // THEN: createServerClient received getAll and setAll callbacks
+      expect(capturedCookieOptions).not.toBeNull();
+      expect(typeof capturedCookieOptions!.getAll).toBe("function");
+      expect(typeof capturedCookieOptions!.setAll).toBe("function");
+    });
+
+    it("[P1] should wire getAll to request cookies", async () => {
+      // GIVEN: Request has cookies
+      const testCookies = [
+        { name: "sb-access-token", value: "tok" },
+        { name: "sb-refresh-token", value: "ref" },
+      ];
+      mockCookiesGetAll.mockReturnValue(testCookies);
+      mockGetUser.mockResolvedValue({
+        data: { user: { id: "user-123" } },
+        error: null,
+      });
+
+      const { NextRequest } = await import("next/server");
+      const request = new NextRequest("https://tsucast.com/");
+
+      // WHEN: Middleware runs
+      await updateSession(request as any);
+
+      // THEN: getAll returns request cookies
+      expect(capturedCookieOptions!.getAll()).toEqual(testCookies);
     });
   });
 });

@@ -53,20 +53,13 @@ describe("API Auth Guard", () => {
       mockSessionReturn = { data: { session: null }, error: null };
       global.fetch = vi.fn();
 
-      const { getLibrary, ApiError } = await import("@/lib/api");
+      const { getLibrary } = await import("@/lib/api");
 
       // WHEN: Calling a non-public endpoint
-      // THEN: Throws AUTH_TOKEN_UNAVAILABLE
-      await expect(getLibrary()).rejects.toThrow();
-
-      try {
-        await getLibrary();
-      } catch (err: any) {
-        expect(err.code).toBe("AUTH_TOKEN_UNAVAILABLE");
-        expect(err.status).toBe(0);
-      }
-
-      // AND: No fetch call was made
+      // THEN: Throws AUTH_TOKEN_UNAVAILABLE without making a fetch call
+      const err: any = await getLibrary().catch((e) => e);
+      expect(err.code).toBe("AUTH_TOKEN_UNAVAILABLE");
+      expect(err.status).toBe(0);
       expect(global.fetch).not.toHaveBeenCalled();
     });
 
@@ -122,21 +115,13 @@ describe("API Auth Guard", () => {
       mockSessionReturn = { data: { session: null }, error: null };
       global.fetch = vi.fn();
 
-      const { generateAudio, ApiError } = await import("@/lib/api");
+      const { generateAudio } = await import("@/lib/api");
 
       // WHEN: Calling generateAudio
       // THEN: Throws without making fetch
-      await expect(
-        generateAudio({ url: "https://example.com/article" })
-      ).rejects.toThrow();
-
-      try {
-        await generateAudio({ url: "https://example.com/article" });
-      } catch (err: any) {
-        expect(err.code).toBe("AUTH_TOKEN_UNAVAILABLE");
-        expect(err.status).toBe(0);
-      }
-
+      const err: any = await generateAudio({ url: "https://example.com/article" }).catch((e) => e);
+      expect(err.code).toBe("AUTH_TOKEN_UNAVAILABLE");
+      expect(err.status).toBe(0);
       expect(global.fetch).not.toHaveBeenCalled();
     });
   });
