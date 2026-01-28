@@ -5,6 +5,9 @@ main = ".open-next/worker.js"
 compatibility_date = "2024-12-01"
 compatibility_flags = ["nodejs_compat"]
 
+# Preserve dashboard environment variables on deploy
+keep_vars = true
+
 # Static assets
 assets = { directory = ".open-next/assets", binding = "ASSETS" }
 
