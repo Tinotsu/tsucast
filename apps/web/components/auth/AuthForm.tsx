@@ -4,7 +4,8 @@ import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/hooks/useAuth";
-import { Headphones, Mail, Lock, Loader2 } from "lucide-react";
+import { Mail, Lock, Loader2 } from "lucide-react";
+import { Logo } from "@/components/ui/Logo";
 import { cn } from "@/lib/utils";
 
 interface AuthFormProps {
@@ -98,8 +99,8 @@ export function AuthForm({ mode }: AuthFormProps) {
       {/* Logo */}
       <div className="mb-10 text-center">
         <Link href="/" className="inline-flex items-center gap-2">
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#1a1a1a]">
-            <Headphones className="h-6 w-6 text-white" />
+          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white border border-[#e5e5e5]">
+            <Logo size={32} className="text-black" />
           </div>
           <span className="text-2xl font-bold tracking-tight text-[#1a1a1a]">
             tsucast
