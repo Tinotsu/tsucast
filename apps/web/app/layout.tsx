@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { Providers } from "@/components/Providers";
 import { CookieConsent } from "@/components/CookieConsent";
+import { Backenrich } from "@/components/Backenrich";
 
 export const metadata: Metadata = {
   title: "tsucast - Turn Any Article Into a Podcast",
@@ -47,6 +48,7 @@ export default function RootLayout({
       <body className="min-h-screen bg-white antialiased">
         <Providers>{children}</Providers>
         <CookieConsent />
+        <Backenrich />
       </body>
     </html>
   );
