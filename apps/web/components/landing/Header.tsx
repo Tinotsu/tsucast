@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { Headphones, Menu } from "lucide-react";
+import { Menu } from "lucide-react";
+import { Logo } from "@/components/ui/Logo";
 
 export function Header() {
   return (
@@ -7,8 +8,8 @@ export function Header() {
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-black">
-            <Headphones className="h-5 w-5 text-white" />
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white border border-[#e5e5e5]">
+            <Logo size={24} className="text-black" />
           </div>
           <span className="text-xl font-bold tracking-tight text-[#1a1a1a]">
             tsucast

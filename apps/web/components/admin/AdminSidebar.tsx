@@ -10,6 +10,7 @@ import {
   Headphones,
   ArrowLeft,
 } from "lucide-react";
+import { Logo } from "@/components/ui/Logo";
 import { cn } from "@/lib/utils";
 
 const navigation = [
@@ -27,8 +28,8 @@ export function AdminSidebar() {
     <aside className="fixed left-0 top-0 z-40 h-screen w-64 border-r border-[#e5e5e5] bg-white">
       {/* Header */}
       <div className="flex h-16 items-center gap-2 border-b border-[#e5e5e5] px-6">
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#1a1a1a]">
-          <Headphones className="h-4 w-4 text-white" />
+        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white border border-[#e5e5e5]">
+          <Logo size={20} className="text-black" />
         </div>
         <div>
           <span className="font-bold text-[#1a1a1a]">
