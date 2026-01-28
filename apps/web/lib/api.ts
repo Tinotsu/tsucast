@@ -48,28 +48,10 @@ class ApiError extends Error {
 
 async function getAuthToken(): Promise<string | null> {
   try {
-    // Import dynamically to avoid SSR issues
-    const { createClient } = await import("@/lib/supabase/client");
-    const supabase = createClient();
-
-    // getSession() can hang indefinitely due to Supabase SSR bug
-    // Add timeout to prevent blocking forever
-    const timeoutPromise = new Promise<null>((resolve) => {
-      setTimeout(() => resolve(null), 2000);
-    });
-
-    const sessionPromise = supabase.auth.getSession().then(({ data, error }) => {
-      if (error) {
-        // Ignore AbortError - happens during fast navigation/remounts
-        if (error.name !== "AbortError" && error.message !== "signal is aborted without reason") {
-          console.error("Failed to get session:", error);
-        }
-        return null;
-      }
-      return data.session?.access_token || null;
-    });
-
-    return await Promise.race([sessionPromise, timeoutPromise]);
+    // Read token directly from cookie to bypass the Supabase SSR client
+    // initialization deadlock (supabase/supabase-js#1594).
+    const { getAccessTokenFromCookie } = await import("@/lib/auth-token");
+    return getAccessTokenFromCookie();
   } catch (err) {
     // Ignore AbortError - happens during fast navigation/remounts
     if (err instanceof Error && (err.name === "AbortError" || err.message === "signal is aborted without reason")) {

@@ -44,13 +44,11 @@ interface PaginatedResponse<T> {
 }
 
 async function getAuthToken(): Promise<string | null> {
-  const { createClient } = await import("@/lib/supabase/client");
-  const supabase = createClient();
-  // getSession() reads from local storage — the API server re-validates
-  // the token via getUserFromToken() on every request, so client-side
-  // pre-validation is unnecessary and adds latency.
-  const { data: { session } } = await supabase.auth.getSession();
-  return session?.access_token ?? null;
+  // Read token directly from cookie to bypass the Supabase SSR client
+  // initialization deadlock (supabase/supabase-js#1594).
+  // The API server re-validates the token on every request.
+  const { getAccessTokenFromCookie } = await import("@/lib/auth-token");
+  return getAccessTokenFromCookie();
 }
 
 async function fetchAdminApi<T>(

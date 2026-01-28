@@ -17,6 +17,54 @@ export interface UserProfile {
   created_at: string;
 }
 
+/**
+ * Read the Supabase session directly from the auth cookie.
+ *
+ * This bypasses the broken getSession()/onAuthStateChange initialization
+ * in @supabase/ssr which deadlocks due to navigator.locks
+ * (supabase/supabase-js#1594).
+ */
+function readSessionFromCookie(): {
+  access_token: string;
+  refresh_token: string;
+  user: User;
+} | null {
+  if (typeof document === "undefined") return null;
+
+  const cookies = document.cookie.split(";");
+  const authCookie = cookies.find((c) => c.trim().match(/^sb-.*-auth-token=/));
+  if (!authCookie) return null;
+
+  try {
+    const value = authCookie.split("=").slice(1).join("=").trim();
+
+    let decoded: string;
+    if (value.startsWith("base64-")) {
+      decoded = atob(value.slice(7));
+    } else {
+      decoded = decodeURIComponent(value);
+    }
+
+    const session = JSON.parse(decoded);
+    if (session.access_token && session.refresh_token && session.user) {
+      // Check if token is expired
+      const now = Math.floor(Date.now() / 1000);
+      if (session.expires_at && session.expires_at < now) {
+        return null; // Token expired, let middleware handle refresh
+      }
+      return {
+        access_token: session.access_token,
+        refresh_token: session.refresh_token,
+        user: session.user as User,
+      };
+    }
+  } catch {
+    // Cookie is malformed or unparseable
+  }
+
+  return null;
+}
+
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
@@ -60,26 +108,34 @@ export function useAuth() {
 
   useEffect(() => {
     let mounted = true;
-    const supabase = getSupabase();
 
-    // Initialize auth state deterministically by checking session first
+    // Bypass Supabase client auth initialization entirely.
+    // The @supabase/ssr client's getSession()/onAuthStateChange deadlocks
+    // due to navigator.locks (supabase/supabase-js#1594). Instead, read
+    // the session directly from the cookie set by the middleware.
     const initializeAuth = async () => {
       try {
-        const { data: { session: currentSession } } = await supabase.auth.getSession();
+        const cookieData = readSessionFromCookie();
 
         if (!mounted) return;
 
-        setSession(currentSession);
-        setUser(currentSession?.user ?? null);
-
-        if (currentSession?.user) {
-          await fetchProfile(currentSession.user.id);
+        if (cookieData) {
+          // Build a minimal Session object from the cookie data
+          const sessionObj: Session = {
+            access_token: cookieData.access_token,
+            refresh_token: cookieData.refresh_token,
+            token_type: "bearer",
+            expires_in: 3600,
+            expires_at: Math.floor(Date.now() / 1000) + 3600,
+            user: cookieData.user,
+          };
+          setSession(sessionObj);
+          setUser(cookieData.user);
+          await fetchProfile(cookieData.user.id);
         }
-
-        initializedRef.current = true;
-        setIsLoading(false);
       } catch (err) {
         console.error("[useAuth] Failed to initialize auth:", err);
+      } finally {
         if (mounted) {
           initializedRef.current = true;
           setIsLoading(false);
@@ -87,34 +143,12 @@ export function useAuth() {
       }
     };
 
-    // Listen for auth changes after initial load
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, newSession) => {
-      if (!mounted) return;
-
-      // Skip INITIAL_SESSION event - we handle it explicitly above
-      if (event === "INITIAL_SESSION") return;
-
-      // Set session and user
-      setSession(newSession);
-      setUser(newSession?.user ?? null);
-
-      // Fetch profile if user is logged in
-      if (newSession?.user) {
-        await fetchProfile(newSession.user.id);
-      } else {
-        setProfile(null);
-      }
-    });
-
     initializeAuth();
 
     return () => {
       mounted = false;
-      subscription.unsubscribe();
     };
-  }, [getSupabase, fetchProfile]);
+  }, [fetchProfile]);
 
   // Listen for unauthorized events from fetchApi and force sign-out + redirect
   useEffect(() => {
@@ -149,8 +183,18 @@ export function useAuth() {
     });
 
     if (error) throw error;
+
+    // Update local state after successful sign-in
+    if (data.session) {
+      setSession(data.session);
+      setUser(data.user);
+      if (data.user) {
+        await fetchProfile(data.user.id);
+      }
+    }
+
     return data;
-  }, [getSupabase]);
+  }, [getSupabase, fetchProfile]);
 
   const signUpWithEmail = useCallback(async (email: string, password: string) => {
     const supabase = getSupabase();
