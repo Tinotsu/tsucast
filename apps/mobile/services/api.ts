@@ -136,7 +136,11 @@ export async function getLibrary(): Promise<{ items: LibraryItem[] }> {
     throw new Error(data.error?.message || 'Failed to load library');
   }
 
-  return response.json();
+  try {
+    return await response.json();
+  } catch {
+    throw new Error('Invalid response from server');
+  }
 }
 
 /**

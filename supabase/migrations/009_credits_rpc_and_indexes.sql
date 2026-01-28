@@ -14,6 +14,8 @@ CREATE INDEX IF NOT EXISTS idx_user_profiles_created_at
 --    Uses a single UPDATE with greatest(0, balance - credits) to avoid negatives.
 -- =============================================================================
 
+DROP FUNCTION IF EXISTS public.deduct_credits_for_refund(UUID, INTEGER, TEXT, JSONB);
+
 CREATE OR REPLACE FUNCTION public.deduct_credits_for_refund(
   p_user_id UUID,
   p_credits INTEGER,

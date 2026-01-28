@@ -248,6 +248,29 @@ describe("AuthForm Component", () => {
     });
   });
 
+  describe("URL Error Display", () => {
+    it("[P1] should display error from URL hash fragment", () => {
+      // GIVEN: URL has error in hash fragment (Supabase OAuth error)
+      const originalHash = window.location.hash;
+      Object.defineProperty(window, "location", {
+        value: { ...window.location, hash: "#error=server_error&error_description=OAuth+failed" },
+        writable: true,
+      });
+
+      // WHEN: Rendering component
+      render(<AuthForm mode="login" />);
+
+      // THEN: Error from hash is displayed
+      expect(screen.getByText("OAuth failed")).toBeInTheDocument();
+
+      // Cleanup
+      Object.defineProperty(window, "location", {
+        value: { ...window.location, hash: originalHash },
+        writable: true,
+      });
+    });
+  });
+
   describe("Error Handling", () => {
     it("[P1] should display error message on auth failure", async () => {
       // GIVEN: Sign in that fails

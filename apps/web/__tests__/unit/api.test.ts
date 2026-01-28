@@ -266,6 +266,65 @@ describe("API Client", () => {
     });
   });
 
+  describe("Non-JSON response handling", () => {
+    it("[P1] should throw ApiError with PARSE_ERROR for non-JSON success response", async () => {
+      // GIVEN: Server returns HTML instead of JSON on a 200 response
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: () => Promise.reject(new SyntaxError("Unexpected token <")),
+      });
+
+      const { checkCache, ApiError } = await import("@/lib/api");
+
+      // WHEN: Making a request that returns non-JSON
+      // THEN: Throws ApiError with PARSE_ERROR code
+      await expect(checkCache("https://example.com")).rejects.toThrow(ApiError);
+      try {
+        await checkCache("https://example.com");
+      } catch (err) {
+        expect((err as InstanceType<typeof ApiError>).code).toBe("PARSE_ERROR");
+        expect((err as InstanceType<typeof ApiError>).status).toBe(502);
+      }
+    });
+
+    it("[P1] should throw ApiError with SERVER_ERROR for non-JSON error response", async () => {
+      // GIVEN: Server returns HTML error page (502 nginx)
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: false,
+        status: 502,
+        json: () => Promise.reject(new SyntaxError("Unexpected token <")),
+      });
+
+      const { checkCache, ApiError } = await import("@/lib/api");
+
+      // WHEN: Making a request that returns HTML error page
+      // THEN: Throws ApiError with SERVER_ERROR code and correct status
+      await expect(checkCache("https://example.com")).rejects.toThrow(ApiError);
+      try {
+        await checkCache("https://example.com");
+      } catch (err) {
+        expect((err as InstanceType<typeof ApiError>).code).toBe("SERVER_ERROR");
+        expect((err as InstanceType<typeof ApiError>).status).toBe(502);
+      }
+    });
+
+    it("[P1] should clear cookies on non-JSON 401 response", async () => {
+      // GIVEN: Server returns non-JSON 401
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: false,
+        status: 401,
+        json: () => Promise.reject(new SyntaxError("Unexpected token")),
+      });
+
+      const { getLibrary, ApiError } = await import("@/lib/api");
+
+      // WHEN: Making authenticated request that gets non-JSON 401
+      // THEN: Throws ApiError (cookie clearing happens internally)
+      await expect(getLibrary()).rejects.toThrow(ApiError);
+    });
+  });
+
   describe("Request timeout", () => {
     it("[P2] should have timeout configured", async () => {
       // GIVEN: API module

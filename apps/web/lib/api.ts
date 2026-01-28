@@ -103,7 +103,22 @@ async function fetchApi<T>(
 
     clearTimeout(timeoutId);
 
-    const data = await response.json();
+    let data: any;
+    try {
+      data = await response.json();
+    } catch {
+      if (!response.ok) {
+        if (response.status === 401) {
+          clearAuthCookies();
+        }
+        throw new ApiError(
+          `Server error (${response.status})`,
+          "SERVER_ERROR",
+          response.status
+        );
+      }
+      throw new ApiError("Invalid response from server", "PARSE_ERROR", 502);
+    }
 
     if (!response.ok) {
       // Auto-clear stale cookies on auth errors
@@ -121,6 +136,9 @@ async function fetchApi<T>(
     return data;
   } catch (err) {
     clearTimeout(timeoutId);
+    if (err instanceof ApiError) {
+      throw err;
+    }
     if (err instanceof Error && err.name === "AbortError") {
       throw new ApiError("Request timed out", "TIMEOUT", 408);
     }
@@ -203,7 +221,16 @@ export async function generateAudio(
 
     clearTimeout(timeoutId);
 
-    const data = await response.json();
+    let data: any;
+    try {
+      data = await response.json();
+    } catch {
+      throw new ApiError(
+        `Server error (${response.status})`,
+        "SERVER_ERROR",
+        response.status || 502
+      );
+    }
 
     // Handle insufficient credits
     if (response.status === 402) {

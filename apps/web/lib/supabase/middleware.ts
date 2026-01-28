@@ -34,7 +34,13 @@ export async function updateSession(request: NextRequest) {
   const hasAuthCookies = request.cookies.getAll().some(c => c.name.startsWith('sb-'));
 
   try {
-    const { data, error } = await supabase.auth.getUser();
+    const timeoutPromise = new Promise<{ data: { user: null }; error: Error }>((resolve) => {
+      setTimeout(() => resolve({ data: { user: null }, error: new Error("Auth check timed out") }), 5000);
+    });
+    const { data, error } = await Promise.race([
+      supabase.auth.getUser(),
+      timeoutPromise,
+    ]);
 
     if (error || !data.user) {
       // Auth failed - clear stale cookies if they exist
@@ -74,13 +80,20 @@ export async function updateSession(request: NextRequest) {
 
   // Admin routes require admin role
   if (isAdminRoute && user) {
-    const { data: profile } = await supabase
-      .from("user_profiles")
-      .select("is_admin")
-      .eq("id", user.id)
-      .single();
+    try {
+      const { data: profile, error: profileError } = await supabase
+        .from("user_profiles")
+        .select("is_admin")
+        .eq("id", user.id)
+        .single();
 
-    if (!profile?.is_admin) {
+      if (profileError || !profile?.is_admin) {
+        const url = request.nextUrl.clone();
+        url.pathname = "/dashboard";
+        return NextResponse.redirect(url);
+      }
+    } catch {
+      // Fail closed — deny admin access if profile check fails
       const url = request.nextUrl.clone();
       url.pathname = "/dashboard";
       return NextResponse.redirect(url);

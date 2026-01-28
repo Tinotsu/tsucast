@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/hooks/useAuth";
@@ -25,6 +25,24 @@ export function AuthForm({ mode }: AuthFormProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirect = searchParams.get("redirect") || "/dashboard";
+
+  // Display errors from URL params (callback route) or hash fragment (Supabase OAuth)
+  useEffect(() => {
+    const urlError = searchParams.get("error");
+    if (urlError) {
+      setError(urlError);
+      return;
+    }
+
+    // Supabase OAuth errors come via URL hash fragment
+    if (typeof window !== "undefined" && window.location.hash) {
+      const hashParams = new URLSearchParams(window.location.hash.substring(1));
+      const hashError = hashParams.get("error_description") || hashParams.get("error");
+      if (hashError) {
+        setError(decodeURIComponent(hashError));
+      }
+    }
+  }, [searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

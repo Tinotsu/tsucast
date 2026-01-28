@@ -44,14 +44,18 @@ async function requireAdmin(c: Context, next: Next) {
     return c.json({ error: createApiError('INTERNAL_ERROR', 'Database not configured') }, 500);
   }
 
-  const { data: profile } = await supabase
-    .from('user_profiles')
-    .select('is_admin')
-    .eq('id', userId)
-    .single();
+  try {
+    const { data: profile, error: profileError } = await supabase
+      .from('user_profiles')
+      .select('is_admin')
+      .eq('id', userId)
+      .single();
 
-  if (!profile?.is_admin) {
-    return c.json({ error: createApiError('FORBIDDEN', 'Admin access required') }, 403);
+    if (profileError || !profile?.is_admin) {
+      return c.json({ error: createApiError('FORBIDDEN', 'Admin access required') }, 403);
+    }
+  } catch {
+    return c.json({ error: createApiError('INTERNAL_ERROR', 'Failed to verify admin status') }, 500);
   }
 
   c.set('userId', userId);
