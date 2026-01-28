@@ -1,17 +1,132 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
 import { useAuth } from "@/hooks/useAuth";
 import { useCredits } from "@/hooks/useCredits";
-import { getLibrary } from "@/lib/api";
-import { PlusCircle, Library, Headphones, ArrowRight, Loader2 } from "lucide-react";
+import { getLibrary, getFreeContent, type FreeContentItem } from "@/lib/api";
+import { PlusCircle, Library, Headphones, ArrowRight, Loader2, Play, Pause } from "lucide-react";
+
+function formatDuration(seconds: number | null): string {
+  if (seconds == null) return "";
+  const mins = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  return `${mins}:${secs.toString().padStart(2, "0")}`;
+}
+
+// Global ref to track currently playing audio for mutual exclusivity
+let currentlyPlayingAudio: HTMLAudioElement | null = null;
+
+function FreeSampleCard({ item }: { item: FreeContentItem }) {
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const audioRef = useRef<HTMLAudioElement>(null);
+
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    const handleTimeUpdate = () => setCurrentTime(audio.currentTime);
+    const handleEnded = () => {
+      setIsPlaying(false);
+      if (currentlyPlayingAudio === audio) {
+        currentlyPlayingAudio = null;
+      }
+    };
+    const handlePause = () => {
+      if (currentlyPlayingAudio !== audio) {
+        setIsPlaying(false);
+      }
+    };
+
+    audio.addEventListener("timeupdate", handleTimeUpdate);
+    audio.addEventListener("ended", handleEnded);
+    audio.addEventListener("pause", handlePause);
+
+    return () => {
+      audio.pause();
+      if (currentlyPlayingAudio === audio) {
+        currentlyPlayingAudio = null;
+      }
+      audio.removeEventListener("timeupdate", handleTimeUpdate);
+      audio.removeEventListener("ended", handleEnded);
+      audio.removeEventListener("pause", handlePause);
+    };
+  }, []);
+
+  const togglePlay = () => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    if (isPlaying) {
+      audio.pause();
+      currentlyPlayingAudio = null;
+      setIsPlaying(false);
+    } else {
+      // Pause any currently playing audio first
+      if (currentlyPlayingAudio && currentlyPlayingAudio !== audio) {
+        currentlyPlayingAudio.pause();
+      }
+      audio.play().catch(() => setIsPlaying(false));
+      currentlyPlayingAudio = audio;
+      setIsPlaying(true);
+    }
+  };
+
+  const progress = item.duration_seconds
+    ? (currentTime / item.duration_seconds) * 100
+    : 0;
+
+  return (
+    <div className="flex-shrink-0 w-72 max-w-full rounded-2xl border border-[#e5e5e5] bg-white p-4">
+      <div className="flex items-start gap-3">
+        <button
+          onClick={togglePlay}
+          disabled={!item.audio_url}
+          aria-label={isPlaying ? "Pause" : "Play"}
+          className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-[#1a1a1a] text-white transition-transform hover:scale-105 disabled:opacity-50"
+        >
+          {isPlaying ? (
+            <Pause className="h-4 w-4" />
+          ) : (
+            <Play className="h-4 w-4 ml-0.5" />
+          )}
+        </button>
+
+        <div className="flex-1 min-w-0">
+          <h4 className="font-medium text-[#1a1a1a] text-sm line-clamp-2">
+            {item.title}
+          </h4>
+          {item.duration_seconds && (
+            <p className="mt-1 text-xs text-[#737373]">
+              {formatDuration(item.duration_seconds)}
+            </p>
+          )}
+        </div>
+      </div>
+
+      {/* Progress bar */}
+      <div className="mt-3 h-1 w-full rounded-full bg-[#e5e5e5]">
+        <div
+          className="h-full rounded-full bg-[#1a1a1a] transition-all"
+          style={{ width: `${progress}%` }}
+        />
+      </div>
+
+      {item.audio_url && (
+        <audio ref={audioRef} src={item.audio_url} preload="metadata" />
+      )}
+    </div>
+  );
+}
 
 export default function DashboardPage() {
   const { profile, isAuthenticated, isLoading: authLoading } = useAuth();
   const { credits, timeBank, isLoading: creditsLoading } = useCredits();
   const [libraryCount, setLibraryCount] = useState<number | null>(null);
   const [isLoadingCount, setIsLoadingCount] = useState(true);
+  const [freeContent, setFreeContent] = useState<FreeContentItem[]>([]);
+  const [isLoadingFreeContent, setIsLoadingFreeContent] = useState(true);
 
   const loadLibraryCount = useCallback(async () => {
     setIsLoadingCount(true);
@@ -26,11 +141,27 @@ export default function DashboardPage() {
     }
   }, []);
 
+  const loadFreeContent = useCallback(async () => {
+    setIsLoadingFreeContent(true);
+    try {
+      const items = await getFreeContent();
+      // Only show first 3 items
+      setFreeContent(items.slice(0, 3));
+    } catch {
+      // Silently fail
+      setFreeContent([]);
+    } finally {
+      setIsLoadingFreeContent(false);
+    }
+  }, []);
+
   useEffect(() => {
     if (!authLoading && isAuthenticated) {
       loadLibraryCount();
     }
-  }, [authLoading, isAuthenticated, loadLibraryCount]);
+    // Load free content regardless of auth (it's public)
+    loadFreeContent();
+  }, [authLoading, isAuthenticated, loadLibraryCount, loadFreeContent]);
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-12 sm:px-6 lg:px-8">
@@ -134,6 +265,48 @@ export default function DashboardPage() {
             <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
           </span>
         </Link>
+      </div>
+
+      {/* Free Samples Section */}
+      <div className="mt-12">
+        <div className="mb-6 flex items-center justify-between">
+          <div>
+            <h2 className="text-xl font-bold text-[#1a1a1a]">Free Samples</h2>
+            <p className="mt-1 text-sm text-[#737373]">
+              Listen to curated articles converted to audio
+            </p>
+          </div>
+          <Link
+            href="/free-content"
+            className="inline-flex items-center gap-1 text-sm font-medium text-[#1a1a1a] transition-colors hover:text-[#737373]"
+          >
+            View All
+            <ArrowRight className="h-4 w-4" />
+          </Link>
+        </div>
+
+        {isLoadingFreeContent ? (
+          <div className="flex items-center justify-center py-8">
+            <Loader2 className="h-6 w-6 animate-spin text-[#737373]" />
+          </div>
+        ) : freeContent.length === 0 ? (
+          <div className="rounded-2xl border border-[#e5e5e5] bg-white p-6 text-center">
+            <Headphones className="mx-auto h-8 w-8 text-[#737373]" />
+            <p className="mt-2 text-sm text-[#737373]">
+              No free samples available yet.
+            </p>
+          </div>
+        ) : (
+          <div
+            className="flex gap-4 overflow-x-auto pb-2 -mx-4 px-4 sm:mx-0 sm:px-0"
+            role="list"
+            aria-label="Free audio samples"
+          >
+            {freeContent.map((item) => (
+              <FreeSampleCard key={item.id} item={item} />
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Credits Banner (for users with no credits) */}
