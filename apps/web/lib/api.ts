@@ -63,7 +63,7 @@ async function getAuthToken(): Promise<string | null> {
 }
 
 // Public endpoints that don't require authentication
-const PUBLIC_ENDPOINTS = ["/api/cache/check", "/api/free-content"];
+const PUBLIC_ENDPOINTS = ["/api/cache/check"];
 
 async function fetchApi<T>(
   endpoint: string,
@@ -145,27 +145,6 @@ export async function checkCache(url: string): Promise<CacheCheckResponse> {
   return fetchApi<CacheCheckResponse>(
     `/api/cache/check?url=${encodeURIComponent(url)}`
   );
-}
-
-// Free content types and API
-export interface FreeContentItem {
-  id: string;
-  title: string;
-  voice_id: string;
-  source_url: string | null;
-  audio_url: string | null;
-  duration_seconds: number | null;
-  word_count: number | null;
-  file_size_bytes: number | null;
-  status: "pending" | "processing" | "ready" | "failed";
-  error_message: string | null;
-  created_at: string;
-  updated_at: string;
-}
-
-export async function getFreeContent(): Promise<FreeContentItem[]> {
-  const response = await fetchApi<{ items: FreeContentItem[] }>("/api/free-content");
-  return response.items;
 }
 
 interface GenerateStatusResponse {
