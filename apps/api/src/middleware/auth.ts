@@ -60,3 +60,36 @@ export async function optionalAuth(c: Context, next: Next) {
   }
   await next();
 }
+
+/**
+ * Admin auth middleware — requires authenticated user with is_admin flag.
+ * Sets user ID in context if admin.
+ */
+export async function requireAdmin(c: Context, next: Next) {
+  const userId = await getUserFromToken(c.req.header('Authorization'));
+  if (!userId) {
+    return c.json({ error: { code: 'UNAUTHORIZED', message: 'Authentication required' } }, 401);
+  }
+
+  const client = getSupabase();
+  if (!client) {
+    return c.json({ error: { code: 'INTERNAL_ERROR', message: 'Database not configured' } }, 500);
+  }
+
+  try {
+    const { data: profile, error: profileError } = await client
+      .from('user_profiles')
+      .select('is_admin')
+      .eq('id', userId)
+      .single();
+
+    if (profileError || !profile?.is_admin) {
+      return c.json({ error: { code: 'FORBIDDEN', message: 'Admin access required' } }, 403);
+    }
+  } catch {
+    return c.json({ error: { code: 'INTERNAL_ERROR', message: 'Failed to verify admin status' } }, 500);
+  }
+
+  c.set('userId', userId);
+  return next();
+}

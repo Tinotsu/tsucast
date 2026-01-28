@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { clearAuthCookies } from "@/lib/cookies";
+import { onAuthEvent } from "@/lib/auth-events";
 import type { User, Session, SupabaseClient } from "@supabase/supabase-js";
 
 export interface UserProfile {
@@ -22,6 +24,8 @@ export function useAuth() {
   const [isLoading, setIsLoading] = useState(true);
   const supabaseRef = useRef<SupabaseClient | null>(null);
   const initializedRef = useRef(false);
+  const signingOutRef = useRef(false);
+  const router = useRouter();
 
   // Get or create supabase client
   const getSupabase = useCallback(() => {
@@ -111,6 +115,31 @@ export function useAuth() {
       subscription.unsubscribe();
     };
   }, [getSupabase, fetchProfile]);
+
+  // Listen for unauthorized events from fetchApi and force sign-out + redirect
+  useEffect(() => {
+    return onAuthEvent("unauthorized", () => {
+      // Debounce: multiple 401s can fire simultaneously
+      if (signingOutRef.current) return;
+      signingOutRef.current = true;
+
+      // Clear local state immediately
+      setUser(null);
+      setSession(null);
+      setProfile(null);
+      clearAuthCookies();
+
+      const supabase = getSupabase();
+      supabase.auth.signOut().catch(() => {});
+
+      router.push("/login");
+
+      // Reset debounce after navigation settles
+      setTimeout(() => {
+        signingOutRef.current = false;
+      }, 2000);
+    });
+  }, [getSupabase, router]);
 
   const signInWithEmail = useCallback(async (email: string, password: string) => {
     const supabase = getSupabase();

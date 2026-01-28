@@ -46,8 +46,12 @@ interface PaginatedResponse<T> {
 async function getAuthToken(): Promise<string | null> {
   const { createClient } = await import("@/lib/supabase/client");
   const supabase = createClient();
-  const { data } = await supabase.auth.getSession();
-  return data.session?.access_token || null;
+  // getUser() (no args) validates the token server-side in one call
+  const { data: { user }, error } = await supabase.auth.getUser();
+  if (error || !user) return null;
+
+  const { data: { session } } = await supabase.auth.getSession();
+  return session?.access_token ?? null;
 }
 
 async function fetchAdminApi<T>(

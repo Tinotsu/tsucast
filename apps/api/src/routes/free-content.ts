@@ -5,10 +5,8 @@
  */
 
 import { Hono } from 'hono';
-import type { Context, Next } from 'hono';
 import { z } from 'zod';
-import { getUserFromToken } from '../middleware/auth.js';
-import { getSupabase } from '../lib/supabase.js';
+import { requireAdmin } from '../middleware/auth.js';
 import { createApiError } from '../utils/errors.js';
 import {
   createFreeContent,
@@ -29,38 +27,6 @@ const createFreeContentSchema = z.object({
   data => data.text || data.url,
   { message: 'Either text or url is required' }
 );
-
-/**
- * Admin auth middleware — requires authenticated user with is_admin flag.
- */
-async function requireAdmin(c: Context, next: Next) {
-  const userId = await getUserFromToken(c.req.header('Authorization'));
-  if (!userId) {
-    return c.json({ error: createApiError('UNAUTHORIZED', 'Authentication required') }, 401);
-  }
-
-  const supabase = getSupabase();
-  if (!supabase) {
-    return c.json({ error: createApiError('INTERNAL_ERROR', 'Database not configured') }, 500);
-  }
-
-  try {
-    const { data: profile, error: profileError } = await supabase
-      .from('user_profiles')
-      .select('is_admin')
-      .eq('id', userId)
-      .single();
-
-    if (profileError || !profile?.is_admin) {
-      return c.json({ error: createApiError('FORBIDDEN', 'Admin access required') }, 403);
-    }
-  } catch {
-    return c.json({ error: createApiError('INTERNAL_ERROR', 'Failed to verify admin status') }, 500);
-  }
-
-  c.set('userId', userId);
-  return next();
-}
 
 // Apply admin middleware to /admin/* routes
 app.use('/admin/*', requireAdmin);

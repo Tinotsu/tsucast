@@ -21,6 +21,14 @@ export function Providers({ children }: { children: React.ReactNode }) {
           queries: {
             staleTime: 60 * 1000, // 1 minute
             refetchOnWindowFocus: false,
+            retry: (failureCount, error) => {
+              // Never retry auth errors — they won't resolve on retry
+              if (error instanceof Error && "status" in error) {
+                const status = (error as { status: number }).status;
+                if (status === 0 || status === 401 || status === 403) return false;
+              }
+              return failureCount < 3;
+            },
           },
         },
       })

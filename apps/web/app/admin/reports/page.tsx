@@ -85,37 +85,7 @@ export default function AdminReportsPage() {
     navigator.clipboard.writeText(url);
   };
 
-  // Mock data for development
-  const mockReports: ExtractionReport[] = [
-    {
-      id: "1",
-      url: "https://example.com/article-that-failed",
-      normalized_url: "https://example.com/article-that-failed",
-      error_type: "PAYWALL",
-      error_message: "Article appears to be behind a paywall",
-      user_id: "user1",
-      user_email: "user1@example.com",
-      status: "pending",
-      report_count: 3,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    },
-    {
-      id: "2",
-      url: "https://example.org/another-article",
-      normalized_url: "https://example.org/another-article",
-      error_type: "PARSE_ERROR",
-      error_message: "Failed to extract article content",
-      user_id: "user2",
-      user_email: "user2@example.com",
-      status: "fixed",
-      report_count: 1,
-      created_at: new Date(Date.now() - 86400000 * 2).toISOString(),
-      updated_at: new Date(Date.now() - 86400000).toISOString(),
-    },
-  ];
-
-  const displayReports = reports?.items || mockReports;
+  const displayReports = reports?.items || [];
   const totalPages = reports?.totalPages || 1;
 
   return (

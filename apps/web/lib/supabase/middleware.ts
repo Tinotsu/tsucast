@@ -31,33 +31,45 @@ export async function updateSession(request: NextRequest) {
 
   // Refreshing the auth token
   let user = null;
+  let isTimeout = false;
   const hasAuthCookies = request.cookies.getAll().some(c => c.name.startsWith('sb-'));
 
   try {
+    const TIMEOUT_MSG = "Auth check timed out";
+    let timeoutHandle: ReturnType<typeof setTimeout>;
     const timeoutPromise = new Promise<{ data: { user: null }; error: Error }>((resolve) => {
-      setTimeout(() => resolve({ data: { user: null }, error: new Error("Auth check timed out") }), 5000);
+      timeoutHandle = setTimeout(() => resolve({ data: { user: null }, error: new Error(TIMEOUT_MSG) }), 5000);
     });
     const { data, error } = await Promise.race([
       supabase.auth.getUser(),
       timeoutPromise,
     ]);
+    clearTimeout(timeoutHandle!);
 
     if (error || !data.user) {
-      // Auth failed - clear stale cookies if they exist
-      if (hasAuthCookies) {
-        request.cookies.getAll()
-          .filter(c => c.name.startsWith('sb-'))
-          .forEach(c => {
-            supabaseResponse.cookies.delete(c.name);
-          });
+      isTimeout = error?.message === TIMEOUT_MSG;
+
+      if (isTimeout) {
+        // Timeout — do NOT clear cookies. Let client-side auth handle it.
+        user = null;
+      } else {
+        // Real auth failure — clear stale cookies
+        if (hasAuthCookies) {
+          request.cookies.getAll()
+            .filter(c => c.name.startsWith('sb-'))
+            .forEach(c => {
+              supabaseResponse.cookies.delete(c.name);
+            });
+        }
+        user = null;
       }
-      user = null;
     } else {
       user = data.user;
     }
   } catch (error) {
-    // If Supabase is unreachable, treat as unauthenticated
+    // If Supabase is unreachable, treat like timeout — don't clear cookies
     console.error("Middleware auth check failed:", error);
+    isTimeout = true;
     user = null;
   }
 
@@ -71,14 +83,14 @@ export async function updateSession(request: NextRequest) {
   );
   const isAdminRoute = adminPaths.some((path) => pathname.startsWith(path));
 
-  if (isProtectedRoute && !user) {
+  if ((isProtectedRoute || isAdminRoute) && !user && !isTimeout) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     url.searchParams.set("redirect", pathname);
     return NextResponse.redirect(url);
   }
 
-  // Admin routes require admin role
+  // Admin routes require admin role (on timeout user is null so auth check above handles it)
   if (isAdminRoute && user) {
     try {
       const { data: profile, error: profileError } = await supabase

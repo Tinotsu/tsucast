@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
@@ -13,21 +13,14 @@ export default function AdminLayout({
 }) {
   const { isAdmin, isLoading, isAuthenticated } = useAuth();
   const router = useRouter();
-  const [isChecking, setIsChecking] = useState(true);
 
   useEffect(() => {
-    if (!isLoading) {
-      if (!isAuthenticated) {
-        router.push("/login?redirect=/admin");
-      } else if (!isAdmin) {
-        setIsChecking(false);
-      } else {
-        setIsChecking(false);
-      }
+    if (!isLoading && !isAuthenticated) {
+      router.push("/login?redirect=/admin");
     }
-  }, [isLoading, isAuthenticated, isAdmin, router]);
+  }, [isLoading, isAuthenticated, router]);
 
-  if (isLoading || isChecking) {
+  if (isLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-white">
         <Loader2 className="h-8 w-8 animate-spin text-[#1a1a1a]" />

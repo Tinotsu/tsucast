@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { getAdminMetrics, type AdminMetrics } from "@/lib/admin-api";
 import {
   Users,
@@ -10,19 +10,68 @@ import {
   AlertTriangle,
   TrendingUp,
   Loader2,
+  RefreshCw,
 } from "lucide-react";
 import Link from "next/link";
+import { cn } from "@/lib/utils";
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
+
+interface HealthResponse {
+  status: "ok" | "degraded";
+  services?: {
+    database: "healthy" | "unhealthy" | "unknown";
+    storage: "healthy" | "unhealthy" | "unknown";
+    tts: "healthy" | "unhealthy" | "unknown";
+  };
+}
+
+type ServiceStatus = "healthy" | "unhealthy" | "unknown" | "loading";
+
+const statusDisplay: Record<
+  ServiceStatus,
+  { label: string; dotClass: string; textClass: string }
+> = {
+  healthy: {
+    label: "Healthy",
+    dotClass: "bg-green-500",
+    textClass: "text-green-500",
+  },
+  unhealthy: {
+    label: "Unhealthy",
+    dotClass: "bg-red-500",
+    textClass: "text-red-500",
+  },
+  unknown: {
+    label: "Unknown",
+    dotClass: "bg-yellow-500",
+    textClass: "text-yellow-500",
+  },
+  loading: {
+    label: "Checking...",
+    dotClass: "bg-gray-300",
+    textClass: "text-[#737373]",
+  },
+};
 
 export default function AdminDashboard() {
   const [metrics, setMetrics] = useState<AdminMetrics | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    loadMetrics();
-  }, []);
+  const [health, setHealth] = useState<{
+    api: ServiceStatus;
+    database: ServiceStatus;
+    tts: ServiceStatus;
+    storage: ServiceStatus;
+  }>({
+    api: "loading",
+    database: "loading",
+    tts: "loading",
+    storage: "loading",
+  });
 
-  const loadMetrics = async () => {
+  const loadMetrics = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
@@ -33,7 +82,34 @@ export default function AdminDashboard() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
+
+  const loadHealth = useCallback(async () => {
+    setHealth({ api: "loading", database: "loading", tts: "loading", storage: "loading" });
+    try {
+      const response = await fetch(`${API_URL}/health`, {
+        signal: AbortSignal.timeout(10000),
+      });
+      if (!response.ok) {
+        setHealth({ api: "unhealthy", database: "unknown", tts: "unknown", storage: "unknown" });
+        return;
+      }
+      const data: HealthResponse = await response.json();
+      setHealth({
+        api: data.status === "ok" ? "healthy" : "unhealthy",
+        database: data.services?.database ?? "unknown",
+        tts: data.services?.tts ?? "unknown",
+        storage: data.services?.storage ?? "unknown",
+      });
+    } catch {
+      setHealth({ api: "unhealthy", database: "unknown", tts: "unknown", storage: "unknown" });
+    }
+  }, []);
+
+  useEffect(() => {
+    loadMetrics();
+    loadHealth();
+  }, [loadMetrics, loadHealth]);
 
   if (isLoading) {
     return (
@@ -58,7 +134,6 @@ export default function AdminDashboard() {
     );
   }
 
-  // Use mock data if API not available yet
   const data = metrics || {
     totalUsers: 0,
     totalGenerations: 0,
@@ -94,6 +169,13 @@ export default function AdminDashboard() {
       value: `${data.avgLatency}ms`,
       icon: Clock,
     },
+  ];
+
+  const healthServices = [
+    { name: "API Status", status: health.api },
+    { name: "Database", status: health.database },
+    { name: "TTS Service", status: health.tts },
+    { name: "Storage (R2)", status: health.storage },
   ];
 
   return (
@@ -169,38 +251,46 @@ export default function AdminDashboard() {
 
         {/* System Health */}
         <div className="rounded-2xl border border-[#e5e5e5] bg-white p-6">
-          <h2 className="mb-4 text-lg font-bold text-[#1a1a1a]">
-            System Health
-          </h2>
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-lg font-bold text-[#1a1a1a]">
+              System Health
+            </h2>
+            <button
+              onClick={loadHealth}
+              className="rounded-lg p-1.5 text-[#737373] transition-colors hover:bg-[#f5f5f5] hover:text-[#1a1a1a]"
+              title="Refresh health checks"
+            >
+              <RefreshCw className={cn("h-4 w-4", health.api === "loading" && "animate-spin")} />
+            </button>
+          </div>
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <span className="font-normal text-[#1a1a1a]">API Status</span>
-              <span className="flex items-center gap-2 text-green-500">
-                <span className="h-2 w-2 rounded-full bg-green-500" />
-                Healthy
-              </span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="font-normal text-[#1a1a1a]">Database</span>
-              <span className="flex items-center gap-2 text-green-500">
-                <span className="h-2 w-2 rounded-full bg-green-500" />
-                Connected
-              </span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="font-normal text-[#1a1a1a]">TTS Service</span>
-              <span className="flex items-center gap-2 text-green-500">
-                <span className="h-2 w-2 rounded-full bg-green-500" />
-                Available
-              </span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="font-normal text-[#1a1a1a]">Storage (R2)</span>
-              <span className="flex items-center gap-2 text-green-500">
-                <span className="h-2 w-2 rounded-full bg-green-500" />
-                Connected
-              </span>
-            </div>
+            {healthServices.map((service) => {
+              const display = statusDisplay[service.status];
+              return (
+                <div
+                  key={service.name}
+                  className="flex items-center justify-between"
+                >
+                  <span className="font-normal text-[#1a1a1a]">
+                    {service.name}
+                  </span>
+                  <span
+                    className={cn(
+                      "flex items-center gap-2",
+                      display.textClass
+                    )}
+                  >
+                    <span
+                      className={cn(
+                        "h-2 w-2 rounded-full",
+                        display.dotClass
+                      )}
+                    />
+                    {display.label}
+                  </span>
+                </div>
+              );
+            })}
           </div>
         </div>
       </div>

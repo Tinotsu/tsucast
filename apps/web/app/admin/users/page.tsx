@@ -25,7 +25,7 @@ export default function AdminUsersPage() {
 
   useEffect(() => {
     loadUsers();
-  }, [page, search]);
+  }, [page]);
 
   const loadUsers = async () => {
     setIsLoading(true);
@@ -55,33 +55,7 @@ export default function AdminUsersPage() {
     });
   };
 
-  // Mock data for development
-  const mockUsers: AdminUser[] = [
-    {
-      id: "1",
-      email: "user1@example.com",
-      display_name: "John Doe",
-      credits_balance: 12,
-      time_bank_minutes: 5,
-      is_admin: false,
-      created_at: new Date().toISOString(),
-      last_sign_in: new Date().toISOString(),
-      total_generations: 150,
-    },
-    {
-      id: "2",
-      email: "user2@example.com",
-      display_name: null,
-      credits_balance: 0,
-      time_bank_minutes: 0,
-      is_admin: false,
-      created_at: new Date(Date.now() - 86400000 * 7).toISOString(),
-      last_sign_in: new Date(Date.now() - 86400000).toISOString(),
-      total_generations: 25,
-    },
-  ];
-
-  const displayUsers = users?.items || mockUsers;
+  const displayUsers = users?.items || [];
   const totalPages = users?.totalPages || 1;
 
   return (
@@ -122,6 +96,11 @@ export default function AdminUsersPage() {
             {isLoading ? (
               <div className="flex h-64 items-center justify-center">
                 <Loader2 className="h-8 w-8 animate-spin text-[#1a1a1a]" />
+              </div>
+            ) : displayUsers.length === 0 ? (
+              <div className="flex h-64 flex-col items-center justify-center text-center">
+                <User className="mb-4 h-12 w-12 text-[#1a1a1a]" />
+                <p className="font-normal text-[#737373]">No users found</p>
               </div>
             ) : (
               <>

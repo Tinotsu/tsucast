@@ -1,3 +1,5 @@
+import { emitAuthEvent } from './auth-events';
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
 interface GenerateRequest {
@@ -78,14 +80,25 @@ async function getAuthToken(): Promise<string | null> {
   }
 }
 
-// Import shared cookie utility
-import { clearAuthCookies } from './cookies';
+// Public endpoints that don't require authentication
+const PUBLIC_ENDPOINTS = ["/api/cache/check"];
 
 async function fetchApi<T>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<T> {
   const token = await getAuthToken();
+
+  // If no token and not a public endpoint, fail fast instead of sending
+  // an unauthenticated request that will 401 and trigger a logout cascade
+  const isPublic = PUBLIC_ENDPOINTS.some((p) => endpoint.startsWith(p));
+  if (!token && !isPublic) {
+    throw new ApiError(
+      "Authentication token unavailable",
+      "AUTH_TOKEN_UNAVAILABLE",
+      0
+    );
+  }
 
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
@@ -109,7 +122,7 @@ async function fetchApi<T>(
     } catch {
       if (!response.ok) {
         if (response.status === 401) {
-          clearAuthCookies();
+          emitAuthEvent("unauthorized");
         }
         throw new ApiError(
           `Server error (${response.status})`,
@@ -121,9 +134,9 @@ async function fetchApi<T>(
     }
 
     if (!response.ok) {
-      // Auto-clear stale cookies on auth errors
+      // Notify React auth state so useAuth can sign out and redirect
       if (response.status === 401) {
-        clearAuthCookies();
+        emitAuthEvent("unauthorized");
       }
 
       throw new ApiError(
@@ -204,6 +217,15 @@ export async function generateAudio(
 ): Promise<GenerateResponse> {
   const token = await getAuthToken();
 
+  // Fail fast if no token — don't send unauthenticated request
+  if (!token) {
+    throw new ApiError(
+      "Authentication token unavailable",
+      "AUTH_TOKEN_UNAVAILABLE",
+      0
+    );
+  }
+
   // Use longer timeout for initial request (30s) since it may complete synchronously
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 30000);
@@ -214,7 +236,7 @@ export async function generateAudio(
       signal: controller.signal,
       headers: {
         "Content-Type": "application/json",
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        Authorization: `Bearer ${token}`,
       },
       body: JSON.stringify(request),
     });
@@ -225,10 +247,23 @@ export async function generateAudio(
     try {
       data = await response.json();
     } catch {
+      if (response.status === 401) {
+        emitAuthEvent("unauthorized");
+      }
       throw new ApiError(
         `Server error (${response.status})`,
         "SERVER_ERROR",
         response.status || 502
+      );
+    }
+
+    // Handle auth errors
+    if (response.status === 401) {
+      emitAuthEvent("unauthorized");
+      throw new ApiError(
+        data.error?.message || "Authentication required",
+        data.error?.code || "UNAUTHORIZED",
+        401
       );
     }
 
