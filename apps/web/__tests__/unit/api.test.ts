@@ -13,16 +13,9 @@ import {
   createLibraryItems,
 } from "../factories";
 
-// Mock the supabase client before importing api module
-vi.mock("@/lib/supabase/client", () => ({
-  createClient: () => ({
-    auth: {
-      getSession: vi.fn().mockResolvedValue({
-        data: { session: { access_token: "test-token" } },
-        error: null,
-      }),
-    },
-  }),
+// Mock the auth-token module to return a test token
+vi.mock("@/lib/auth-token", () => ({
+  getAccessTokenFromCookie: vi.fn().mockReturnValue("test-token"),
 }));
 
 describe("API Client", () => {

@@ -10,17 +10,10 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 // --- Controllable auth mock ---
 
-let mockSessionReturn: any = {
-  data: { session: null },
-  error: null,
-};
+let mockToken: string | null = null;
 
-vi.mock("@/lib/supabase/client", () => ({
-  createClient: () => ({
-    auth: {
-      getSession: vi.fn(() => Promise.resolve(mockSessionReturn)),
-    },
-  }),
+vi.mock("@/lib/auth-token", () => ({
+  getAccessTokenFromCookie: vi.fn(() => mockToken),
 }));
 
 // Track auth events
@@ -44,13 +37,13 @@ describe("API Auth Guard", () => {
     global.fetch = originalFetch;
     vi.useRealTimers();
     vi.resetModules();
-    mockSessionReturn = { data: { session: null }, error: null };
+    mockToken = null;
   });
 
   describe("Null-token guard (fetchApi)", () => {
     it("[P0] should throw AUTH_TOKEN_UNAVAILABLE when no token for non-public endpoint", async () => {
       // GIVEN: getSession returns no session (null token)
-      mockSessionReturn = { data: { session: null }, error: null };
+      mockToken = null;
       global.fetch = vi.fn();
 
       const { getLibrary } = await import("@/lib/api");
@@ -65,7 +58,7 @@ describe("API Auth Guard", () => {
 
     it("[P0] should allow public endpoints without token", async () => {
       // GIVEN: No session, but endpoint is public
-      mockSessionReturn = { data: { session: null }, error: null };
+      mockToken = null;
       global.fetch = vi.fn().mockResolvedValue({
         ok: true,
         json: () => Promise.resolve({ cached: false }),
@@ -83,10 +76,7 @@ describe("API Auth Guard", () => {
 
     it("[P1] should include auth header when token is available", async () => {
       // GIVEN: getSession returns a valid session
-      mockSessionReturn = {
-        data: { session: { access_token: "my-jwt-token" } },
-        error: null,
-      };
+      mockToken = "my-jwt-token";
       global.fetch = vi.fn().mockResolvedValue({
         ok: true,
         json: () => Promise.resolve({ items: [] }),
@@ -112,7 +102,7 @@ describe("API Auth Guard", () => {
   describe("Null-token guard (generateAudio)", () => {
     it("[P0] should throw AUTH_TOKEN_UNAVAILABLE when no token for generate", async () => {
       // GIVEN: No session
-      mockSessionReturn = { data: { session: null }, error: null };
+      mockToken = null;
       global.fetch = vi.fn();
 
       const { generateAudio } = await import("@/lib/api");
@@ -129,10 +119,7 @@ describe("API Auth Guard", () => {
   describe("401 → emitAuthEvent", () => {
     it("[P0] should emit unauthorized event on 401 from fetchApi", async () => {
       // GIVEN: Authenticated user, API returns 401
-      mockSessionReturn = {
-        data: { session: { access_token: "expired-token" } },
-        error: null,
-      };
+      mockToken = "expired-token";
       global.fetch = vi.fn().mockResolvedValue({
         ok: false,
         status: 401,
@@ -153,10 +140,7 @@ describe("API Auth Guard", () => {
 
     it("[P0] should emit unauthorized event on non-JSON 401", async () => {
       // GIVEN: API returns 401 with non-JSON body (e.g., nginx error page)
-      mockSessionReturn = {
-        data: { session: { access_token: "expired-token" } },
-        error: null,
-      };
+      mockToken = "expired-token";
       global.fetch = vi.fn().mockResolvedValue({
         ok: false,
         status: 401,
@@ -174,10 +158,7 @@ describe("API Auth Guard", () => {
 
     it("[P0] should emit unauthorized event on 401 from generateAudio", async () => {
       // GIVEN: Authenticated, generate returns 401
-      mockSessionReturn = {
-        data: { session: { access_token: "expired-token" } },
-        error: null,
-      };
+      mockToken = "expired-token";
       global.fetch = vi.fn().mockResolvedValue({
         ok: false,
         status: 401,
@@ -200,10 +181,7 @@ describe("API Auth Guard", () => {
 
     it("[P1] should NOT emit unauthorized event on 402 or other errors", async () => {
       // GIVEN: API returns 402
-      mockSessionReturn = {
-        data: { session: { access_token: "valid-token" } },
-        error: null,
-      };
+      mockToken = "valid-token";
       global.fetch = vi.fn().mockResolvedValue({
         ok: false,
         status: 402,
