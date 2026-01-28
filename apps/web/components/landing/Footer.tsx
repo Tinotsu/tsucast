@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Headphones } from "lucide-react";
+import { Logo } from "@/components/ui/Logo";
 
 export function Footer() {
   return (
@@ -9,8 +9,8 @@ export function Footer() {
           {/* Brand */}
           <div className="md:col-span-2">
             <Link href="/" className="flex items-center gap-2">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-black">
-                <Headphones className="h-5 w-5 text-white" />
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white border border-[#e5e5e5]">
+                <Logo size={28} className="text-black" />
               </div>
               <span className="text-xl font-bold tracking-tight text-[#1a1a1a]">
                 tsucast
