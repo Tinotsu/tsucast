@@ -637,3 +637,126 @@ export async function deleteAccount(): Promise<{ success: boolean }> {
 
   return response.json();
 }
+
+// ============================================================
+// Streaming Audio Generation API Functions
+// Story: Streaming Audio Generation (HLS + Together.ai)
+// ============================================================
+
+/**
+ * Response from starting a stream generation
+ */
+export interface StreamResponse {
+  status: 'streaming' | 'ready' | 'processing';
+  // For streaming (HLS)
+  streamId?: string;
+  manifestUrl?: string;
+  totalChunks?: number;
+  estimatedDuration?: number;
+  firstChunkDuration?: number;
+  // For ready (cached or short articles)
+  audioUrl?: string;
+  title?: string;
+  duration?: number;
+  wordCount?: number;
+  cached?: boolean;
+  streaming?: boolean;
+  // Credits after deduction
+  credits?: {
+    balance: number;
+    timeBank: number;
+  };
+}
+
+/**
+ * Stream status for polling progress
+ */
+export interface StreamStatus {
+  status: 'processing' | 'complete' | 'failed';
+  manifestUrl?: string;
+  totalChunks: number;
+  chunksCompleted: number;
+  progress: number;
+  totalDuration?: number;
+  error?: {
+    chunk: number;
+    message: string;
+  };
+}
+
+/**
+ * Start streaming audio generation
+ *
+ * Returns manifest URL after first chunk is ready (~5-10 seconds)
+ * The manifest URL can be played immediately with react-native-track-player
+ * while remaining chunks generate in the background.
+ *
+ * @param url - The article URL to convert to audio
+ * @param voiceId - Voice ID to use (default: 'default')
+ * @returns Stream response with manifest URL or ready audio URL
+ */
+export async function startStream(
+  url: string,
+  voiceId: string = 'default'
+): Promise<StreamResponse> {
+  const token = await getAuthToken();
+
+  if (!token) {
+    throw new Error('Authentication required');
+  }
+
+  const response = await fetch(`${API_URL}/api/stream`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ url, voiceId }),
+  });
+
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    const errorMessage = data.error?.message || 'Stream generation failed';
+
+    // Handle specific error codes
+    if (response.status === 402) {
+      throw new Error('INSUFFICIENT_CREDITS');
+    }
+    if (response.status === 422) {
+      throw new Error(data.error?.code || errorMessage);
+    }
+
+    throw new Error(errorMessage);
+  }
+
+  return response.json();
+}
+
+/**
+ * Get stream generation status
+ *
+ * Use this to poll for progress and check when generation is complete.
+ *
+ * @param streamId - The stream ID from startStream response
+ * @returns Current stream status with progress info
+ */
+export async function getStreamStatus(streamId: string): Promise<StreamStatus> {
+  const token = await getAuthToken();
+
+  if (!token) {
+    throw new Error('Authentication required');
+  }
+
+  const response = await fetch(`${API_URL}/api/stream/${streamId}`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    throw new Error(data.error?.message || 'Failed to get stream status');
+  }
+
+  return response.json();
+}

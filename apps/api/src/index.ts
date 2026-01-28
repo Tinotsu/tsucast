@@ -29,6 +29,7 @@ import checkoutRoutes from './routes/checkout.js';
 import emailRoutes from './routes/email.js';
 import freeContentRoutes from './routes/free-content.js';
 import adminRoutes from './routes/admin.js';
+import streamRoutes from './routes/stream.js';
 import { processEmailQueue } from './services/email-sequences.js';
 
 type AppEnv = {
@@ -79,6 +80,7 @@ app.route('/api/checkout', checkoutRoutes);
 app.route('/api/email', emailRoutes);
 app.route('/api/free-content', freeContentRoutes);
 app.route('/api/admin', adminRoutes);
+app.route('/api/stream', streamRoutes);
 
 // Root route
 app.get('/', (c) => {

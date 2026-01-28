@@ -25,10 +25,11 @@ import { CreditPurchaseModal } from '../../components/ui/CreditPurchaseModal';
 import { isValidUrl, getUrlValidationError } from '../../utils/validation';
 import { normalizeAndHashUrl } from '../../utils/urlNormalization';
 import { trackEvent } from '@/services/posthog';
-import { checkCache, CacheResult, previewGeneration, GenerationPreview } from '../../services/api';
+import { checkCache, CacheResult, previewGeneration, GenerationPreview, startStream } from '../../services/api';
 import { useVoicePreference } from '../../hooks/useVoicePreference';
 import { useSubscription } from '../../hooks/useSubscription';
 import { useCredits } from '../../hooks/useCredits';
+import { useAudioPlayer } from '../../hooks/useAudioPlayer';
 
 /**
  * Add Screen State Machine
@@ -37,6 +38,8 @@ import { useCredits } from '../../hooks/useCredits';
  * validating -> invalid (validation failed) OR checking_cache (validation passed)
  * checking_cache -> previewing (cache miss) OR cached (cache hit)
  * previewing -> ready_to_generate (preview complete)
+ * ready_to_generate -> generating (on generate press)
+ * generating -> idle (success, navigated to player) OR invalid (error)
  */
 type AddScreenState =
   | { status: 'idle' }
@@ -45,7 +48,8 @@ type AddScreenState =
   | { status: 'checking_cache' }
   | { status: 'previewing' }
   | { status: 'cached'; audioUrl: string; title: string; duration?: number }
-  | { status: 'ready_to_generate'; normalizedUrl: string; urlHash: string; preview: GenerationPreview };
+  | { status: 'ready_to_generate'; normalizedUrl: string; urlHash: string; preview: GenerationPreview }
+  | { status: 'generating'; message: string };
 
 // Debounce delay for URL validation (ms)
 const VALIDATION_DEBOUNCE_MS = 300;
@@ -71,6 +75,7 @@ function AddScreenContent() {
   const { selectedVoiceId, setSelectedVoiceId } = useVoicePreference();
   const { isPro } = useSubscription();
   const { credits, timeBank, invalidate: invalidateCredits } = useCredits();
+  const { loadTrack } = useAudioPlayer();
 
   // Ref to track validation timeout for debouncing
   const validationTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -215,8 +220,9 @@ function AddScreenContent() {
 
   /**
    * Handle generate button press
+   * Calls the streaming API and starts playback immediately
    */
-  const handleGenerate = () => {
+  const handleGenerate = async () => {
     // Check credits before attempting generation (not cached content)
     if (state.status === 'ready_to_generate' && !isPro && !state.preview.hasSufficientCredits) {
       setShowPurchaseModal(true);
@@ -224,18 +230,88 @@ function AddScreenContent() {
     }
 
     if (state.status === 'cached') {
-      // Navigate to player with cached audio
-      if (__DEV__) {
-        console.log('Playing cached audio:', state.audioUrl);
+      // Play cached audio immediately
+      const trackId = `cached-${Date.now()}`;
+      try {
+        await loadTrack({
+          id: trackId,
+          audioUrl: state.audioUrl,
+          title: state.title,
+          duration: state.duration,
+        });
+        trackEvent('article_played', { source: 'cached' });
+        // Reset state after successful load
+        setUrl('');
+        setState({ status: 'idle' });
+        // Navigate to player screen
+        router.push(`/player/${trackId}`);
+      } catch (error) {
+        if (__DEV__) {
+          console.error('Failed to play cached audio:', error);
+        }
+        setState({ status: 'invalid', error: 'Failed to play audio' });
       }
-      // TODO: Navigate to player screen with audioUrl
     } else if (state.status === 'ready_to_generate') {
-      // Navigate to generation flow
-      if (__DEV__) {
-        console.log('Starting generation for:', state.normalizedUrl, 'with voice:', selectedVoiceId);
-      }
+      // Start streaming generation
+      setState({ status: 'generating', message: 'Generating audio...' });
       trackEvent('article_submitted', { voice_id: selectedVoiceId });
-      // TODO: Navigate to generation flow with normalizedUrl, urlHash, and selectedVoiceId
+
+      try {
+        const result = await startStream(url, selectedVoiceId);
+        let trackId: string;
+
+        if (result.status === 'ready') {
+          // Short article or already cached - play immediately
+          trackId = result.streamId || `ready-${Date.now()}`;
+          await loadTrack({
+            id: trackId,
+            audioUrl: result.audioUrl!,
+            title: result.title || 'Untitled',
+            duration: result.duration,
+            wordCount: result.wordCount,
+          });
+          trackEvent('article_generated', {
+            streaming: false,
+            cached: result.cached ?? false,
+            word_count: result.wordCount ?? 0,
+          });
+        } else if (result.status === 'streaming') {
+          // HLS streaming - play manifest immediately while chunks generate
+          trackId = result.streamId!;
+          await loadTrack({
+            id: trackId,
+            audioUrl: result.manifestUrl!, // HLS manifest URL
+            title: result.title || 'Untitled',
+            duration: result.estimatedDuration,
+          });
+          trackEvent('stream_started', {
+            stream_id: result.streamId ?? '',
+            total_chunks: result.totalChunks ?? 0,
+            estimated_duration: result.estimatedDuration ?? 0,
+          });
+        } else {
+          throw new Error('Unexpected response status');
+        }
+
+        // Invalidate credits to refetch new balance
+        invalidateCredits();
+
+        // Reset state and navigate to player
+        setUrl('');
+        setState({ status: 'idle' });
+        router.push(`/player/${trackId}`);
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Generation failed';
+
+        if (errorMessage === 'INSUFFICIENT_CREDITS') {
+          setShowPurchaseModal(true);
+          setState({ status: 'invalid', error: 'Insufficient credits' });
+        } else {
+          setState({ status: 'invalid', error: errorMessage });
+        }
+
+        trackEvent('generation_failed', { error: errorMessage });
+      }
     }
   };
 
@@ -252,7 +328,8 @@ function AddScreenContent() {
   };
 
   // Derived state for UI
-  const isLoading = state.status === 'validating' || state.status === 'checking_cache' || state.status === 'previewing';
+  const isGenerating = state.status === 'generating';
+  const isLoading = state.status === 'validating' || state.status === 'checking_cache' || state.status === 'previewing' || isGenerating;
   const hasError = state.status === 'invalid';
   const isValid = state.status === 'ready_to_generate' || state.status === 'cached';
   const isCached = state.status === 'cached';

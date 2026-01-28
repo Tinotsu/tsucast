@@ -1,12 +1,15 @@
 /**
  * Text-to-Speech Service
  *
- * Integrates with Kokoro TTS on RunPod Serverless for TTS generation.
+ * Primary: Together.ai Kokoro (fast, always warm)
+ * Fallback: Kokoro on RunPod Serverless (slower, cold starts)
+ *
  * Story: 3-2 Streaming Audio Generation
  */
 
 import { logger } from '../lib/logger.js';
 import { ErrorCodes } from '../utils/errors.js';
+import { generateSpeechTogether, isTogetherConfigured } from './tts-together.js';
 
 const TTS_TIMEOUT_MS = 180000; // 3 minutes — accounts for RunPod cold starts (10-60s) + generation
 
@@ -19,6 +22,7 @@ const VALID_KOKORO_VOICES = new Set([
   'af_sarah',
   'am_michael',
   'af_bella',
+  'af_alloy',
 ]);
 
 export interface TtsOptions {
@@ -41,9 +45,30 @@ interface RunPodResponse {
 }
 
 /**
- * Generate speech from text using Kokoro TTS on RunPod Serverless
+ * Generate speech from text
+ *
+ * Uses Together.ai as primary (fast), falls back to RunPod if not configured
  */
 export async function generateSpeech(options: TtsOptions): Promise<TtsResult> {
+  // Try Together.ai first (faster, no cold starts)
+  if (isTogetherConfigured()) {
+    try {
+      logger.info({ textLength: options.text.length }, 'Using Together.ai TTS');
+      return await generateSpeechTogether(options);
+    } catch (error) {
+      logger.warn({ error }, 'Together.ai TTS failed, falling back to RunPod');
+      // Fall through to RunPod
+    }
+  }
+
+  // Fallback to RunPod
+  return generateSpeechRunPod(options);
+}
+
+/**
+ * Generate speech using Kokoro TTS on RunPod Serverless (fallback)
+ */
+async function generateSpeechRunPod(options: TtsOptions): Promise<TtsResult> {
   const { text, voiceId, signal } = options;
 
   const apiUrl = process.env.KOKORO_API_URL;
@@ -71,7 +96,7 @@ export async function generateSpeech(options: TtsOptions): Promise<TtsResult> {
     : controller.signal;
 
   try {
-    logger.info({ voiceId, kokoroVoiceId, textLength: text.length }, 'Starting TTS generation');
+    logger.info({ voiceId, kokoroVoiceId, textLength: text.length }, 'Starting TTS generation (RunPod)');
 
     const requestBody = {
       input: {
@@ -131,7 +156,7 @@ export async function generateSpeech(options: TtsOptions): Promise<TtsResult> {
 
     logger.info(
       { durationSeconds, fileSizeBytes: audioBuffer.length, executionTime: result.executionTime, jobId: result.id },
-      'TTS generation complete'
+      'TTS generation complete (RunPod)'
     );
 
     return { audioBuffer, durationSeconds };
