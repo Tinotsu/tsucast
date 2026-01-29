@@ -1,10 +1,25 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { usePathname } from "next/navigation";
 import { Play, Pause, ChevronUp, Loader2, FileAudio, Headphones } from "lucide-react";
 import { useAudioPlayer } from "@/hooks/useAudioPlayer";
 import { PlayerModal } from "./PlayerModal";
 import { cn } from "@/lib/utils";
+
+// Pages that have the BottomNav (app layout pages)
+const APP_PAGES = ["/home", "/library", "/settings", "/upgrade", "/playlist", "/credits"];
+
+// Pages where the player bar should NOT appear
+const HIDDEN_PAGES = [
+  "/",           // Landing page
+  "/login",      // Auth pages - user not logged in
+  "/signup",
+  "/auth",       // OAuth callback
+  "/privacy",    // Legal pages - professional appearance
+  "/terms",
+  "/admin",      // Admin panel - has own layout
+];
 
 function formatTime(seconds: number): string {
   if (isNaN(seconds) || seconds < 0) return "0:00";
@@ -14,6 +29,7 @@ function formatTime(seconds: number): string {
 }
 
 export function GlobalMiniPlayer() {
+  const pathname = usePathname();
   const {
     track,
     lastTrack,
@@ -36,7 +52,18 @@ export function GlobalMiniPlayer() {
     setArtworkError(false);
   }, [displayTrack?.id]);
 
-  // Always show the player bar
+  // Check if we're on an app page (has BottomNav on mobile)
+  const isAppPage = APP_PAGES.some((page) => pathname?.startsWith(page));
+
+  // Check if player should be hidden on this page
+  const shouldHidePlayer = HIDDEN_PAGES.some((page) =>
+    page === "/" ? pathname === "/" : pathname?.startsWith(page)
+  );
+
+  // Don't render player bar on hidden pages (auth, legal, admin, landing)
+  if (shouldHidePlayer) {
+    return <PlayerModal />;
+  }
   const progress = track && duration > 0 ? (currentTime / duration) * 100 : 0;
   const hasActiveTrack = !!track;
 
@@ -61,7 +88,11 @@ export function GlobalMiniPlayer() {
       <div
         className={cn(
           "fixed left-0 right-0 z-50 h-16 border-t border-[var(--border)] bg-[var(--card)] shadow-lg transition-all",
-          "bottom-16 lg:bottom-0 lg:left-60"
+          // On app pages: position above BottomNav (bottom-16) on mobile
+          // On other pages: position at bottom with safe area padding
+          isAppPage
+            ? "bottom-[calc(4rem+env(safe-area-inset-bottom))] lg:bottom-0 lg:left-60"
+            : "bottom-0 pb-[env(safe-area-inset-bottom)] lg:left-60"
         )}
       >
         {/* Progress bar (clickable) */}
