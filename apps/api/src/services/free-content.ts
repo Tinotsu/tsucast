@@ -27,6 +27,7 @@ export interface FreeContentItem {
   file_size_bytes: number | null;
   status: 'pending' | 'processing' | 'ready' | 'failed';
   error_message: string | null;
+  featured: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -213,6 +214,56 @@ export async function getPublicFreeContent(): Promise<FreeContentItem[]> {
   return (data ?? []) as FreeContentItem[];
 }
 
+interface UpdateFreeContentInput {
+  title?: string;
+  voice_id?: string;
+  source_url?: string | null;
+}
+
+/**
+ * Update a free content item's metadata (title, voice, source_url).
+ * Returns the updated item, or null if not found.
+ */
+export async function updateFreeContent(
+  id: string,
+  input: UpdateFreeContentInput
+): Promise<FreeContentItem | null> {
+  const supabase = getSupabase();
+  if (!supabase) throw new Error('Supabase not configured');
+
+  const updates: Record<string, unknown> = {};
+  if (input.title !== undefined) updates.title = input.title;
+  if (input.voice_id !== undefined) updates.voice_id = input.voice_id;
+  if (input.source_url !== undefined) updates.source_url = input.source_url;
+
+  if (Object.keys(updates).length === 0) {
+    // Nothing to update, fetch and return current
+    const { data } = await supabase
+      .from('free_content')
+      .select('*')
+      .eq('id', id)
+      .single();
+    return data as FreeContentItem | null;
+  }
+
+  const { data, error } = await supabase
+    .from('free_content')
+    .update(updates)
+    .eq('id', id)
+    .select()
+    .single();
+
+  if (error) {
+    if (error.code === 'PGRST116') {
+      return null; // Not found
+    }
+    logger.error({ id, error }, 'Failed to update free content');
+    throw error;
+  }
+
+  return data as FreeContentItem;
+}
+
 /**
  * Delete a free content item by ID.
  * Does NOT delete from R2 (audio files are cheap, can be cleaned up later).
@@ -232,4 +283,73 @@ export async function deleteFreeContent(id: string): Promise<boolean> {
   }
 
   return (count ?? 0) > 0;
+}
+
+/**
+ * Get the featured free content item for landing page hero.
+ * Returns null if no item is featured.
+ */
+export async function getFeaturedContent(): Promise<FreeContentItem | null> {
+  const supabase = getSupabase();
+  if (!supabase) throw new Error('Supabase not configured');
+
+  const { data, error } = await supabase
+    .from('free_content')
+    .select('*')
+    .eq('featured', true)
+    .eq('status', 'ready')
+    .single();
+
+  if (error) {
+    // PGRST116 = no rows returned, which is valid (no featured item)
+    if (error.code === 'PGRST116') {
+      return null;
+    }
+    logger.error({ error }, 'Failed to get featured content');
+    throw error;
+  }
+
+  return data as FreeContentItem;
+}
+
+/**
+ * Set an item as featured (unsets any previously featured item).
+ * Order of operations prevents unique constraint violation:
+ * 1. Clear any existing featured items first
+ * 2. Then set the target item as featured (if featured=true)
+ * Note: Uses partial unique index, so must clear before setting.
+ */
+export async function setFeaturedContent(id: string, featured: boolean): Promise<boolean> {
+  const supabase = getSupabase();
+  if (!supabase) throw new Error('Supabase not configured');
+
+  // If setting featured=true, first clear any existing featured items
+  // This prevents unique constraint violation from partial index
+  if (featured) {
+    const { error: clearError } = await supabase
+      .from('free_content')
+      .update({ featured: false })
+      .eq('featured', true)
+      .select('id');
+
+    if (clearError) {
+      logger.error({ id, error: clearError }, 'Failed to clear existing featured items');
+      throw clearError;
+    }
+  }
+
+  // Now set the target item - validates it exists and is ready
+  const { error, data } = await supabase
+    .from('free_content')
+    .update({ featured })
+    .eq('id', id)
+    .eq('status', 'ready') // Only ready items can be featured
+    .select('id');
+
+  if (error) {
+    logger.error({ id, featured, error }, 'Failed to set featured content');
+    throw error;
+  }
+
+  return (data?.length ?? 0) > 0;
 }

@@ -143,6 +143,7 @@ export interface FreeContentItem {
   file_size_bytes: number | null;
   status: "pending" | "processing" | "ready" | "failed";
   error_message: string | null;
+  featured: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -165,11 +166,92 @@ export async function createAdminFreeContent(data: {
   });
 }
 
+export async function updateAdminFreeContent(
+  id: string,
+  data: {
+    title?: string;
+    voice_id?: string;
+    source_url?: string | null;
+  }
+): Promise<{ item: FreeContentItem }> {
+  return fetchAdminApi(`/api/free-content/admin/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+}
+
 export async function deleteAdminFreeContent(
   id: string
 ): Promise<{ success: boolean }> {
   return fetchAdminApi(`/api/free-content/admin/${id}`, {
     method: "DELETE",
+  });
+}
+
+export async function setFreeContentFeatured(
+  id: string,
+  featured: boolean
+): Promise<{ success: boolean }> {
+  return fetchAdminApi(`/api/free-content/admin/${id}/featured`, {
+    method: "PUT",
+    body: JSON.stringify({ featured }),
+  });
+}
+
+// FAQ Management
+export interface FAQItem {
+  id: string;
+  question: string;
+  answer: string;
+  position: number;
+  published: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export async function getAdminFAQ(): Promise<{ items: FAQItem[] }> {
+  return fetchAdminApi("/api/faq/admin");
+}
+
+export async function createFAQItem(data: {
+  question: string;
+  answer: string;
+  position?: number;
+  published?: boolean;
+}): Promise<{ item: FAQItem }> {
+  return fetchAdminApi("/api/faq/admin", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updateFAQItem(
+  id: string,
+  data: {
+    question?: string;
+    answer?: string;
+    position?: number;
+    published?: boolean;
+  }
+): Promise<{ item: FAQItem }> {
+  return fetchAdminApi(`/api/faq/admin/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteFAQItem(id: string): Promise<{ success: boolean }> {
+  return fetchAdminApi(`/api/faq/admin/${id}`, {
+    method: "DELETE",
+  });
+}
+
+export async function reorderFAQ(
+  items: { id: string; position: number }[]
+): Promise<{ success: boolean }> {
+  return fetchAdminApi("/api/faq/admin/reorder", {
+    method: "POST",
+    body: JSON.stringify({ items }),
   });
 }
 

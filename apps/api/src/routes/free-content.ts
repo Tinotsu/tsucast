@@ -12,7 +12,10 @@ import {
   createFreeContent,
   listFreeContent,
   getPublicFreeContent,
+  updateFreeContent,
   deleteFreeContent,
+  getFeaturedContent,
+  setFeaturedContent,
 } from '../services/free-content.js';
 
 const app = new Hono();
@@ -85,6 +88,45 @@ app.post('/admin', async (c) => {
   }
 });
 
+// Zod schema for PUT body (update)
+const updateFreeContentSchema = z.object({
+  title: z.string().min(1).max(500).optional(),
+  voice_id: z.string().regex(/^(am_adam|af_sarah|am_michael|af_bella)$/).optional(),
+  source_url: z.string().url().max(2000).nullable().optional(),
+});
+
+/**
+ * PUT /admin/:id — Admin only. Updates a free content item's metadata.
+ */
+app.put('/admin/:id', async (c) => {
+  const id = c.req.param('id');
+
+  const uuidResult = z.string().uuid().safeParse(id);
+  if (!uuidResult.success) {
+    return c.json({ error: createApiError('VALIDATION_ERROR', 'Invalid content ID') }, 400);
+  }
+
+  const body = await c.req.json().catch(() => null);
+  if (!body) {
+    return c.json({ error: createApiError('VALIDATION_ERROR', 'Invalid request body') }, 400);
+  }
+
+  const parsed = updateFreeContentSchema.safeParse(body);
+  if (!parsed.success) {
+    return c.json({ error: createApiError('VALIDATION_ERROR', parsed.error.issues[0]?.message ?? 'Validation failed') }, 400);
+  }
+
+  try {
+    const item = await updateFreeContent(id, parsed.data);
+    if (!item) {
+      return c.json({ error: createApiError('NOT_FOUND', 'Free content not found') }, 404);
+    }
+    return c.json({ item });
+  } catch {
+    return c.json({ error: createApiError('INTERNAL_ERROR', 'Failed to update free content') }, 500);
+  }
+});
+
 /**
  * DELETE /admin/:id — Admin only. Deletes a free content item.
  */
@@ -104,6 +146,45 @@ app.delete('/admin/:id', async (c) => {
     return c.json({ success: true });
   } catch {
     return c.json({ error: createApiError('INTERNAL_ERROR', 'Failed to delete free content') }, 500);
+  }
+});
+
+/**
+ * GET /featured — Public. Returns the featured content item for landing page hero.
+ */
+app.get('/featured', async (c) => {
+  try {
+    const item = await getFeaturedContent();
+    return c.json({ item });
+  } catch {
+    return c.json({ error: createApiError('INTERNAL_ERROR', 'Failed to fetch featured content') }, 500);
+  }
+});
+
+/**
+ * PUT /admin/:id/featured — Admin only. Sets or unsets an item as featured.
+ */
+app.put('/admin/:id/featured', async (c) => {
+  const id = c.req.param('id');
+
+  const uuidResult = z.string().uuid().safeParse(id);
+  if (!uuidResult.success) {
+    return c.json({ error: createApiError('VALIDATION_ERROR', 'Invalid content ID') }, 400);
+  }
+
+  const body = await c.req.json().catch(() => null);
+  if (!body || typeof body.featured !== 'boolean') {
+    return c.json({ error: createApiError('VALIDATION_ERROR', 'featured boolean is required') }, 400);
+  }
+
+  try {
+    const updated = await setFeaturedContent(id, body.featured);
+    if (!updated) {
+      return c.json({ error: createApiError('NOT_FOUND', 'Free content not found or not ready') }, 404);
+    }
+    return c.json({ success: true });
+  } catch {
+    return c.json({ error: createApiError('INTERNAL_ERROR', 'Failed to update featured status') }, 500);
   }
 });
 

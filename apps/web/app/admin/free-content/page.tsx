@@ -4,7 +4,9 @@ import { useEffect, useState, useCallback } from "react";
 import {
   getAdminFreeContent,
   createAdminFreeContent,
+  updateAdminFreeContent,
   deleteAdminFreeContent,
+  setFreeContentFeatured,
   type FreeContentItem,
 } from "@/lib/admin-api";
 import {
@@ -17,6 +19,9 @@ import {
   XCircle,
   AlertTriangle,
   ExternalLink,
+  Star,
+  Pencil,
+  X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -68,6 +73,14 @@ export default function AdminFreeContentPage() {
 
   // Polling state - track multiple processing items
   const [processingIds, setProcessingIds] = useState<Set<string>>(new Set());
+
+  // Edit modal state
+  const [editingItem, setEditingItem] = useState<FreeContentItem | null>(null);
+  const [editTitle, setEditTitle] = useState("");
+  const [editVoiceId, setEditVoiceId] = useState("");
+  const [editSourceUrl, setEditSourceUrl] = useState("");
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
 
   const loadItems = useCallback(async () => {
     try {
@@ -169,6 +182,89 @@ export default function AdminFreeContentPage() {
       setProcessingIds((prev) => { const next = new Set(prev); next.delete(id); return next; });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to delete");
+    }
+  };
+
+  const handleToggleFeatured = async (id: string, currentFeatured: boolean) => {
+    const newFeatured = !currentFeatured;
+
+    // Optimistic update
+    setItems((prev) =>
+      prev.map((item) => {
+        if (item.id === id) {
+          return { ...item, featured: newFeatured };
+        }
+        // If setting a different item as featured, unset this item if it was featured
+        if (newFeatured && item.id !== id && item.featured) {
+          return { ...item, featured: false };
+        }
+        return item;
+      })
+    );
+
+    try {
+      await setFreeContentFeatured(id, newFeatured);
+    } catch (err) {
+      // Revert on error
+      setError(err instanceof Error ? err.message : "Failed to update featured status");
+      await loadItems();
+    }
+  };
+
+  const openEditModal = (item: FreeContentItem) => {
+    setEditingItem(item);
+    setEditTitle(item.title);
+    setEditVoiceId(item.voice_id);
+    setEditSourceUrl(item.source_url ?? "");
+    setEditError(null);
+  };
+
+  const closeEditModal = useCallback(() => {
+    setEditingItem(null);
+    setEditTitle("");
+    setEditVoiceId("");
+    setEditSourceUrl("");
+    setEditError(null);
+  }, []);
+
+  // Close modal on ESC key
+  useEffect(() => {
+    if (!editingItem) return;
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === "Escape") closeEditModal();
+    };
+    document.addEventListener("keydown", handleEsc);
+    document.body.style.overflow = "hidden"; // Prevent body scroll
+    return () => {
+      document.removeEventListener("keydown", handleEsc);
+      document.body.style.overflow = "";
+    };
+  }, [editingItem, closeEditModal]);
+
+  const handleEditSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingItem) return;
+
+    setEditError(null);
+    setIsUpdating(true);
+
+    try {
+      const result = await updateAdminFreeContent(editingItem.id, {
+        title: editTitle,
+        voice_id: editVoiceId,
+        source_url: editSourceUrl || null,
+      });
+
+      // Update the item in the list
+      setItems((prev) =>
+        prev.map((item) => (item.id === editingItem.id ? result.item : item))
+      );
+
+      closeEditModal();
+    } catch (err) {
+      setEditError(err instanceof Error ? err.message : "Failed to update");
+    } finally {
+      setIsUpdating(false);
     }
   };
 
@@ -347,13 +443,14 @@ export default function AdminFreeContentPage() {
         ) : (
           <div className="divide-y divide-[#e5e5e5]">
             {/* Table Header */}
-            <div className="grid grid-cols-[1fr_100px_80px_100px_120px_50px] gap-4 px-4 py-3 text-xs font-medium text-[#737373]">
+            <div className="grid grid-cols-[1fr_100px_80px_100px_120px_60px_70px] gap-4 px-4 py-3 text-xs font-medium text-[#737373]">
               <span>Title</span>
               <span>Voice</span>
               <span>Status</span>
               <span>Duration</span>
               <span>Created</span>
-              <span></span>
+              <span>Featured</span>
+              <span>Actions</span>
             </div>
 
             {items.map((item) => {
@@ -364,7 +461,7 @@ export default function AdminFreeContentPage() {
               return (
                 <div
                   key={item.id}
-                  className="grid grid-cols-[1fr_100px_80px_100px_120px_50px] items-center gap-4 px-4 py-3 text-sm"
+                  className="grid grid-cols-[1fr_100px_80px_100px_120px_60px_70px] items-center gap-4 px-4 py-3 text-sm"
                 >
                   {/* Title + URL */}
                   <div className="min-w-0">
@@ -428,14 +525,41 @@ export default function AdminFreeContentPage() {
                     {formatDate(item.created_at)}
                   </span>
 
-                  {/* Actions */}
+                  {/* Featured Toggle */}
                   <button
-                    onClick={() => handleDelete(item.id)}
-                    className="rounded p-1 text-[#737373] hover:bg-red-50 hover:text-red-500"
-                    title="Delete"
+                    onClick={() => handleToggleFeatured(item.id, item.featured)}
+                    disabled={item.status !== "ready"}
+                    className={cn(
+                      "flex justify-center rounded p-1 transition-colors",
+                      item.featured
+                        ? "text-yellow-500 hover:text-yellow-600"
+                        : "text-[#737373] hover:text-yellow-500",
+                      item.status !== "ready" && "opacity-30 cursor-not-allowed"
+                    )}
+                    title={item.featured ? "Remove from featured" : "Set as featured (landing page hero)"}
                   >
-                    <Trash2 className="h-4 w-4" />
+                    <Star
+                      className={cn("h-4 w-4", item.featured && "fill-current")}
+                    />
                   </button>
+
+                  {/* Actions */}
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => openEditModal(item)}
+                      className="rounded p-1 text-[#737373] hover:bg-blue-50 hover:text-blue-500"
+                      title="Edit"
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </button>
+                    <button
+                      onClick={() => handleDelete(item.id)}
+                      className="rounded p-1 text-[#737373] hover:bg-red-50 hover:text-red-500"
+                      title="Delete"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
                 </div>
               );
             })}
@@ -450,6 +574,112 @@ export default function AdminFreeContentPage() {
           <span>
             Generation in progress. The page is polling for updates automatically.
           </span>
+        </div>
+      )}
+
+      {/* Edit Modal */}
+      {editingItem && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+          onClick={closeEditModal}
+        >
+          <div
+            className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-lg font-bold text-[#1a1a1a]">Edit Free Content</h2>
+              <button
+                onClick={closeEditModal}
+                className="rounded p-1 text-[#737373] hover:bg-[#f5f5f5]"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {editError && (
+              <div className="mb-4 rounded-lg bg-red-100 p-3 text-sm text-red-700">
+                {editError}
+              </div>
+            )}
+
+            <form onSubmit={handleEditSubmit} className="space-y-4">
+              {/* Title */}
+              <div>
+                <label className="mb-1 block text-sm font-medium text-[#1a1a1a]">
+                  Title <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={editTitle}
+                  onChange={(e) => setEditTitle(e.target.value)}
+                  maxLength={500}
+                  required
+                  className="w-full rounded-lg border border-[#e5e5e5] bg-white px-3 py-2 text-sm text-[#1a1a1a] focus:border-[#1a1a1a] focus:outline-none"
+                />
+              </div>
+
+              {/* Voice */}
+              <div>
+                <label className="mb-1 block text-sm font-medium text-[#1a1a1a]">
+                  Voice
+                </label>
+                <select
+                  value={editVoiceId}
+                  onChange={(e) => setEditVoiceId(e.target.value)}
+                  className="w-full rounded-lg border border-[#e5e5e5] bg-white px-3 py-2 text-sm text-[#1a1a1a] focus:border-[#1a1a1a] focus:outline-none"
+                >
+                  {voiceOptions.map((v) => (
+                    <option key={v.value} value={v.value}>
+                      {v.label}
+                    </option>
+                  ))}
+                </select>
+                <p className="mt-1 text-xs text-[#737373]">
+                  Note: Changing the voice only updates the label. To regenerate audio with a different voice, delete and recreate.
+                </p>
+              </div>
+
+              {/* Source URL */}
+              <div>
+                <label className="mb-1 block text-sm font-medium text-[#1a1a1a]">
+                  Source URL
+                </label>
+                <input
+                  type="url"
+                  value={editSourceUrl}
+                  onChange={(e) => setEditSourceUrl(e.target.value)}
+                  placeholder="https://example.com/article"
+                  className="w-full rounded-lg border border-[#e5e5e5] bg-white px-3 py-2 text-sm text-[#1a1a1a] focus:border-[#1a1a1a] focus:outline-none"
+                />
+              </div>
+
+              {/* Buttons */}
+              <div className="flex justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={closeEditModal}
+                  className="rounded-lg border border-[#e5e5e5] px-4 py-2 text-sm font-medium text-[#1a1a1a] hover:bg-[#f5f5f5]"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isUpdating}
+                  className="flex items-center gap-2 rounded-lg bg-[#1a1a1a] px-4 py-2 text-sm font-bold text-white hover:bg-[#333] disabled:opacity-50"
+                >
+                  {isUpdating ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    "Save Changes"
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
     </div>
