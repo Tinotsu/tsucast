@@ -47,6 +47,17 @@ vi.mock("@/hooks/useAuth", () => ({
   useAuth: () => mockUseAuth(),
 }));
 
+// Mock useAudioPlayer for queue functionality
+const mockAddToQueue = vi.fn();
+vi.mock("@/hooks/useAudioPlayer", () => ({
+  useAudioPlayer: () => ({
+    addToQueue: mockAddToQueue,
+    track: null,
+    isPlaying: false,
+    queue: [],
+  }),
+}));
+
 // Mock WebPlayer component to avoid audio element issues
 vi.mock("@/components/app/WebPlayer", () => ({
   WebPlayer: ({ title }: { title: string }) => (
