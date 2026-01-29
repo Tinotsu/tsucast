@@ -1,5 +1,10 @@
 @import "tailwindcss";
 
+/* Smooth scrolling for anchor links */
+html {
+  scroll-behavior: smooth;
+}
+
 /* Clean Light Theme — near-black on white */
 :root {
   --color-ink: #1a1a1a;
@@ -27,8 +32,62 @@
   --input: var(--color-page);
 }
 
+/* Dark Theme — white on near-black */
+.dark {
+  --color-ink: #fafafa;
+  --color-page: #0a0a0a;
+  --color-border: #262626;
+  --color-muted: #a3a3a3;
+
+  --background: var(--color-page);
+  --foreground: var(--color-ink);
+  --primary: var(--color-ink);
+  --primary-foreground: var(--color-page);
+  --secondary: var(--color-page);
+  --secondary-foreground: var(--color-ink);
+  --muted: var(--color-muted);
+  --muted-foreground: var(--color-muted);
+  --accent: var(--color-ink);
+  --accent-foreground: var(--color-page);
+  --destructive: #ef4444;
+  --destructive-foreground: var(--color-page);
+  --success: #22c55e;
+  --border: var(--color-border);
+  --ring: var(--color-ink);
+  --card: #171717;
+  --card-foreground: var(--color-ink);
+  --input: var(--color-page);
+}
+
 * {
   border-color: var(--border);
+}
+
+/* Smooth theme transitions */
+html,
+body,
+header,
+main,
+footer,
+section,
+div,
+nav,
+button,
+a,
+p,
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+span,
+input,
+textarea {
+  transition:
+    background-color 300ms ease,
+    color 300ms ease,
+    border-color 300ms ease;
 }
 
 body {
@@ -39,6 +98,58 @@ body {
   line-height: 1.6;
   letter-spacing: -0.01em;
   -webkit-font-smoothing: antialiased;
+}
+
+/* Floating animation for hero decorations */
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px) translateX(0px);
+  }
+  25% {
+    transform: translateY(-10px) translateX(5px);
+  }
+  50% {
+    transform: translateY(-5px) translateX(-5px);
+  }
+  75% {
+    transform: translateY(-15px) translateX(3px);
+  }
+}
+
+@keyframes float-slow {
+  0%, 100% {
+    transform: translateY(0px) translateX(0px) scale(1);
+  }
+  50% {
+    transform: translateY(-20px) translateX(10px) scale(1.05);
+  }
+}
+
+@keyframes float-reverse {
+  0%, 100% {
+    transform: translateY(0px) translateX(0px);
+  }
+  25% {
+    transform: translateY(8px) translateX(-5px);
+  }
+  50% {
+    transform: translateY(-8px) translateX(8px);
+  }
+  75% {
+    transform: translateY(5px) translateX(-3px);
+  }
+}
+
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
+
+.animate-float-slow {
+  animation: float-slow 8s ease-in-out infinite;
+}
+
+.animate-float-reverse {
+  animation: float-reverse 7s ease-in-out infinite;
 }
 
 /* Custom Scrollbar */

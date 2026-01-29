@@ -8,6 +8,7 @@ import {
   FileWarning,
   Shield,
   Headphones,
+  HelpCircle,
   ArrowLeft,
 } from "lucide-react";
 import { Logo } from "@/components/ui/Logo";
@@ -19,6 +20,7 @@ const navigation = [
   { name: "Reports", href: "/admin/reports", icon: FileWarning },
   { name: "Moderation", href: "/admin/moderation", icon: Shield },
   { name: "Free Content", href: "/admin/free-content", icon: Headphones },
+  { name: "FAQ", href: "/admin/faq", icon: HelpCircle },
 ];
 
 export function AdminSidebar() {

@@ -22,14 +22,42 @@ vi.mock("next/link", () => ({
   ),
 }));
 
-// Mock HTMLMediaElement methods
+// Mock useAudioPlayer hook
+const mockPlay = vi.fn();
+const mockPause = vi.fn();
+const mockTogglePlay = vi.fn();
+const mockSeek = vi.fn();
+
+vi.mock("@/hooks/useAudioPlayer", () => ({
+  useAudioPlayer: () => ({
+    state: {
+      isPlaying: false,
+      currentTime: 0,
+      duration: 0,
+      src: null,
+      playbackRate: 1,
+      isMuted: false,
+      isLoading: false,
+      error: null,
+    },
+    currentTrack: null,
+    play: mockPlay,
+    pause: mockPause,
+    togglePlay: mockTogglePlay,
+    seek: mockSeek,
+    skip: vi.fn(),
+    setPlaybackRate: vi.fn(),
+    cyclePlaybackRate: vi.fn(),
+    toggleMute: vi.fn(),
+    getSavedPosition: vi.fn(() => 0),
+    clearSavedPosition: vi.fn(),
+  }),
+}));
+
 beforeEach(() => {
   vi.clearAllMocks();
   mockGetFreeContent.mockResolvedValue([]);
-
-  // Mock audio element play/pause
-  window.HTMLMediaElement.prototype.play = vi.fn().mockResolvedValue(undefined);
-  window.HTMLMediaElement.prototype.pause = vi.fn();
+  mockPlay.mockResolvedValue(undefined);
 });
 
 describe("FreeContentPage", () => {
@@ -178,9 +206,9 @@ describe("FreeContentPage", () => {
       const playButton = screen.getByRole("button", { name: /play test audio/i });
       fireEvent.click(playButton);
 
-      // THEN: Audio play is called
+      // THEN: Global audio player play is called
       await waitFor(() => {
-        expect(window.HTMLMediaElement.prototype.play).toHaveBeenCalled();
+        expect(mockPlay).toHaveBeenCalled();
       });
     });
 

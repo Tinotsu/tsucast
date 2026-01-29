@@ -1,84 +1,143 @@
-import Link from "next/link";
-import { Play, Headphones } from "lucide-react";
+import { TypingAnimation } from "./TypingAnimation";
+import { HeroAudioPlayer } from "./HeroAudioPlayer";
+import { Logo } from "@/components/ui/Logo";
+
+function Sparkle({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <path
+        d="M12 2L13.09 8.26L18 6L14.74 10.91L21 12L14.74 13.09L18 18L13.09 15.74L12 22L10.91 15.74L6 18L9.26 13.09L3 12L9.26 10.91L6 6L10.91 8.26L12 2Z"
+        fill="currentColor"
+      />
+    </svg>
+  );
+}
 
 export function Hero() {
   return (
-    <section className="relative overflow-hidden bg-white">
-      <div className="mx-auto max-w-7xl px-4 py-24 sm:px-6 lg:px-8 lg:py-32">
+    <section className="relative overflow-hidden bg-[var(--background)]">
+      {/* Grid background with gradient fade */}
+      <div
+        className="pointer-events-none absolute inset-0"
+        style={{
+          backgroundImage: `linear-gradient(var(--border) 1px, transparent 1px), linear-gradient(90deg, var(--border) 1px, transparent 1px)`,
+          backgroundSize: "60px 60px",
+          maskImage: "radial-gradient(ellipse at center, black 0%, transparent 70%)",
+          WebkitMaskImage: "radial-gradient(ellipse at center, black 0%, transparent 70%)",
+          opacity: 0.4,
+        }}
+        aria-hidden="true"
+      />
+
+      {/* Subtle gradient overlay */}
+      <div
+        className="pointer-events-none absolute inset-0 opacity-30 dark:opacity-20"
+        style={{
+          background:
+            "radial-gradient(ellipse at 20% 20%, rgba(120, 119, 198, 0.15) 0%, transparent 50%), radial-gradient(ellipse at 80% 80%, rgba(74, 144, 226, 0.15) 0%, transparent 50%)",
+        }}
+        aria-hidden="true"
+      />
+
+      {/* Soft gradient orbs */}
+      <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
+        {/* Purple orb - top left */}
+        <div
+          className="absolute -left-20 -top-20 h-72 w-72 animate-float-slow rounded-full opacity-20 blur-3xl dark:opacity-10"
+          style={{ background: "radial-gradient(circle, rgba(139, 92, 246, 0.5) 0%, transparent 70%)" }}
+        />
+        {/* Blue orb - top right */}
+        <div
+          className="absolute -right-16 top-10 h-64 w-64 animate-float-slow rounded-full opacity-20 blur-3xl [animation-delay:2s] dark:opacity-10"
+          style={{ background: "radial-gradient(circle, rgba(59, 130, 246, 0.5) 0%, transparent 70%)" }}
+        />
+        {/* Pink orb - bottom left */}
+        <div
+          className="absolute -bottom-10 left-1/4 h-56 w-56 animate-float-slow rounded-full opacity-15 blur-3xl [animation-delay:4s] dark:opacity-10"
+          style={{ background: "radial-gradient(circle, rgba(236, 72, 153, 0.4) 0%, transparent 70%)" }}
+        />
+        {/* Cyan orb - bottom right */}
+        <div
+          className="absolute -bottom-20 right-1/4 h-48 w-48 animate-float-slow rounded-full opacity-15 blur-3xl [animation-delay:3s] dark:opacity-10"
+          style={{ background: "radial-gradient(circle, rgba(34, 211, 238, 0.4) 0%, transparent 70%)" }}
+        />
+      </div>
+
+      {/* Floating sparkles */}
+      <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
+        {/* Top row */}
+        <Sparkle className="absolute left-[5%] top-[8%] h-4 w-4 text-[var(--border)] animate-float [animation-delay:0s]" />
+        <Sparkle className="absolute left-[15%] top-[12%] h-5 w-5 text-[var(--border)] animate-float-reverse [animation-delay:0.5s]" />
+        <Sparkle className="absolute left-[28%] top-[5%] h-3 w-3 text-[var(--border)] animate-float [animation-delay:1.1s]" />
+        <Sparkle className="absolute right-[25%] top-[8%] h-4 w-4 text-[var(--border)] animate-float-reverse [animation-delay:0.3s]" />
+        <Sparkle className="absolute right-[12%] top-[6%] h-5 w-5 text-[var(--border)] animate-float [animation-delay:0.8s]" />
+        <Sparkle className="absolute right-[3%] top-[15%] h-3 w-3 text-[var(--border)] animate-float-reverse [animation-delay:1.4s]" />
+
+        {/* Middle row - left side */}
+        <Sparkle className="absolute left-[3%] top-[35%] h-3 w-3 text-[var(--border)] animate-float [animation-delay:0.2s]" />
+        <Sparkle className="absolute left-[8%] top-[50%] h-5 w-5 text-[var(--border)] animate-float-reverse [animation-delay:0.9s]" />
+        <Sparkle className="absolute left-[4%] top-[65%] h-4 w-4 text-[var(--border)] animate-float [animation-delay:1.3s]" />
+
+        {/* Middle row - right side */}
+        <Sparkle className="absolute right-[5%] top-[32%] h-4 w-4 text-[var(--border)] animate-float-reverse [animation-delay:0.6s]" />
+        <Sparkle className="absolute right-[3%] top-[48%] h-6 w-6 text-[var(--border)] animate-float [animation-delay:0.1s]" />
+        <Sparkle className="absolute right-[7%] top-[62%] h-3 w-3 text-[var(--border)] animate-float-reverse [animation-delay:1.0s]" />
+
+        {/* Bottom row */}
+        <Sparkle className="absolute bottom-[15%] left-[6%] h-4 w-4 text-[var(--border)] animate-float [animation-delay:0.7s]" />
+        <Sparkle className="absolute bottom-[10%] left-[18%] h-3 w-3 text-[var(--border)] animate-float-reverse [animation-delay:1.2s]" />
+        <Sparkle className="absolute bottom-[8%] left-[30%] h-5 w-5 text-[var(--border)] animate-float [animation-delay:0.4s]" />
+        <Sparkle className="absolute bottom-[12%] right-[28%] h-4 w-4 text-[var(--border)] animate-float-reverse [animation-delay:0.9s]" />
+        <Sparkle className="absolute bottom-[6%] right-[15%] h-3 w-3 text-[var(--border)] animate-float [animation-delay:1.5s]" />
+        <Sparkle className="absolute bottom-[18%] right-[5%] h-5 w-5 text-[var(--border)] animate-float-reverse [animation-delay:0.2s]" />
+      </div>
+
+      <div className="relative mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8 lg:py-24">
         <div className="text-center">
-          {/* Badge */}
-          <div className="mb-8 inline-flex items-center gap-2 rounded-full border border-[#e5e5e5] bg-white px-4 py-2 text-sm font-medium text-[#737373]">
-            <Headphones className="h-4 w-4" />
-            <span>AI-Powered Article to Podcast</span>
+          {/* Logo */}
+          <div className="mb-8 flex justify-center">
+            <div className="flex h-24 w-24 items-center justify-center rounded-3xl border border-[var(--border)] bg-[var(--background)] shadow-sm">
+              <Logo size={56} className="text-[var(--foreground)]" />
+            </div>
           </div>
 
           {/* Main Headline */}
-          <h1 className="mx-auto max-w-4xl text-4xl font-bold tracking-tight text-[#1a1a1a] sm:text-6xl lg:text-7xl">
-            Turn Any Article Into a{" "}
-            <span className="text-[#1a1a1a] underline decoration-[#e5e5e5] underline-offset-8">Podcast</span>
+          <h1
+            data-testid="hero-headline"
+            className="mx-auto max-w-4xl text-3xl font-bold tracking-tight text-[var(--foreground)] sm:text-5xl lg:text-6xl"
+          >
+            Any article. Any voice.
+            <br />
+            <span className="text-[var(--foreground)]">10 seconds.</span>
           </h1>
 
           {/* Subheadline */}
-          <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-[#737373] sm:text-xl">
-            Paste any URL, pick a voice, and start listening in under 10
-            seconds. Transform your reading list into your personal podcast
-            library.
+          <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-[var(--muted)]">
+            Paste any URL, pick a voice, and start listening. Transform your
+            reading list into your personal podcast library.
           </p>
-
-          {/* CTA Buttons */}
-          <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
-            <Link
-              href="https://apps.apple.com/app/tsucast"
-              className="inline-flex items-center gap-2 rounded-xl bg-black px-8 py-4 text-lg font-bold text-white transition-all hover:bg-[#1a1a1a]"
-            >
-              <svg className="h-6 w-6" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z" />
-              </svg>
-              Download for iOS
-            </Link>
-            <Link
-              href="https://play.google.com/store/apps/details?id=app.tsucast"
-              className="inline-flex items-center gap-2 rounded-xl border-2 border-[#1a1a1a] px-8 py-4 text-lg font-bold text-[#1a1a1a] transition-all hover:bg-[#1a1a1a] hover:text-white"
-            >
-              <svg className="h-6 w-6" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M3.609 1.814L13.792 12 3.61 22.186a.996.996 0 0 1-.61-.92V2.734a1 1 0 0 1 .609-.92zm10.89 10.893l2.302 2.302-10.937 6.333 8.635-8.635zm3.199-3.198l2.807 1.626a1 1 0 0 1 0 1.73l-2.808 1.626L15.206 12l2.492-2.491zM5.864 2.658L16.8 8.99l-2.302 2.302-8.634-8.634z" />
-              </svg>
-              Get on Android
-            </Link>
-          </div>
-
         </div>
 
-        {/* Demo Preview */}
-        <div className="mx-auto mt-20 max-w-3xl">
-          <div className="overflow-hidden rounded-2xl bg-white shadow-lg ring-1 ring-[#e5e5e5]">
-            {/* Mock App UI */}
-            <div className="border-b border-[#e5e5e5] bg-white px-6 py-4">
-              <div className="flex items-center gap-3">
-                <div className="h-3 w-3 rounded-full bg-red-400" />
-                <div className="h-3 w-3 rounded-full bg-yellow-400" />
-                <div className="h-3 w-3 rounded-full bg-green-400" />
-              </div>
-            </div>
-            <div className="p-8">
-              <div className="mb-4 text-sm font-medium text-[#737373]">
-                Paste any article URL
-              </div>
-              <div className="mb-6 flex gap-4">
-                <div className="flex-1 rounded-xl border border-[#e5e5e5] bg-white px-4 py-3 text-[#737373]">
-                  https://example.com/article...
-                </div>
-                <button className="flex items-center gap-2 rounded-xl bg-black px-6 py-3 font-bold text-white">
-                  <Play className="h-5 w-5" />
-                  Generate
-                </button>
-              </div>
-              <div className="text-center text-sm text-[#737373]">
-                Audio ready in &lt;10 seconds
-              </div>
-            </div>
+        {/* Animation + Player Section */}
+        <div className="mx-auto mt-16 grid max-w-4xl gap-8 lg:grid-cols-2">
+          {/* Typing Animation Demo */}
+          <div className="flex items-center justify-center">
+            <TypingAnimation />
+          </div>
+
+          {/* Real Audio Player */}
+          <div className="flex items-center justify-center">
+            <HeroAudioPlayer />
           </div>
         </div>
+
       </div>
     </section>
   );

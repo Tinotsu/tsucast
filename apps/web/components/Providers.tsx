@@ -7,6 +7,8 @@ import { initSentry } from "@/lib/sentry";
 import { initPostHog, getPostHog } from "@/lib/posthog";
 import { PostHogIdentify } from "@/components/PostHogIdentify";
 import { PostHogPageView } from "@/components/PostHogPageView";
+import { AudioPlayerProvider } from "@/providers/AudioPlayerProvider";
+import { GlobalMiniPlayer } from "@/components/player/GlobalMiniPlayer";
 
 // Initialize Sentry eagerly at app bootstrap so it's ready before any errors occur
 initSentry();
@@ -66,11 +68,14 @@ export function Providers({ children }: { children: React.ReactNode }) {
   const posthogClient = posthogReady ? getPostHog() : null;
   const inner = (
     <QueryClientProvider client={queryClient}>
-      <PostHogIdentify />
-      <Suspense fallback={null}>
-        <PostHogPageView />
-      </Suspense>
-      {children}
+      <AudioPlayerProvider>
+        <PostHogIdentify />
+        <Suspense fallback={null}>
+          <PostHogPageView />
+        </Suspense>
+        {children}
+        <GlobalMiniPlayer />
+      </AudioPlayerProvider>
     </QueryClientProvider>
   );
 

@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi, beforeAll } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { Hero } from "@/components/landing/Hero";
 import { Features } from "@/components/landing/Features";
@@ -6,27 +6,36 @@ import { Pricing } from "@/components/landing/Pricing";
 import { Footer } from "@/components/landing/Footer";
 import { Header } from "@/components/landing/Header";
 
+// Mock IntersectionObserver for Features component
+beforeAll(() => {
+  const mockIntersectionObserver = vi.fn().mockReturnValue({
+    observe: vi.fn(),
+    disconnect: vi.fn(),
+    unobserve: vi.fn(),
+  });
+  vi.stubGlobal("IntersectionObserver", mockIntersectionObserver);
+});
+
 describe("Landing Page Components", () => {
   describe("Header", () => {
     it("renders logo and navigation", () => {
       render(<Header />);
 
       expect(screen.getByText("tsucast")).toBeInTheDocument();
-      expect(screen.getByText("Features")).toBeInTheDocument();
       expect(screen.getByText("Pricing")).toBeInTheDocument();
       expect(screen.getByText("Sign In")).toBeInTheDocument();
-      expect(screen.getByText("Download App")).toBeInTheDocument();
+      // Night mode toggle should be present
+      expect(screen.getByTestId("night-mode-toggle")).toBeInTheDocument();
     });
   });
 
   describe("Hero", () => {
-    it("renders main headline and CTA", () => {
+    it("renders main headline", () => {
       render(<Hero />);
 
-      expect(screen.getByText(/Turn Any Article Into a/)).toBeInTheDocument();
-      expect(screen.getByText("Podcast")).toBeInTheDocument();
-      expect(screen.getByText("Download for iOS")).toBeInTheDocument();
-      expect(screen.getByText("Get on Android")).toBeInTheDocument();
+      // New design: "Any article. Any voice. 10 seconds."
+      expect(screen.getByText(/Any article\. Any voice\./)).toBeInTheDocument();
+      expect(screen.getByText(/10 seconds\./)).toBeInTheDocument();
     });
 
     it("shows value proposition", () => {
@@ -36,18 +45,23 @@ describe("Landing Page Components", () => {
         screen.getByText(/Paste any URL, pick a voice/)
       ).toBeInTheDocument();
     });
+
+    it("renders logo", () => {
+      render(<Hero />);
+
+      expect(screen.getByTestId("hero-headline")).toBeInTheDocument();
+    });
   });
 
   describe("Features", () => {
     it("renders all features", () => {
       render(<Features />);
 
+      // Updated features from current design
       expect(screen.getByText("Lightning Fast")).toBeInTheDocument();
       expect(screen.getByText("Premium AI Voices")).toBeInTheDocument();
       expect(screen.getByText("Personal Library")).toBeInTheDocument();
       expect(screen.getByText("Sleep Timer")).toBeInTheDocument();
-      expect(screen.getByText("Background Play")).toBeInTheDocument();
-      expect(screen.getByText("Remember Position")).toBeInTheDocument();
       expect(screen.getByText("Works Anywhere")).toBeInTheDocument();
       expect(screen.getByText("Speed Control")).toBeInTheDocument();
     });
@@ -75,7 +89,7 @@ describe("Landing Page Components", () => {
       expect(screen.getByText(/60 credits \(\$0\.28\/article\)/)).toBeInTheDocument();
       expect(screen.getByText(/150 credits \(\$0\.27\/article\)/)).toBeInTheDocument();
       expect(screen.getByText("Credits never expire")).toBeInTheDocument();
-      expect(screen.getByText("Cache hits are free")).toBeInTheDocument();
+      expect(screen.getByText("Personal audio library")).toBeInTheDocument();
     });
 
     it("shows Popular badge on Coffee pack", () => {
