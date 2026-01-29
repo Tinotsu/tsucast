@@ -10,6 +10,12 @@ import { GlobalMiniPlayer } from "@/components/player/GlobalMiniPlayer";
 import { AudioPlayerProvider } from "@/providers/AudioPlayerProvider";
 import type { AudioState } from "@/services/audio-service";
 
+// Mock next/navigation with configurable pathname
+let mockPathname = "/home";
+vi.mock("next/navigation", () => ({
+  usePathname: () => mockPathname,
+}));
+
 // Mock the audio service
 const mockState: AudioState = {
   isPlaying: false,
@@ -78,12 +84,59 @@ describe("GlobalMiniPlayer", () => {
     mockState.duration = 120;
     mockState.playbackRate = 1;
     mockState.isMuted = false;
+    // Reset pathname to app page
+    mockPathname = "/home";
+  });
+
+  describe("Page Visibility", () => {
+    it("[P0] should render player bar on app pages", () => {
+      mockPathname = "/home";
+      renderWithProvider(<GlobalMiniPlayer />);
+      expect(screen.getByText("No audio playing")).toBeInTheDocument();
+    });
+
+    it("[P0] should NOT render player bar on login page", () => {
+      mockPathname = "/login";
+      renderWithProvider(<GlobalMiniPlayer />);
+      expect(screen.queryByText("No audio playing")).not.toBeInTheDocument();
+    });
+
+    it("[P0] should NOT render player bar on signup page", () => {
+      mockPathname = "/signup";
+      renderWithProvider(<GlobalMiniPlayer />);
+      expect(screen.queryByText("No audio playing")).not.toBeInTheDocument();
+    });
+
+    it("[P0] should NOT render player bar on landing page", () => {
+      mockPathname = "/";
+      renderWithProvider(<GlobalMiniPlayer />);
+      expect(screen.queryByText("No audio playing")).not.toBeInTheDocument();
+    });
+
+    it("[P1] should NOT render player bar on admin pages", () => {
+      mockPathname = "/admin/users";
+      renderWithProvider(<GlobalMiniPlayer />);
+      expect(screen.queryByText("No audio playing")).not.toBeInTheDocument();
+    });
+
+    it("[P1] should NOT render player bar on legal pages", () => {
+      mockPathname = "/privacy";
+      renderWithProvider(<GlobalMiniPlayer />);
+      expect(screen.queryByText("No audio playing")).not.toBeInTheDocument();
+    });
+
+    it("[P1] should render player bar on free-content page", () => {
+      mockPathname = "/free-content";
+      renderWithProvider(<GlobalMiniPlayer />);
+      expect(screen.getByText("No audio playing")).toBeInTheDocument();
+    });
   });
 
   describe("Visibility", () => {
-    it("[P0] should always render the player bar", () => {
+    it("[P0] should always render the player bar on app pages", () => {
       mockState.track = null;
       mockState.lastTrack = null;
+      mockPathname = "/home";
       renderWithProvider(<GlobalMiniPlayer />);
 
       // Player bar should always be visible with idle state
