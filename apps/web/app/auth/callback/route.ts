@@ -36,6 +36,6 @@ export async function GET(request: Request) {
     }
   }
 
-  // Redirect to dashboard after successful auth
-  return NextResponse.redirect(`${origin}/dashboard`);
+  // Redirect to home after successful auth
+  return NextResponse.redirect(`${origin}/home`);
 }

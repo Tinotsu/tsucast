@@ -427,33 +427,4 @@ describe("Library Page", () => {
       });
     });
   });
-
-  describe("Add New Button", () => {
-    it("[P1] should show Add New button", async () => {
-      // GIVEN: Library with items
-      mockGetLibrary.mockResolvedValue([createLibraryItem()]);
-
-      // WHEN: Rendering library page
-      render(<LibraryPage />);
-
-      // THEN: Add New button is visible
-      await waitFor(() => {
-        expect(screen.getByRole("link", { name: /add new/i })).toBeInTheDocument();
-      });
-    });
-
-    it("[P2] should link to dashboard page", async () => {
-      // GIVEN: Library with items
-      mockGetLibrary.mockResolvedValue([createLibraryItem()]);
-
-      // WHEN: Rendering library page
-      render(<LibraryPage />);
-
-      // THEN: Add New links to /dashboard
-      await waitFor(() => {
-        const addButton = screen.getByRole("link", { name: /add new/i });
-        expect(addButton).toHaveAttribute("href", "/dashboard");
-      });
-    });
-  });
 });

@@ -7,6 +7,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import FreeContentPage from "@/app/free-content/page";
+import { ThemeProvider } from "@/providers/ThemeProvider";
 
 // Mock getFreeContent API
 const mockGetFreeContent = vi.fn();
@@ -54,6 +55,15 @@ vi.mock("@/hooks/useAudioPlayer", () => ({
   }),
 }));
 
+// Helper to render with providers
+const renderPage = () => {
+  return render(
+    <ThemeProvider>
+      <FreeContentPage />
+    </ThemeProvider>
+  );
+};
+
 beforeEach(() => {
   vi.clearAllMocks();
   mockGetFreeContent.mockResolvedValue([]);
@@ -67,7 +77,7 @@ describe("FreeContentPage", () => {
       mockGetFreeContent.mockReturnValue(new Promise(() => {}));
 
       // WHEN: Rendering page
-      render(<FreeContentPage />);
+      renderPage();
 
       // THEN: Loading spinner is visible (Loader2 icon has animate-spin class)
       const spinner = document.querySelector(".animate-spin");
@@ -81,7 +91,7 @@ describe("FreeContentPage", () => {
       mockGetFreeContent.mockResolvedValue([]);
 
       // WHEN: Rendering page
-      render(<FreeContentPage />);
+      renderPage();
 
       // THEN: Empty state message is shown
       await waitFor(() => {
@@ -127,7 +137,7 @@ describe("FreeContentPage", () => {
       mockGetFreeContent.mockResolvedValue(mockItems);
 
       // WHEN: Rendering page
-      render(<FreeContentPage />);
+      renderPage();
 
       // THEN: Content titles are displayed
       await waitFor(() => {
@@ -141,7 +151,7 @@ describe("FreeContentPage", () => {
       mockGetFreeContent.mockResolvedValue([mockItems[0]]);
 
       // WHEN: Rendering page
-      render(<FreeContentPage />);
+      renderPage();
 
       // THEN: Duration is formatted as MM:SS (1800s = 30:00)
       await waitFor(() => {
@@ -154,7 +164,7 @@ describe("FreeContentPage", () => {
       mockGetFreeContent.mockResolvedValue([mockItems[0]]);
 
       // WHEN: Rendering page
-      render(<FreeContentPage />);
+      renderPage();
 
       // THEN: Word count is displayed with formatting
       await waitFor(() => {
@@ -184,7 +194,7 @@ describe("FreeContentPage", () => {
       mockGetFreeContent.mockResolvedValue([mockItem]);
 
       // WHEN: Rendering page
-      render(<FreeContentPage />);
+      renderPage();
 
       // THEN: Play button has accessible label
       await waitFor(() => {
@@ -196,7 +206,7 @@ describe("FreeContentPage", () => {
     it("[P0] should toggle play/pause on button click", async () => {
       // GIVEN: Page with audio item
       mockGetFreeContent.mockResolvedValue([mockItem]);
-      render(<FreeContentPage />);
+      renderPage();
 
       await waitFor(() => {
         expect(screen.getByText("Test Audio")).toBeInTheDocument();
@@ -215,7 +225,7 @@ describe("FreeContentPage", () => {
     it("[P1] should have seekable progress bar", async () => {
       // GIVEN: Page with audio item
       mockGetFreeContent.mockResolvedValue([mockItem]);
-      render(<FreeContentPage />);
+      renderPage();
 
       await waitFor(() => {
         expect(screen.getByText("Test Audio")).toBeInTheDocument();
@@ -233,7 +243,7 @@ describe("FreeContentPage", () => {
       mockGetFreeContent.mockRejectedValue(new Error("Network error"));
 
       // WHEN: Rendering page
-      render(<FreeContentPage />);
+      renderPage();
 
       // THEN: Error message is displayed
       await waitFor(() => {
@@ -248,7 +258,7 @@ describe("FreeContentPage", () => {
       mockGetFreeContent.mockResolvedValue([]);
 
       // WHEN: Rendering page
-      render(<FreeContentPage />);
+      renderPage();
 
       // THEN: CTA section is present with heading and description
       await waitFor(() => {

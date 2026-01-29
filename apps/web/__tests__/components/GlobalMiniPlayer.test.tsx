@@ -20,6 +20,7 @@ const mockState: AudioState = {
   volume: 1,
   isMuted: false,
   track: null,
+  lastTrack: null,
   error: null,
   sleepTimer: {
     isActive: false,
@@ -57,6 +58,7 @@ vi.mock("@/services/audio-service", () => ({
     removeFromQueue: vi.fn(),
     clearQueue: vi.fn(),
     playNext: vi.fn(),
+    playLastTrack: vi.fn(),
   },
 }));
 
@@ -69,6 +71,7 @@ describe("GlobalMiniPlayer", () => {
     vi.clearAllMocks();
     // Reset mock state
     mockState.track = null;
+    mockState.lastTrack = null;
     mockState.isPlaying = false;
     mockState.isLoading = false;
     mockState.currentTime = 30;
@@ -78,14 +81,16 @@ describe("GlobalMiniPlayer", () => {
   });
 
   describe("Visibility", () => {
-    it("[P0] should not render when no track", () => {
+    it("[P0] should always render the player bar", () => {
       mockState.track = null;
+      mockState.lastTrack = null;
       renderWithProvider(<GlobalMiniPlayer />);
 
-      expect(screen.queryByRole("button", { name: /play/i })).toBeNull();
+      // Player bar should always be visible with idle state
+      expect(screen.getByText("No audio playing")).toBeInTheDocument();
     });
 
-    it("[P0] should render when track is present", () => {
+    it("[P0] should render track info when track is present", () => {
       mockState.track = {
         id: "track-1",
         url: "https://example.com/audio.mp3",
@@ -95,6 +100,20 @@ describe("GlobalMiniPlayer", () => {
       renderWithProvider(<GlobalMiniPlayer />);
 
       expect(screen.getByText("Test Track Title")).toBeInTheDocument();
+    });
+
+    it("[P1] should show last track when no current track", () => {
+      mockState.track = null;
+      mockState.lastTrack = {
+        id: "last-track",
+        url: "https://example.com/last.mp3",
+        title: "Last Played Track",
+      };
+
+      renderWithProvider(<GlobalMiniPlayer />);
+
+      expect(screen.getByText("Last Played Track")).toBeInTheDocument();
+      expect(screen.getByText("Tap to resume")).toBeInTheDocument();
     });
   });
 
@@ -136,13 +155,6 @@ describe("GlobalMiniPlayer", () => {
       expect(spinner).toBeInTheDocument();
     });
 
-    it("[P1] should have close button", () => {
-      renderWithProvider(<GlobalMiniPlayer />);
-
-      expect(
-        screen.getByRole("button", { name: /close/i })
-      ).toBeInTheDocument();
-    });
   });
 
   describe("Progress Display", () => {

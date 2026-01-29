@@ -1,12 +1,12 @@
 /**
- * Page Tests: Dashboard Page
+ * Page Tests: Home Page
  *
- * Tests for the dashboard page including stats display and generation form.
+ * Tests for the home page including generation form.
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
-import DashboardPage from "@/app/(app)/dashboard/page";
+import HomePage from "@/app/(app)/home/page";
 import { createUserProfile } from "../factories";
 
 // Mock useRouter
@@ -56,7 +56,7 @@ vi.mock("@/lib/api", () => ({
   },
 }));
 
-describe("Dashboard Page", () => {
+describe("Home Page", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockUseAuthReturn = {
@@ -76,49 +76,6 @@ describe("Dashboard Page", () => {
     };
   });
 
-  describe("Stats Display", () => {
-    it("[P1] should show credit count", () => {
-      // GIVEN: Authenticated user with 5 credits
-      mockUseAuthReturn = {
-        ...mockUseAuthReturn,
-        profile: createUserProfile(),
-        isLoading: false,
-        isAuthenticated: true,
-      };
-      mockUseCreditsReturn = {
-        ...mockUseCreditsReturn,
-        credits: 5,
-      };
-
-      // WHEN: Rendering dashboard
-      render(<DashboardPage />);
-
-      // THEN: Credits stat is shown
-      expect(screen.getByText("Credits")).toBeInTheDocument();
-      expect(screen.getByText("5")).toBeInTheDocument();
-    });
-
-    it("[P1] should show time bank", () => {
-      // GIVEN: Authenticated user with time bank
-      mockUseAuthReturn = {
-        ...mockUseAuthReturn,
-        profile: createUserProfile(),
-        isLoading: false,
-        isAuthenticated: true,
-      };
-      mockUseCreditsReturn = {
-        ...mockUseCreditsReturn,
-        timeBank: 10,
-      };
-
-      // WHEN: Rendering dashboard
-      render(<DashboardPage />);
-
-      // THEN: Time Bank stat is shown
-      expect(screen.getByText("Time Bank")).toBeInTheDocument();
-      expect(screen.getByText("10 min")).toBeInTheDocument();
-    });
-  });
 
   describe("Credits Banner", () => {
     it("[P1] should show no credits message when credits are 0", () => {
@@ -134,8 +91,8 @@ describe("Dashboard Page", () => {
         credits: 0,
       };
 
-      // WHEN: Rendering dashboard
-      render(<DashboardPage />);
+      // WHEN: Rendering home page
+      render(<HomePage />);
 
       // THEN: No credits message is shown
       expect(screen.getByText("No Credits Available")).toBeInTheDocument();
@@ -155,8 +112,8 @@ describe("Dashboard Page", () => {
         credits: 5,
       };
 
-      // WHEN: Rendering dashboard
-      render(<DashboardPage />);
+      // WHEN: Rendering home page
+      render(<HomePage />);
 
       // THEN: No credits message is not shown
       expect(screen.queryByText("No Credits Available")).not.toBeInTheDocument();
@@ -173,8 +130,8 @@ describe("Dashboard Page", () => {
         isAuthenticated: true,
       };
 
-      // WHEN: Rendering dashboard
-      render(<DashboardPage />);
+      // WHEN: Rendering home page
+      render(<HomePage />);
 
       // THEN: Generation form elements are present
       expect(screen.getByRole("heading", { name: /generate podcast/i })).toBeInTheDocument();

@@ -1,4 +1,3 @@
-import { AppHeader } from "@/components/app/AppHeader";
 import { Sidebar, BottomNav } from "@/components/navigation";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
@@ -7,17 +6,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       {/* Desktop Sidebar - hidden on mobile */}
       <Sidebar />
 
-      {/* Mobile Header - hidden on desktop */}
-      <div className="lg:hidden">
-        <AppHeader />
-      </div>
-
-      {/* Main content area - offset for sidebar on desktop, bottom padding for nav on mobile */}
-      <main className="pb-20 lg:ml-60 lg:pb-0">
+      {/* Main content area - offset for sidebar on desktop, padding for player + nav on mobile */}
+      <main className="pb-36 lg:ml-60 lg:pb-16">
         {children}
       </main>
 
-      {/* Mobile Bottom Nav - hidden on desktop */}
+      {/* Mobile Bottom Nav - below the player, hidden on desktop */}
       <BottomNav />
     </div>
   );

@@ -74,7 +74,7 @@ export function AdminSidebar() {
       {/* Back to App */}
       <div className="absolute bottom-0 left-0 right-0 border-t border-[#e5e5e5] p-4">
         <Link
-          href="/dashboard"
+          href="/home"
           className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-[#1a1a1a] transition-colors hover:bg-[#1a1a1a] hover:text-white"
         >
           <ArrowLeft className="h-4 w-4" />

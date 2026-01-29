@@ -74,7 +74,7 @@ export async function updateSession(request: NextRequest) {
   }
 
   // Protected routes - redirect to login if not authenticated
-  const protectedPaths = ["/dashboard", "/library", "/generate", "/upgrade", "/settings"];
+  const protectedPaths = ["/home", "/library", "/generate", "/upgrade", "/settings"];
   const adminPaths = ["/admin"];
   const pathname = request.nextUrl.pathname;
 
@@ -101,13 +101,13 @@ export async function updateSession(request: NextRequest) {
 
       if (profileError || !profile?.is_admin) {
         const url = request.nextUrl.clone();
-        url.pathname = "/dashboard";
+        url.pathname = "/home";
         return NextResponse.redirect(url);
       }
     } catch {
       // Fail closed — deny admin access if profile check fails
       const url = request.nextUrl.clone();
-      url.pathname = "/dashboard";
+      url.pathname = "/home";
       return NextResponse.redirect(url);
     }
   }
@@ -122,13 +122,13 @@ export async function updateSession(request: NextRequest) {
 
     // Validate redirect to prevent open redirect attacks
     // Must be a relative path starting with / and within allowed routes
-    const allowedRedirects = ["/dashboard", "/library", "/generate", "/upgrade", "/settings", "/admin"];
+    const allowedRedirects = ["/home", "/library", "/generate", "/upgrade", "/settings", "/admin"];
     const isValidRedirect = redirect &&
       redirect.startsWith("/") &&
       !redirect.startsWith("//") &&
       allowedRedirects.some((path) => redirect.startsWith(path));
 
-    url.pathname = isValidRedirect ? redirect : "/dashboard";
+    url.pathname = isValidRedirect ? redirect : "/home";
     url.searchParams.delete("redirect");
     return NextResponse.redirect(url);
   }

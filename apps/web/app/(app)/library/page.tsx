@@ -23,7 +23,6 @@ import {
   List,
   ListMusic,
   ListPlus,
-  Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -98,8 +97,10 @@ function LibraryPageContent() {
         router.push("/login?redirect=/library");
         return;
       }
-      // For any other error (including connection refused), just show empty library
+      // Show error message for other errors
       console.error("Library load error:", err);
+      const errorMessage = err instanceof Error ? err.message : "Failed to load library";
+      setError(errorMessage);
       setItems([]);
     } finally {
       setIsLoading(false);
@@ -207,13 +208,6 @@ function LibraryPageContent() {
     return Math.round((item.playback_position / item.duration) * 100);
   };
 
-  const isNewItem = (createdAt: string) => {
-    const created = new Date(createdAt);
-    const now = new Date();
-    const hoursDiff = (now.getTime() - created.getTime()) / (1000 * 60 * 60);
-    return hoursDiff < 24;
-  };
-
   // Show loading while checking auth (except for explore tab)
   if (authLoading && (activeTab === "all" || activeTab === "playlists")) {
     return (
@@ -231,21 +225,10 @@ function LibraryPageContent() {
   return (
     <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6 lg:px-8">
       {/* Header */}
-      <div className="mb-8 flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight text-[var(--foreground)]">
-            Library
-          </h1>
-        </div>
-        {isAuthenticated && activeTab === "all" && (
-          <Link
-            href="/dashboard"
-            className="flex items-center gap-2 rounded-lg bg-[var(--foreground)] px-4 py-2 font-bold text-[var(--background)] transition-colors hover:opacity-80"
-          >
-            <PlusCircle className="h-4 w-4" />
-            Add New
-          </Link>
-        )}
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold tracking-tight text-[var(--foreground)]">
+          Library
+        </h1>
       </div>
 
       {/* Tabs */}
@@ -260,7 +243,7 @@ function LibraryPageContent() {
           )}
         >
           <List className="h-4 w-4" />
-          My Library
+          All
         </button>
         <button
           onClick={() => handleTabChange("playlists")}
@@ -321,7 +304,7 @@ function LibraryPageContent() {
                 Generate your first podcast to get started
               </p>
               <Link
-                href="/dashboard"
+                href="/home"
                 className="inline-flex items-center gap-2 rounded-lg bg-[var(--foreground)] px-6 py-3 font-bold text-[var(--background)] transition-colors hover:opacity-80"
               >
                 <PlusCircle className="h-5 w-5" />
@@ -384,12 +367,6 @@ function LibraryPageContent() {
                               {formatDuration(item.duration)}
                             </span>
                             <span>{formatDate(item.created_at)}</span>
-                            {isNewItem(item.created_at) && !item.is_played && (
-                              <span className="flex items-center gap-1 text-[var(--success)]">
-                                <Sparkles className="h-3 w-3" />
-                                New
-                              </span>
-                            )}
                             {item.is_played && (
                               <span className="flex items-center gap-1 text-[var(--success)]">
                                 <Check className="h-3 w-3" />

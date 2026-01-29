@@ -8,7 +8,11 @@ import { useTheme } from "@/hooks/useTheme";
 
 export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const { theme, toggleTheme, mounted } = useTheme();
+  const { resolvedTheme, setTheme } = useTheme();
+
+  const toggleTheme = () => {
+    setTheme(resolvedTheme === "dark" ? "light" : "dark");
+  };
 
   return (
     <header className="sticky top-0 z-50 border-b border-[var(--border)] bg-[var(--background)]/80 backdrop-blur-lg">
@@ -47,13 +51,9 @@ export function Header() {
             data-testid="night-mode-toggle"
             onClick={toggleTheme}
             className="rounded-lg p-2 text-[var(--foreground)] hover:bg-[var(--border)] transition-colors"
-            aria-label={
-              mounted
-                ? `Switch to ${theme === "light" ? "dark" : "light"} mode`
-                : "Toggle theme"
-            }
+            aria-label={`Switch to ${resolvedTheme === "dark" ? "light" : "dark"} mode`}
           >
-            {mounted && theme === "dark" ? (
+            {resolvedTheme === "dark" ? (
               <Sun className="h-5 w-5" />
             ) : (
               <Moon className="h-5 w-5" />
@@ -68,13 +68,9 @@ export function Header() {
             data-testid="night-mode-toggle-mobile"
             onClick={toggleTheme}
             className="rounded-lg p-2 text-[var(--foreground)] hover:bg-[var(--border)] transition-colors"
-            aria-label={
-              mounted
-                ? `Switch to ${theme === "light" ? "dark" : "light"} mode`
-                : "Toggle theme"
-            }
+            aria-label={`Switch to ${resolvedTheme === "dark" ? "light" : "dark"} mode`}
           >
-            {mounted && theme === "dark" ? (
+            {resolvedTheme === "dark" ? (
               <Sun className="h-5 w-5" />
             ) : (
               <Moon className="h-5 w-5" />

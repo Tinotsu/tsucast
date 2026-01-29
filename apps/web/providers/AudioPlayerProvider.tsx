@@ -16,6 +16,7 @@ import {
 
 interface AudioPlayerContextValue extends AudioState {
   play: (track: AudioTrack) => Promise<void>;
+  playLastTrack: () => Promise<void>;
   pause: () => void;
   resume: () => void;
   togglePlayPause: () => void;
@@ -95,6 +96,10 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
 
   const play = useCallback(async (track: AudioTrack) => {
     await audioService.play(track);
+  }, []);
+
+  const playLastTrack = useCallback(async () => {
+    await audioService.playLastTrack();
   }, []);
 
   const pause = useCallback(() => {
@@ -192,6 +197,7 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
   const value: AudioPlayerContextValue = {
     ...state,
     play,
+    playLastTrack,
     pause,
     resume,
     togglePlayPause,

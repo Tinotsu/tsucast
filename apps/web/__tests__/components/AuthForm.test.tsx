@@ -381,7 +381,7 @@ describe("AuthForm Component", () => {
 
       // THEN: Router push is called
       await waitFor(() => {
-        expect(mockPush).toHaveBeenCalledWith("/dashboard");
+        expect(mockPush).toHaveBeenCalledWith("/home");
       });
     });
   });

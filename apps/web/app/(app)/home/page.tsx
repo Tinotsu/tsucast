@@ -5,12 +5,12 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { useCredits } from "@/hooks/useCredits";
-import { getLibrary, generateAudio, previewCreditCost, ApiError, type CreditPreview } from "@/lib/api";
+import { generateAudio, previewCreditCost, ApiError, type CreditPreview } from "@/lib/api";
 import { UrlInput } from "@/components/app/UrlInput";
 import { VoiceSelector } from "@/components/app/VoiceSelector";
 import { WebPlayer } from "@/components/app/WebPlayer";
 import { isValidUrl } from "@/lib/utils";
-import { PlusCircle, Headphones, Library, Loader2, AlertCircle, RotateCcw, Ticket, Zap } from "lucide-react";
+import { Loader2, AlertCircle, RotateCcw, Zap } from "lucide-react";
 
 interface GenerationResult {
   audioId: string;
@@ -19,13 +19,10 @@ interface GenerationResult {
   duration: number;
 }
 
-export default function DashboardPage() {
-  const { profile, isAuthenticated, isLoading: authLoading } = useAuth();
-  const { credits, timeBank, invalidateCredits, isLoading: creditsLoading } = useCredits();
+export default function HomePage() {
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
+  const { credits, invalidateCredits } = useCredits();
   const router = useRouter();
-
-  const [libraryCount, setLibraryCount] = useState<number | null>(null);
-  const [isLoadingCount, setIsLoadingCount] = useState(true);
 
   // Generation state
   const [url, setUrl] = useState("");
@@ -42,24 +39,6 @@ export default function DashboardPage() {
   // Credit preview state
   const [preview, setPreview] = useState<CreditPreview | null>(null);
   const [isLoadingPreview, setIsLoadingPreview] = useState(false);
-
-  const loadLibraryCount = useCallback(async () => {
-    setIsLoadingCount(true);
-    try {
-      const items = await getLibrary();
-      setLibraryCount(items.length);
-    } catch {
-      setLibraryCount(null);
-    } finally {
-      setIsLoadingCount(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (!authLoading && isAuthenticated) {
-      loadLibraryCount();
-    }
-  }, [authLoading, isAuthenticated, loadLibraryCount]);
 
   // Load credit preview when URL changes
   useEffect(() => {
@@ -111,11 +90,10 @@ export default function DashboardPage() {
         duration: response.duration,
       });
       invalidateCredits();
-      loadLibraryCount();
     } catch (err) {
       if (err instanceof ApiError) {
         if (err.code === "UNAUTHORIZED" || err.status === 401) {
-          router.push("/login?redirect=/dashboard");
+          router.push("/login?redirect=/home");
           return;
         } else if (err.code === "INSUFFICIENT_CREDITS") {
           setError("Insufficient credits. Purchase a credit pack to continue.");
@@ -160,65 +138,11 @@ export default function DashboardPage() {
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-12 sm:px-6 lg:px-8">
-      {/* Welcome */}
-      <div className="mb-12">
+      {/* Header */}
+      <div className="mb-8">
         <h1 className="text-3xl font-bold tracking-tight text-[var(--foreground)]">
-          Welcome back{profile?.display_name ? `, ${profile.display_name}` : ""}
+          Home
         </h1>
-        <p className="mt-2 font-normal leading-relaxed text-[var(--muted)]">
-          Ready to turn some articles into podcasts?
-        </p>
-      </div>
-
-      {/* Stats */}
-      <div className="mb-12 grid gap-6 sm:grid-cols-3">
-        <div className="rounded-2xl bg-[var(--card)] p-6">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--foreground)]">
-              <PlusCircle className="h-5 w-5 text-[var(--background)]" />
-            </div>
-            <div>
-              <p className="text-sm font-medium text-[var(--muted)]">Credits</p>
-              <p className="text-xl font-bold text-[var(--foreground)]">
-                {creditsLoading ? "..." : credits}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div className="rounded-2xl bg-[var(--card)] p-6">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--foreground)]">
-              <Headphones className="h-5 w-5 text-[var(--background)]" />
-            </div>
-            <div>
-              <p className="text-sm font-medium text-[var(--muted)]">Time Bank</p>
-              <p className="text-xl font-bold text-[var(--foreground)]">
-                {creditsLoading ? "..." : `${timeBank} min`}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div className="rounded-2xl bg-[var(--card)] p-6">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--foreground)]">
-              <Library className="h-5 w-5 text-[var(--background)]" />
-            </div>
-            <div>
-              <p className="text-sm font-medium text-[var(--muted)]">Library Items</p>
-              <p className="text-xl font-bold text-[var(--foreground)]">
-                {isLoadingCount ? (
-                  <Loader2 className="h-5 w-5 animate-spin text-[var(--foreground)]" />
-                ) : libraryCount !== null ? (
-                  libraryCount
-                ) : (
-                  "—"
-                )}
-              </p>
-            </div>
-          </div>
-        </div>
       </div>
 
       {/* Generation Section */}
@@ -379,25 +303,6 @@ export default function DashboardPage() {
         )}
       </div>
 
-      {/* Credits Banner (for users with no credits) */}
-      {credits === 0 && result && (
-        <div className="mt-8 rounded-2xl bg-[var(--card)] p-6">
-          <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
-            <div>
-              <h3 className="font-bold text-[var(--foreground)]">Need more credits?</h3>
-              <p className="text-sm font-normal text-[var(--muted)]">
-                Purchase a credit pack to generate more articles.
-              </p>
-            </div>
-            <Link
-              href="/upgrade"
-              className="rounded-lg bg-[var(--foreground)] px-6 py-2 font-bold text-[var(--background)] hover:opacity-80"
-            >
-              Buy Credits
-            </Link>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

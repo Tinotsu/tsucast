@@ -45,8 +45,8 @@ function CreditSuccessContent() {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
         <div className="text-center">
-          <div className="mx-auto h-12 w-12 animate-spin rounded-full border-4 border-[#e5e5e5] border-t-[#1a1a1a]" />
-          <p className="mt-4 font-normal text-[#737373]">Confirming your purchase...</p>
+          <div className="mx-auto h-12 w-12 animate-spin rounded-full border-4 border-[var(--border)] border-t-[var(--foreground)]" />
+          <p className="mt-4 font-normal text-[var(--muted)]">Confirming your purchase...</p>
         </div>
       </div>
     );
@@ -55,16 +55,16 @@ function CreditSuccessContent() {
   if (status === "error") {
     return (
       <div className="mx-auto max-w-md px-4 py-16 text-center">
-        <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-red-500">
+        <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-[var(--destructive)]">
           <span className="text-2xl text-white" aria-hidden="true">&#x26A0;</span>
         </div>
-        <h1 className="text-2xl font-bold tracking-tight text-[#1a1a1a]">Something went wrong</h1>
-        <p className="mt-2 font-normal leading-relaxed text-[#737373]">
+        <h1 className="text-2xl font-bold tracking-tight text-[var(--foreground)]">Something went wrong</h1>
+        <p className="mt-2 font-normal leading-relaxed text-[var(--muted)]">
           We couldn&apos;t confirm your purchase. If you were charged, your credits will be added shortly.
         </p>
         <Link
           href="/upgrade"
-          className="mt-6 inline-flex items-center gap-2 rounded-lg bg-[#1a1a1a] px-6 py-3 font-bold text-white hover:bg-white hover:text-[#1a1a1a] hover:border hover:border-[#1a1a1a]"
+          className="mt-6 inline-flex items-center gap-2 rounded-lg bg-[var(--foreground)] px-6 py-3 font-bold text-[var(--background)] hover:opacity-90"
         >
           Back to Credits
         </Link>
@@ -75,26 +75,26 @@ function CreditSuccessContent() {
   return (
     <div className="mx-auto max-w-md px-4 py-16 text-center">
       {/* Success Icon */}
-      <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-green-500">
+      <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-[var(--success)]">
         <Check className="h-10 w-10 text-white" />
       </div>
 
-      <h1 className="text-3xl font-bold tracking-tight text-[#1a1a1a]">Purchase Complete!</h1>
+      <h1 className="text-3xl font-bold tracking-tight text-[var(--foreground)]">Purchase Complete!</h1>
 
       {purchasedCredits && (
-        <div className="mt-8 rounded-2xl bg-white p-6">
+        <div className="mt-8 rounded-2xl bg-[var(--card)] p-6">
           <div className="flex items-center justify-center gap-3">
-            <Ticket className="h-8 w-8 text-[#737373]" />
-            <span className="text-4xl font-bold text-[#1a1a1a]">+{purchasedCredits}</span>
-            <span className="text-lg font-normal text-[#737373]">credits</span>
+            <Ticket className="h-8 w-8 text-[var(--muted)]" />
+            <span className="text-4xl font-bold text-[var(--foreground)]">+{purchasedCredits}</span>
+            <span className="text-lg font-normal text-[var(--muted)]">credits</span>
           </div>
         </div>
       )}
 
       {/* New Balance */}
-      <div className="mt-6 rounded-xl border border-[#e5e5e5] bg-white p-4">
-        <p className="text-sm font-medium text-[#737373]">Your new balance</p>
-        <p className="mt-1 text-2xl font-bold tracking-tight text-[#1a1a1a]">
+      <div className="mt-6 rounded-xl border border-[var(--border)] bg-[var(--card)] p-4">
+        <p className="text-sm font-medium text-[var(--muted)]">Your new balance</p>
+        <p className="mt-1 text-2xl font-bold tracking-tight text-[var(--foreground)]">
           {creditsLoading ? "..." : `${credits} credits`}
         </p>
       </div>
@@ -102,8 +102,8 @@ function CreditSuccessContent() {
       {/* CTA */}
       <div className="mt-8 space-y-4">
         <Link
-          href="/dashboard"
-          className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#1a1a1a] py-4 font-bold text-white hover:bg-white hover:text-[#1a1a1a] hover:border hover:border-[#1a1a1a]"
+          href="/home"
+          className="flex w-full items-center justify-center gap-2 rounded-xl bg-[var(--foreground)] py-4 font-bold text-[var(--background)] hover:opacity-90"
         >
           <Sparkles className="h-5 w-5" />
           Start Converting Articles
@@ -112,7 +112,7 @@ function CreditSuccessContent() {
 
         <Link
           href="/library"
-          className="block font-medium text-[#737373] underline hover:text-[#1a1a1a] hover:no-underline"
+          className="block font-medium text-[var(--muted)] underline hover:text-[var(--foreground)] hover:no-underline"
         >
           View Library
         </Link>
@@ -125,8 +125,8 @@ function LoadingFallback() {
   return (
     <div className="flex min-h-[60vh] items-center justify-center">
       <div className="text-center">
-        <div className="mx-auto h-12 w-12 animate-spin rounded-full border-4 border-[#e5e5e5] border-t-[#1a1a1a]" />
-        <p className="mt-4 font-normal text-[#737373]">Loading...</p>
+        <div className="mx-auto h-12 w-12 animate-spin rounded-full border-4 border-[var(--border)] border-t-[var(--foreground)]" />
+        <p className="mt-4 font-normal text-[var(--muted)]">Loading...</p>
       </div>
     </div>
   );

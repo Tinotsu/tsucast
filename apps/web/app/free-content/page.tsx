@@ -16,23 +16,24 @@ function formatDuration(seconds: number | null): string {
 }
 
 function AudioPlayer({ item }: { item: FreeContentItem }) {
-  const { state, currentTrack, play, pause, togglePlay, seek } = useAudioPlayer();
+  const { track, isPlaying: playerIsPlaying, isLoading: playerIsLoading, currentTime: playerCurrentTime, play, pause, togglePlayPause, seek } = useAudioPlayer();
 
   // Check if this item is currently playing
-  const isThisTrack = currentTrack?.id === item.id;
-  const isPlaying = isThisTrack && state.isPlaying;
-  const isLoading = isThisTrack && state.isLoading;
-  const currentTime = isThisTrack ? state.currentTime : 0;
+  const isThisTrack = track?.id === item.id;
+  const isPlaying = isThisTrack && playerIsPlaying;
+  const isLoading = isThisTrack && playerIsLoading;
+  const currentTime = isThisTrack ? playerCurrentTime : 0;
 
   const handleTogglePlay = async () => {
     if (!item.audio_url) return;
 
     if (isThisTrack) {
-      togglePlay();
+      togglePlayPause();
     } else {
       // Play this track
-      await play(item.audio_url, {
+      await play({
         id: item.id,
+        url: item.audio_url,
         title: item.title,
         artist: "tsucast",
       });

@@ -29,6 +29,7 @@ export interface AudioState {
   volume: number;
   isMuted: boolean;
   track: AudioTrack | null;
+  lastTrack: AudioTrack | null;
   error: string | null;
   sleepTimer: SleepTimerState;
   queue: AudioTrack[];
@@ -37,6 +38,7 @@ export interface AudioState {
 type AudioEventListener = (state: AudioState) => void;
 
 const POSITION_STORAGE_PREFIX = "tsucast-playback-position-";
+const LAST_TRACK_STORAGE_KEY = "tsucast-last-track";
 const POSITION_SAVE_THROTTLE_MS = 5000;
 
 class AudioService {
@@ -44,6 +46,7 @@ class AudioService {
   private audio: HTMLAudioElement | null = null;
   private listeners: Set<AudioEventListener> = new Set();
   private currentTrack: AudioTrack | null = null;
+  private lastTrack: AudioTrack | null = null;
   private lastPositionSave = 0;
   private error: string | null = null;
 
@@ -58,6 +61,7 @@ class AudioService {
   private constructor() {
     if (typeof window !== "undefined") {
       this.initAudioElement();
+      this.loadLastTrack();
     }
   }
 
@@ -111,7 +115,11 @@ class AudioService {
     // Auto-advance to next track in queue
     if (this.queue.length > 0) {
       const nextTrack = this.queue.shift()!;
-      this.play(nextTrack);
+      this.play(nextTrack).catch((err) => {
+        console.error("Failed to auto-advance to next track:", err);
+        this.error = "Failed to play next track";
+        this.notifyListeners();
+      });
     } else {
       this.notifyListeners();
     }
@@ -181,6 +189,7 @@ class AudioService {
         volume: 1,
         isMuted: false,
         track: null,
+        lastTrack: this.lastTrack,
         error: null,
         sleepTimer,
         queue: [...this.queue],
@@ -196,6 +205,7 @@ class AudioService {
       volume: this.audio.volume,
       isMuted: this.audio.muted,
       track: this.currentTrack,
+      lastTrack: this.lastTrack,
       error: this.error,
       sleepTimer,
       queue: [...this.queue],
@@ -213,6 +223,8 @@ class AudioService {
 
     // New track
     this.currentTrack = track;
+    this.lastTrack = track;
+    this.saveLastTrack(track);
     this.error = null;
     this.audio.src = track.url;
 
@@ -224,6 +236,13 @@ class AudioService {
 
     this.setupMediaSession(track);
     await this.audio.play();
+  }
+
+  // Resume last played track
+  async playLastTrack(): Promise<void> {
+    if (this.lastTrack) {
+      await this.play(this.lastTrack);
+    }
   }
 
   pause(): void {
@@ -357,6 +376,26 @@ class AudioService {
     if (this.queue.length > 0) {
       const nextTrack = this.queue.shift()!;
       this.play(nextTrack);
+    }
+  }
+
+  // Last track persistence
+  private loadLastTrack(): void {
+    try {
+      const saved = localStorage.getItem(LAST_TRACK_STORAGE_KEY);
+      if (saved) {
+        this.lastTrack = JSON.parse(saved) as AudioTrack;
+      }
+    } catch {
+      // localStorage unavailable or invalid data
+    }
+  }
+
+  private saveLastTrack(track: AudioTrack): void {
+    try {
+      localStorage.setItem(LAST_TRACK_STORAGE_KEY, JSON.stringify(track));
+    } catch {
+      // localStorage unavailable
     }
   }
 

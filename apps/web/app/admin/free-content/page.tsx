@@ -74,10 +74,15 @@ export default function AdminFreeContentPage() {
   // Polling state - track multiple processing items
   const [processingIds, setProcessingIds] = useState<Set<string>>(new Set());
 
-  // Edit state
+  // Edit state (inline)
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState("");
   const [isSavingEdit, setIsSavingEdit] = useState(false);
+
+  // Edit modal state
+  const [editingItem, setEditingItem] = useState<FreeContentItem | null>(null);
+  const [editError, setEditError] = useState<string | null>(null);
+  const [isUpdating, setIsUpdating] = useState(false);
 
   const loadItems = useCallback(async () => {
     try {
@@ -239,16 +244,12 @@ export default function AdminFreeContentPage() {
   const openEditModal = (item: FreeContentItem) => {
     setEditingItem(item);
     setEditTitle(item.title);
-    setEditVoiceId(item.voice_id);
-    setEditSourceUrl(item.source_url ?? "");
     setEditError(null);
   };
 
   const closeEditModal = useCallback(() => {
     setEditingItem(null);
     setEditTitle("");
-    setEditVoiceId("");
-    setEditSourceUrl("");
     setEditError(null);
   }, []);
 
@@ -276,8 +277,6 @@ export default function AdminFreeContentPage() {
     try {
       const result = await updateAdminFreeContent(editingItem.id, {
         title: editTitle,
-        voice_id: editVoiceId,
-        source_url: editSourceUrl || null,
       });
 
       // Update the item in the list
@@ -667,40 +666,10 @@ export default function AdminFreeContentPage() {
                 />
               </div>
 
-              {/* Voice */}
-              <div>
-                <label className="mb-1 block text-sm font-medium text-[#1a1a1a]">
-                  Voice
-                </label>
-                <select
-                  value={editVoiceId}
-                  onChange={(e) => setEditVoiceId(e.target.value)}
-                  className="w-full rounded-lg border border-[#e5e5e5] bg-white px-3 py-2 text-sm text-[#1a1a1a] focus:border-[#1a1a1a] focus:outline-none"
-                >
-                  {voiceOptions.map((v) => (
-                    <option key={v.value} value={v.value}>
-                      {v.label}
-                    </option>
-                  ))}
-                </select>
-                <p className="mt-1 text-xs text-[#737373]">
-                  Note: Changing the voice only updates the label. To regenerate audio with a different voice, delete and recreate.
-                </p>
-              </div>
-
-              {/* Source URL */}
-              <div>
-                <label className="mb-1 block text-sm font-medium text-[#1a1a1a]">
-                  Source URL
-                </label>
-                <input
-                  type="url"
-                  value={editSourceUrl}
-                  onChange={(e) => setEditSourceUrl(e.target.value)}
-                  placeholder="https://example.com/article"
-                  className="w-full rounded-lg border border-[#e5e5e5] bg-white px-3 py-2 text-sm text-[#1a1a1a] focus:border-[#1a1a1a] focus:outline-none"
-                />
-              </div>
+              {/* Info about voice/URL */}
+              <p className="text-xs text-[#737373]">
+                Note: To change voice or source URL, delete and recreate the content.
+              </p>
 
               {/* Buttons */}
               <div className="flex justify-end gap-2 pt-2">

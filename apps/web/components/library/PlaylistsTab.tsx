@@ -27,13 +27,17 @@ export function PlaylistsTab() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
 
+  const [loadError, setLoadError] = useState<string | null>(null);
+
   const loadPlaylists = useCallback(async () => {
     setIsLoading(true);
+    setLoadError(null);
     try {
       const data = await getPlaylists();
       setPlaylists(data);
     } catch (err) {
       console.error("Failed to load playlists:", err);
+      setLoadError(err instanceof Error ? err.message : "Failed to load playlists");
     } finally {
       setIsLoading(false);
     }
@@ -81,22 +85,22 @@ export function PlaylistsTab() {
     );
   }
 
-  return (
-    <div>
-      {/* Header */}
-      <div className="mb-6 flex items-center justify-between">
-        <p className="text-sm text-[var(--muted)]">
-          {playlists.length} {playlists.length === 1 ? "playlist" : "playlists"}
-        </p>
+  if (loadError) {
+    return (
+      <div className="rounded-2xl border border-red-200 bg-red-50 p-8 text-center dark:border-red-900 dark:bg-red-900/20">
+        <p className="text-red-600 dark:text-red-400">{loadError}</p>
         <button
-          onClick={() => setShowCreateModal(true)}
-          className="flex items-center gap-2 rounded-lg bg-[var(--foreground)] px-4 py-2 text-sm font-bold text-[var(--background)] transition-colors hover:opacity-90"
+          onClick={loadPlaylists}
+          className="mt-4 rounded-lg bg-[var(--foreground)] px-4 py-2 text-sm font-bold text-[var(--background)]"
         >
-          <Plus className="h-4 w-4" />
-          Create Playlist
+          Retry
         </button>
       </div>
+    );
+  }
 
+  return (
+    <div>
       {/* Empty State */}
       {playlists.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-[var(--border)] bg-[var(--card)] p-12 text-center">

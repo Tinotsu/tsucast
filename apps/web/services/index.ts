@@ -1,2 +1,2 @@
-export { AudioService } from "./audio-service";
-export type { AudioState, TrackMetadata } from "./audio-service";
+export { audioService } from "./audio-service";
+export type { AudioState, AudioTrack, SleepTimerState } from "./audio-service";

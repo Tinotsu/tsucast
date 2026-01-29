@@ -90,7 +90,7 @@ test.describe("Authentication Journey", () => {
       await page.getByRole("button", { name: /sign in/i }).click();
 
       // THEN: They are redirected to dashboard
-      await expect(page).toHaveURL(/\/dashboard/, { timeout: 10000 });
+      await expect(page).toHaveURL(/\/home/, { timeout: 10000 });
     });
 
     test("should show error message for invalid credentials", async ({
@@ -246,7 +246,7 @@ test.describe("Authentication Journey", () => {
       await page.getByRole("button", { name: /create account/i }).click();
 
       // THEN: They are redirected to dashboard
-      await expect(page).toHaveURL(/\/dashboard/, { timeout: 10000 });
+      await expect(page).toHaveURL(/\/home/, { timeout: 10000 });
     });
   });
 
@@ -290,7 +290,7 @@ test.describe("Authentication Journey", () => {
         });
       });
 
-      await page.goto("/dashboard");
+      await page.goto("/home");
 
       // Wait for page to load
       await page.waitForLoadState("networkidle");

@@ -8,7 +8,7 @@ import { useTheme } from "@/hooks/useTheme";
 import { cn } from "@/lib/utils";
 
 const navigation = [
-  { name: "Home", href: "/dashboard", icon: Home },
+  { name: "Home", href: "/home", icon: Home },
   { name: "Library", href: "/library", icon: Library },
   { name: "Settings", href: "/settings", icon: Settings },
 ];
@@ -25,7 +25,7 @@ export function Sidebar() {
     <aside className="fixed left-0 top-0 z-40 hidden h-full w-60 flex-col border-r border-[var(--border)] bg-[var(--card)] lg:flex">
       {/* Logo */}
       <div className="flex h-16 items-center gap-2 border-b border-[var(--border)] px-6">
-        <Link href="/dashboard" className="flex items-center gap-2">
+        <Link href="/home" className="flex items-center gap-2">
           <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-[var(--border)] bg-[var(--background)]">
             <Logo size={24} className="text-[var(--foreground)]" />
           </div>
@@ -40,7 +40,7 @@ export function Sidebar() {
         {navigation.map((item) => {
           const isActive =
             pathname === item.href ||
-            (item.href !== "/dashboard" && pathname.startsWith(item.href));
+            (item.href !== "/home" && pathname.startsWith(item.href));
 
           return (
             <Link

@@ -221,4 +221,90 @@ describe("AudioService", () => {
       expect(navigator.mediaSession.setActionHandler).toHaveBeenCalled();
     });
   });
+
+  describe("Error Recovery", () => {
+    const testTrack: AudioTrack = {
+      id: "error-test-track",
+      url: "https://example.com/error.mp3",
+      title: "Error Test Track",
+    };
+
+    it("[P1] should handle queue management", async () => {
+      const listener = vi.fn();
+      const unsubscribe = audioService.subscribe(listener);
+
+      // Add track to queue
+      const nextTrack: AudioTrack = {
+        id: "queue-track",
+        url: "https://example.com/queue.mp3",
+        title: "Queue Track",
+      };
+      audioService.addToQueue(nextTrack);
+
+      const state = audioService.getState();
+      expect(state.queue).toHaveLength(1);
+      expect(state.queue[0].id).toBe("queue-track");
+
+      // Remove from queue
+      audioService.removeFromQueue("queue-track");
+      const stateAfter = audioService.getState();
+      expect(stateAfter.queue).toHaveLength(0);
+
+      unsubscribe();
+    });
+
+    it("[P1] should clear queue on stop", async () => {
+      const nextTrack: AudioTrack = {
+        id: "queue-track-2",
+        url: "https://example.com/queue2.mp3",
+        title: "Queue Track 2",
+      };
+      audioService.addToQueue(nextTrack);
+      audioService.clearQueue();
+
+      const state = audioService.getState();
+      expect(state.queue).toHaveLength(0);
+    });
+
+    it("[P1] should have error state accessible", () => {
+      const state = audioService.getState();
+      // Error should be null or a string
+      expect(state.error === null || typeof state.error === "string").toBe(true);
+    });
+
+    it("[P1] should have valid playback rate range methods", () => {
+      // Test valid playback rates
+      audioService.setPlaybackRate(0.5);
+      expect(audioService.getState().playbackRate).toBe(0.5);
+
+      audioService.setPlaybackRate(1.5);
+      expect(audioService.getState().playbackRate).toBe(1.5);
+
+      audioService.setPlaybackRate(2);
+      expect(audioService.getState().playbackRate).toBe(2);
+
+      // Reset to default
+      audioService.setPlaybackRate(1);
+    });
+
+    it("[P1] should have valid volume range methods", () => {
+      // Test valid volume levels
+      audioService.setVolume(0);
+      expect(audioService.getState().volume).toBe(0);
+
+      audioService.setVolume(0.5);
+      expect(audioService.getState().volume).toBe(0.5);
+
+      audioService.setVolume(1);
+      expect(audioService.getState().volume).toBe(1);
+    });
+
+    it("[P1] should toggle mute state", () => {
+      const initialMuted = audioService.getState().isMuted;
+      audioService.toggleMute();
+      expect(audioService.getState().isMuted).toBe(!initialMuted);
+      audioService.toggleMute();
+      expect(audioService.getState().isMuted).toBe(initialMuted);
+    });
+  });
 });

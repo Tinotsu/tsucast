@@ -27,7 +27,7 @@ export function AuthForm({ mode }: AuthFormProps) {
   const { resolvedTheme, setTheme } = useTheme();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const redirect = searchParams.get("redirect") || "/dashboard";
+  const redirect = searchParams.get("redirect") || "/home";
 
   // Display errors from URL params (callback route) or hash fragment (Supabase OAuth)
   useEffect(() => {

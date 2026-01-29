@@ -14,7 +14,8 @@ import {
   getPublicFreeContent,
   updateFreeContent,
   deleteFreeContent,
-  updateFreeContent,
+  getFeaturedContent,
+  setFeaturedContent,
 } from '../services/free-content.js';
 
 const app = new Hono();

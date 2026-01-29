@@ -5,6 +5,7 @@ import { Features } from "@/components/landing/Features";
 import { Pricing } from "@/components/landing/Pricing";
 import { Footer } from "@/components/landing/Footer";
 import { Header } from "@/components/landing/Header";
+import { ThemeProvider } from "@/providers/ThemeProvider";
 
 // Mock IntersectionObserver for Features component
 beforeAll(() => {
@@ -19,7 +20,11 @@ beforeAll(() => {
 describe("Landing Page Components", () => {
   describe("Header", () => {
     it("renders logo and navigation", () => {
-      render(<Header />);
+      render(
+        <ThemeProvider>
+          <Header />
+        </ThemeProvider>
+      );
 
       expect(screen.getByText("tsucast")).toBeInTheDocument();
       expect(screen.getByText("Pricing")).toBeInTheDocument();

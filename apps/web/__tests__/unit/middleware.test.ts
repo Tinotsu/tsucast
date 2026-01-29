@@ -115,7 +115,7 @@ describe("Middleware: updateSession", () => {
       // WHEN: Middleware runs (use fake timers to trigger timeout)
       vi.useFakeTimers();
       const { NextRequest } = await import("next/server");
-      const request = new NextRequest("https://tsucast.com/dashboard");
+      const request = new NextRequest("https://tsucast.com/home");
 
       const resultPromise = updateSession(request as any);
       // Advance past the 5s timeout
@@ -137,7 +137,7 @@ describe("Middleware: updateSession", () => {
 
       vi.useFakeTimers();
       const { NextRequest } = await import("next/server");
-      const request = new NextRequest("https://tsucast.com/dashboard");
+      const request = new NextRequest("https://tsucast.com/home");
 
       const resultPromise = updateSession(request as any);
       vi.advanceTimersByTime(6000);
@@ -200,7 +200,7 @@ describe("Middleware: updateSession", () => {
       });
 
       const { NextRequest } = await import("next/server");
-      const request = new NextRequest("https://tsucast.com/dashboard");
+      const request = new NextRequest("https://tsucast.com/home");
 
       // WHEN: Middleware runs
       await updateSession(request as any);
@@ -209,7 +209,7 @@ describe("Middleware: updateSession", () => {
       expect(mockRedirect).toHaveBeenCalled();
       const redirectUrl: URL = mockRedirect.mock.calls[0][0];
       expect(redirectUrl.pathname).toBe("/login");
-      expect(redirectUrl.searchParams.get("redirect")).toBe("/dashboard");
+      expect(redirectUrl.searchParams.get("redirect")).toBe("/home");
     });
   });
 
@@ -223,7 +223,7 @@ describe("Middleware: updateSession", () => {
       });
 
       const { NextRequest } = await import("next/server");
-      const request = new NextRequest("https://tsucast.com/dashboard");
+      const request = new NextRequest("https://tsucast.com/home");
 
       // WHEN: Middleware runs
       const result = await updateSession(request as any);
@@ -233,7 +233,7 @@ describe("Middleware: updateSession", () => {
       expect(mockRedirect).not.toHaveBeenCalled();
     });
 
-    it("[P1] should redirect authenticated user from /login to /dashboard", async () => {
+    it("[P1] should redirect authenticated user from /login to /home", async () => {
       // GIVEN: User is authenticated and visits /login
       mockCookiesGetAll.mockReturnValue([]);
       mockGetUser.mockResolvedValue({
@@ -247,10 +247,10 @@ describe("Middleware: updateSession", () => {
       // WHEN: Middleware runs
       await updateSession(request as any);
 
-      // THEN: Redirected to /dashboard
+      // THEN: Redirected to /home
       expect(mockRedirect).toHaveBeenCalled();
       const redirectUrl: URL = mockRedirect.mock.calls[0][0];
-      expect(redirectUrl.pathname).toBe("/dashboard");
+      expect(redirectUrl.pathname).toBe("/home");
     });
   });
 
@@ -265,7 +265,7 @@ describe("Middleware: updateSession", () => {
       const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
       const { NextRequest } = await import("next/server");
-      const request = new NextRequest("https://tsucast.com/dashboard");
+      const request = new NextRequest("https://tsucast.com/home");
 
       // WHEN: Middleware runs
       await updateSession(request as any);

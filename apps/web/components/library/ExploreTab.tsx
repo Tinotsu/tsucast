@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { Headphones, Play, Pause, Loader2 } from "lucide-react";
 import { getFreeContent, type FreeContentItem } from "@/lib/api";
 import { useAudioPlayer } from "@/hooks/useAudioPlayer";
@@ -63,10 +62,7 @@ function ExploreItem({ item }: { item: FreeContentItem }) {
           <h3 className="font-bold text-[var(--foreground)] line-clamp-2">{item.title}</h3>
           <div className="mt-1 flex items-center gap-3 text-xs text-[var(--muted)]">
             {item.duration_seconds && (
-              <span>{formatDuration(item.duration_seconds)}</span>
-            )}
-            {item.word_count && (
-              <span>{item.word_count.toLocaleString()} words</span>
+              <span>{formatDuration(item.duration_seconds)} • Free to listen</span>
             )}
           </div>
         </div>
@@ -88,7 +84,19 @@ export function ExploreTab() {
         const data = await getFreeContent();
         if (!cancelled) setItems(data);
       } catch (err) {
-        if (!cancelled) setError(err instanceof Error ? err.message : "Failed to load content");
+        console.error("ExploreTab load error:", err);
+        if (!cancelled) {
+          // Provide more context based on error type
+          let errorMessage = "Failed to load free content";
+          if (err instanceof Error) {
+            if (err.message.includes("fetch") || err.message.includes("network")) {
+              errorMessage = "Network error. Please check your connection and try again.";
+            } else {
+              errorMessage = err.message;
+            }
+          }
+          setError(errorMessage);
+        }
       } finally {
         if (!cancelled) setIsLoading(false);
       }
@@ -133,7 +141,7 @@ export function ExploreTab() {
       {/* Header */}
       <div className="mb-6">
         <p className="text-[var(--muted)]">
-          Listen to curated articles — no account needed.
+          Curated articles to discover
         </p>
       </div>
 
@@ -142,24 +150,6 @@ export function ExploreTab() {
         {items.map((item) => (
           <ExploreItem key={item.id} item={item} />
         ))}
-      </div>
-
-      {/* Sign up prompt for unauthenticated users */}
-      <div className="mt-8 rounded-xl bg-[var(--foreground)] p-6 text-center">
-        <h3 className="text-lg font-bold text-[var(--background)]">
-          Want to convert your own articles?
-        </h3>
-        <p className="mt-1 text-sm text-[var(--muted)]">
-          Sign up free to generate unlimited podcasts from any URL.
-        </p>
-        <div className="mt-4 flex items-center justify-center gap-3">
-          <Link
-            href="/signup"
-            className="rounded-lg bg-[var(--background)] px-5 py-2 font-bold text-[var(--foreground)] transition-colors hover:opacity-90"
-          >
-            Get Started Free
-          </Link>
-        </div>
       </div>
     </div>
   );

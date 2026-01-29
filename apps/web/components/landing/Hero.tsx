@@ -1,6 +1,7 @@
 import Link from "next/link";
-import { Headphones } from "lucide-react";
+import { Headphones, Sparkle } from "lucide-react";
 import { HeroPlayer } from "@/components/marketing/HeroPlayer";
+import { Logo } from "@/components/ui/Logo";
 
 export function Hero() {
   return (

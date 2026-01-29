@@ -98,7 +98,7 @@ describe("Auth Callback Route", () => {
     const response = (await GET(request)) as any;
 
     // THEN: Redirects to dashboard
-    expect(response.url).toContain("/dashboard");
+    expect(response.url).toContain("/home");
     expect(response.url).not.toContain("error=");
   });
 
@@ -111,6 +111,6 @@ describe("Auth Callback Route", () => {
     const response = (await GET(request)) as any;
 
     // THEN: Redirects to dashboard (no-op)
-    expect(response.url).toContain("/dashboard");
+    expect(response.url).toContain("/home");
   });
 });

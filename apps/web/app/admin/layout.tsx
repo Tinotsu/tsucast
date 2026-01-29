@@ -40,10 +40,10 @@ export default function AdminLayout({
             You don&apos;t have permission to access the admin panel.
           </p>
           <button
-            onClick={() => router.push("/dashboard")}
+            onClick={() => router.push("/home")}
             className="rounded-lg bg-[#1a1a1a] px-6 py-2 font-bold text-white hover:bg-white hover:text-[#1a1a1a] hover:border hover:border-[#1a1a1a]"
           >
-            Go to Dashboard
+            Go to Home
           </button>
         </div>
       </div>

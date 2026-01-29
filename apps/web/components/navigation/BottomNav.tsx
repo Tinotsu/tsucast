@@ -6,7 +6,7 @@ import { Home, Library, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const navigation = [
-  { name: "Home", href: "/dashboard", icon: Home },
+  { name: "Home", href: "/home", icon: Home },
   { name: "Library", href: "/library", icon: Library },
   { name: "Settings", href: "/settings", icon: Settings },
 ];
@@ -23,7 +23,7 @@ export function BottomNav() {
         {navigation.map((item) => {
           const isActive =
             pathname === item.href ||
-            (item.href !== "/dashboard" && pathname.startsWith(item.href));
+            (item.href !== "/home" && pathname.startsWith(item.href));
 
           return (
             <Link
