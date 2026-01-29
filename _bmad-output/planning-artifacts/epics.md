@@ -8,10 +8,14 @@ inputDocuments:
   - path: '_bmad-output/planning-artifacts/ux-design-specification.md'
     type: 'ux-design'
 date: 2026-01-20
-lastEdited: 2026-01-21
+lastEdited: 2026-01-29
 editHistory:
   - date: "2026-01-21"
     changes: "Added Epic 7: Web Application (OPTIONAL) with 6 stories covering marketing landing page, web auth, audio playback, subscription testing, and admin panel"
+  - date: "2026-01-29"
+    changes: "Added Stories 7.7-7.11 for UX features: Global Persistent Audio Player, Explore Tab, Free Content Admin, Embeddable Player, Night Mode. Removed OPTIONAL status from Epic 7. Updated FR Coverage Map with FR63-65."
+  - date: "2026-01-29"
+    changes: "Code review identified gaps vs wireframes. Added Stories 7.12-7.16: Full Player Modal, Sidebar Navigation, Mobile Bottom Nav, Playlists (Web), Queue Management (Web). These complete the premium UX spec."
 project: tsucast
 ---
 
@@ -152,10 +156,20 @@ This document provides the complete epic and story breakdown for tsucast, decomp
 | FR45, FR46, FR47 | Epic 6 | Story 6.1 (Error Handling) |
 | FR48, FR49, FR50 | Epic 7 | Story 7.1 (Marketing Landing Page) |
 | FR51 | Epic 7 | Story 7.2 (Web Authentication Flow) |
-| FR52, FR53, FR54 | Epic 7 | Story 7.3 (Web Audio Generation & Playback) |
+| FR52, FR54 | Epic 7 | Story 7.3 (Web Audio Generation & Playback) |
 | FR55 | Epic 7 | Story 7.4 (Web Subscription Testing) |
 | FR56, FR57 | Epic 7 | Story 7.5 (Admin Panel - User Management) |
 | FR58, FR59 | Epic 7 | Story 7.6 (Admin Panel - Content Moderation) |
+| FR66, FR67, FR68 | Epic 7 | Story 7.7 (Global Persistent Audio Player) |
+| FR63 | Epic 7 | Story 7.8 (Explore Tab with Free Content) |
+| FR63 (admin) | Epic 7 | Story 7.9 (Free Content Admin Management) |
+| FR65 | Epic 7 | Story 7.10 (Embeddable Player for Landing) |
+| FR64 | Epic 7 | Story 7.11 (Night Mode Toggle) |
+| FR10, FR11, FR13, FR17, FR18 | Epic 7 | Story 7.12 (Full Player Modal) |
+| FR24, FR37, FR64 | Epic 7 | Story 7.13 (Sidebar Navigation) |
+| FR1, FR24 | Epic 7 | Story 7.14 (Mobile Bottom Navigation) |
+| FR28-34 | Epic 7 | Story 7.15 (Playlists - Web) |
+| FR20-23 | Epic 7 | Story 7.16 (Queue Management - Web) |
 
 ## Epic List
 
@@ -167,11 +181,11 @@ This document provides the complete epic and story breakdown for tsucast, decomp
 | 4 | Library & Organization | Users have a personal podcast library with progress tracking | 4 |
 | 5 | Monetization & Subscriptions | Business model with free/paid tiers and App Store payments | 3 |
 | 6 | Production Readiness | App handles errors gracefully and meets launch quality standards | 4 |
-| 7 | Web Application (OPTIONAL) | Next.js web app for marketing, backend testing, and admin | 6 |
+| 7 | Web Application | Next.js web app with premium UX (global player, explore, night mode, full player modal, navigation, playlists, queue) | 16 |
 | 8 | MVP Launch Preparation | Final App Store requirements and payment integration | 1 |
 
-**Implementation Order:** Epic 1 → Epic 2 → Epic 3 → Epic 4 → Epic 5 → Epic 6 → Epic 8
-**MVP Milestone:** Epics 1-6 + Epic 8 required for launch
+**Implementation Order:** Epic 1 → Epic 2 → Epic 3 → Epic 4 → Epic 5 → Epic 6 → Epic 7 → Epic 8
+**MVP Milestone:** Epics 1-8 required for launch (Epic 7 now includes premium web features)
 **Optional Post-MVP:** Epic 7 (Web Application) - not blocking mobile launch
 
 ---
@@ -1103,11 +1117,11 @@ So that I can switch tabs without losing context.
 
 ---
 
-## Epic 7: Web Application (OPTIONAL - Post-MVP)
+## Epic 7: Web Application
 
-Next.js web app for marketing, backend testing without mobile builds, and admin panel. **Depends on Epic 2** (Content Ingestion backend).
+Next.js web app with premium UX including global persistent player, explore tab, embeddable player, and night mode. **Depends on Epic 2** (Content Ingestion backend).
 
-> **Note:** This epic is OPTIONAL for MVP. Mobile launch is not blocked by web app completion. Web is secondary platform for testing, marketing, and operations.
+> **Note:** This epic is REQUIRED for full UX specification implementation. Web app provides premium experience matching SoundCloud/Spotify Web quality.
 
 ### Story 7.1: Marketing Landing Page
 
@@ -1351,6 +1365,212 @@ So that I can improve parsing and handle problematic content.
 - Implement `/api/admin/reports` with CRUD operations
 - Add status field to extraction_reports (pending, fixed, wont_fix)
 - Group reports by normalized URL
+
+---
+
+### Story 7.7: Global Persistent Audio Player
+
+As a web user navigating the site,
+I want audio to continue playing when I switch pages,
+So that I have the same seamless experience as SoundCloud or Spotify Web.
+
+**Acceptance Criteria:**
+
+**Given** user is playing audio on any page
+**When** they navigate to a different page
+**Then** audio continues playing without interruption
+**And** mini-player remains visible
+
+**Given** user locks their phone screen (mobile web)
+**When** audio is playing
+**Then** audio continues in background
+**And** lock screen controls work via Media Session API
+
+**Given** user switches browser tabs
+**When** audio is playing
+**Then** audio continues playing
+**And** browser tab shows "Playing" indicator
+
+**Given** user closes the browser
+**When** they reopen the site
+**Then** their last playback position is restored from localStorage
+
+**FR Mapping:** FR53 (enhanced)
+
+**Dependencies:** None (foundational for web player)
+
+**Technical Notes:**
+- Create `AudioService` singleton in `services/audio-service.ts`
+- Single `<audio>` element created once, never destroyed
+- Create `AudioPlayerProvider` context wrapping entire app
+- Implement Media Session API for browser/OS controls
+- Store playback position in localStorage, sync to server periodically
+- Mini-player component persists across all routes
+
+---
+
+### Story 7.8: Explore Tab with Free Content
+
+As a web user browsing the library,
+I want to discover free curated content in an Explore tab,
+So that I can try tsucast without generating my own content.
+
+**Acceptance Criteria:**
+
+**Given** user navigates to Library page
+**When** the page loads
+**Then** they see three tabs: All / Playlists / Explore
+**And** Explore tab shows curated free content
+
+**Given** user views Explore tab
+**When** content loads
+**Then** they see featured items with title, description, and play button
+**And** items are grouped by category (featured, popular, new)
+
+**Given** user taps play on an Explore item
+**When** playback starts
+**Then** audio plays using the global player
+**And** user doesn't need to be logged in
+
+**Given** user is not logged in
+**When** they visit Explore tab
+**Then** content is still visible and playable
+**And** they see prompt to sign up for more features
+
+**FR Mapping:** FR63 (new)
+
+**Dependencies:** Story 7.7 (Global Player), Admin free content management
+
+**Technical Notes:**
+- Add "Explore" tab to `app/(app)/library/page.tsx`
+- Create `components/library/ExploreTab.tsx`
+- Fetch from `GET /api/free-content` (public endpoint)
+- Items link to audio_cache for actual audio files
+- No auth required for viewing/playing Explore content
+
+---
+
+### Story 7.9: Free Content Admin Management
+
+As an admin,
+I want to add and manage free content for the Explore tab,
+So that I can curate content for new users to discover.
+
+**Acceptance Criteria:**
+
+**Given** admin navigates to /admin/free-content
+**When** the page loads
+**Then** they see list of all free content items
+**And** can filter by category and active status
+
+**Given** admin wants to add free content
+**When** they click "Add Content"
+**Then** they can select from existing audio_cache items
+**And** set title, description, category, and position
+
+**Given** admin wants to edit free content
+**When** they click edit on an item
+**Then** they can update title, description, category, position
+**And** can toggle active/inactive status
+
+**Given** admin wants to remove free content
+**When** they click delete and confirm
+**Then** item is removed from Explore tab
+**And** underlying audio remains in audio_cache
+
+**FR Mapping:** FR63 (admin side)
+
+**Dependencies:** Epic 7 Story 7.5 (Admin Panel base)
+
+**Technical Notes:**
+- Create `app/admin/free-content/page.tsx`
+- CRUD operations via `/api/admin/free-content`
+- Admin role check required
+- Support drag-to-reorder for position
+- Category options: featured, popular, new
+
+---
+
+### Story 7.10: Embeddable Player for Landing Page
+
+As a visitor on the landing page,
+I want to hear sample audio without logging in,
+So that I can experience the magic before signing up.
+
+**Acceptance Criteria:**
+
+**Given** visitor is on landing page
+**When** the page loads
+**Then** they see an embeddable audio player with sample content
+**And** player works without authentication
+
+**Given** visitor taps play on embeddable player
+**When** playback starts
+**Then** audio plays immediately
+**And** basic controls work (play/pause, seek, volume)
+
+**Given** visitor is enjoying the sample
+**When** they want more
+**Then** they see clear CTA to sign up
+**And** can continue listening while signing up
+
+**Given** embeddable player is playing
+**When** user navigates away from landing page
+**Then** audio stops (intentional - landing page only)
+
+**FR Mapping:** FR65 (new)
+
+**Dependencies:** Story 7.1 (Landing Page)
+
+**Technical Notes:**
+- Create `components/marketing/EmbeddablePlayer.tsx`
+- Self-contained audio element (not global player)
+- Fetch sample from free_content with category='featured'
+- No auth required, public endpoint
+- Styled to match landing page design
+- Stops on navigation (doesn't persist like logged-in player)
+
+---
+
+### Story 7.11: Night Mode Toggle
+
+As a user who prefers dark mode,
+I want to toggle between light and dark themes,
+So that I can use tsucast comfortably at any time.
+
+**Acceptance Criteria:**
+
+**Given** user is on settings page
+**When** they view theme options
+**Then** they see three choices: Light / Dark / System
+**And** current selection is highlighted
+
+**Given** user selects a theme
+**When** they tap an option
+**Then** theme changes immediately
+**And** preference is saved to their profile
+
+**Given** user selects "System"
+**When** their device is in dark mode
+**Then** tsucast shows dark theme
+**And** when device switches to light mode, tsucast follows
+
+**Given** user is not logged in
+**When** they toggle theme
+**Then** preference is saved to localStorage
+**And** persists until they log in
+
+**FR Mapping:** FR64 (new)
+
+**Dependencies:** None
+
+**Technical Notes:**
+- Add theme toggle to `app/(app)/settings/page.tsx`
+- Use CSS variables for theming (already in design system)
+- Store in user_profiles.theme column when logged in
+- Fallback to localStorage for anonymous users
+- Use `prefers-color-scheme` media query for system option
+- Dark: #121212 background, Light: #FFFFFF background
 
 ---
 

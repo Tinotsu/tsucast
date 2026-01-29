@@ -4,8 +4,11 @@ import { useState, useEffect, useCallback, Suspense, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/hooks/useAuth";
+import { useAudioPlayer } from "@/hooks/useAudioPlayer";
 import { getLibrary, deleteLibraryItem, updatePlaybackPosition, ApiError, type LibraryItem } from "@/lib/api";
 import { WebPlayer } from "@/components/app/WebPlayer";
+import { ExploreTab } from "@/components/library/ExploreTab";
+import { PlaylistsTab } from "@/components/library/PlaylistsTab";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import {
   Headphones,
@@ -16,14 +19,21 @@ import {
   PlusCircle,
   Check,
   Clock,
+  Compass,
+  List,
+  ListMusic,
+  ListPlus,
+  Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+
+type TabType = "all" | "playlists" | "explore";
 
 export default function LibraryPage() {
   return (
     <Suspense fallback={
       <div className="flex min-h-[60vh] items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-[#1a1a1a]" />
+        <Loader2 className="h-8 w-8 animate-spin text-[var(--foreground)]" />
       </div>
     }>
       <LibraryPageContent />
@@ -33,18 +43,48 @@ export default function LibraryPage() {
 
 function LibraryPageContent() {
   const { isLoading: authLoading, isAuthenticated } = useAuth();
+  const { addToQueue } = useAudioPlayer();
   const router = useRouter();
   const searchParams = useSearchParams();
   const highlightId = searchParams.get("highlight");
+  const tabParam = searchParams.get("tab") as TabType | null;
 
+  const [activeTab, setActiveTab] = useState<TabType>(
+    tabParam === "explore" ? "explore" : tabParam === "playlists" ? "playlists" : "all"
+  );
   const [items, setItems] = useState<LibraryItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedItem, setSelectedItem] = useState<LibraryItem | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [confirmingDeleteId, setConfirmingDeleteId] = useState<string | null>(null);
+  const [queuedItemId, setQueuedItemId] = useState<string | null>(null);
   const positionSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastSavedPositionRef = useRef<number>(0);
+
+  const handleAddToQueue = useCallback((item: LibraryItem) => {
+    addToQueue({
+      id: item.audio_id,
+      url: item.audio_url,
+      title: item.title,
+      duration: item.duration,
+    });
+    // Show brief feedback
+    setQueuedItemId(item.audio_id);
+    setTimeout(() => setQueuedItemId(null), 1500);
+  }, [addToQueue]);
+
+  // Update URL when tab changes
+  const handleTabChange = (tab: TabType) => {
+    setActiveTab(tab);
+    const url = new URL(window.location.href);
+    if (tab === "explore" || tab === "playlists") {
+      url.searchParams.set("tab", tab);
+    } else {
+      url.searchParams.delete("tab");
+    }
+    router.replace(url.pathname + url.search, { scroll: false });
+  };
 
   const loadLibrary = useCallback(async () => {
     setIsLoading(true);
@@ -66,19 +106,22 @@ function LibraryPageContent() {
     }
   }, [router]);
 
-  // Redirect to login if not authenticated
+  // Only redirect to login if on authenticated tabs and not authenticated
   useEffect(() => {
-    if (!authLoading && !isAuthenticated) {
+    if (!authLoading && !isAuthenticated && (activeTab === "all" || activeTab === "playlists")) {
       router.push("/login?redirect=/library");
     }
-  }, [authLoading, isAuthenticated, router]);
+  }, [authLoading, isAuthenticated, activeTab, router]);
 
+  // Load library when on "all" tab and authenticated
   useEffect(() => {
-    // Only load library if authenticated
-    if (!authLoading && isAuthenticated) {
+    if (!authLoading && isAuthenticated && activeTab === "all") {
       loadLibrary();
+    } else if (activeTab === "explore" || activeTab === "playlists") {
+      // No library loading needed for explore/playlists tabs
+      setIsLoading(false);
     }
-  }, [authLoading, isAuthenticated, loadLibrary]);
+  }, [authLoading, isAuthenticated, activeTab, loadLibrary]);
 
   // Auto-select highlighted item from URL param
   useEffect(() => {
@@ -164,220 +207,309 @@ function LibraryPageContent() {
     return Math.round((item.playback_position / item.duration) * 100);
   };
 
-  // Show loading while checking auth or loading library
-  if (authLoading || isLoading) {
+  const isNewItem = (createdAt: string) => {
+    const created = new Date(createdAt);
+    const now = new Date();
+    const hoursDiff = (now.getTime() - created.getTime()) / (1000 * 60 * 60);
+    return hoursDiff < 24;
+  };
+
+  // Show loading while checking auth (except for explore tab)
+  if (authLoading && (activeTab === "all" || activeTab === "playlists")) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-[#1a1a1a]" />
+        <Loader2 className="h-8 w-8 animate-spin text-[var(--foreground)]" />
       </div>
     );
   }
 
-  // Don't render content if not authenticated (redirect is happening)
-  if (!isAuthenticated) {
+  // For authenticated tabs, don't render if not authenticated (redirect is happening)
+  if (!isAuthenticated && (activeTab === "all" || activeTab === "playlists") && !authLoading) {
     return null;
-  }
-
-  if (error) {
-    return (
-      <div className="mx-auto max-w-2xl px-4 py-12 text-center">
-        <p className="mb-4 text-red-500">{error}</p>
-        <button
-          onClick={loadLibrary}
-          className="rounded-lg bg-[#1a1a1a] px-6 py-2 font-bold text-white"
-        >
-          Retry
-        </button>
-      </div>
-    );
   }
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6 lg:px-8">
-      <div className="mb-12 flex items-center justify-between">
+      {/* Header */}
+      <div className="mb-8 flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-[#1a1a1a]">
-            Your Library
+          <h1 className="text-3xl font-bold tracking-tight text-[var(--foreground)]">
+            Library
           </h1>
-          <p className="mt-2 font-normal leading-relaxed text-[#737373]">
-            {items.length} {items.length === 1 ? "item" : "items"}
-          </p>
         </div>
-        <Link
-          href="/generate"
-          className="flex items-center gap-2 rounded-lg bg-[#1a1a1a] px-4 py-2 font-bold text-white hover:bg-white hover:text-[#1a1a1a] hover:border hover:border-[#1a1a1a]"
-        >
-          <PlusCircle className="h-4 w-4" />
-          Add New
-        </Link>
+        {isAuthenticated && activeTab === "all" && (
+          <Link
+            href="/dashboard"
+            className="flex items-center gap-2 rounded-lg bg-[var(--foreground)] px-4 py-2 font-bold text-[var(--background)] transition-colors hover:opacity-80"
+          >
+            <PlusCircle className="h-4 w-4" />
+            Add New
+          </Link>
+        )}
       </div>
 
-      {items.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-[#e5e5e5] bg-white p-12 text-center">
-          <Library className="mx-auto mb-4 h-12 w-12 text-[#737373]" />
-          <h2 className="mb-2 text-lg font-bold text-[#1a1a1a]">
-            Your library is empty
-          </h2>
-          <p className="mb-6 font-normal text-[#737373]">
-            Generate your first podcast to get started
-          </p>
-          <Link
-            href="/generate"
-            className="inline-flex items-center gap-2 rounded-lg bg-[#1a1a1a] px-6 py-3 font-bold text-white hover:bg-white hover:text-[#1a1a1a] hover:border hover:border-[#1a1a1a]"
-          >
-            <PlusCircle className="h-5 w-5" />
-            Generate Podcast
-          </Link>
-        </div>
-      ) : (
-        <div className="grid gap-8 lg:grid-cols-2">
-          {/* Library List */}
-          <div className="space-y-3">
-            {items.map((item) => {
-              const progress = getProgress(item);
-              const isSelected = selectedItem?.audio_id === item.audio_id;
+      {/* Tabs */}
+      <div className="mb-8 flex gap-2 border-b border-[var(--border)]">
+        <button
+          onClick={() => handleTabChange("all")}
+          className={cn(
+            "flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-medium transition-colors",
+            activeTab === "all"
+              ? "border-[var(--foreground)] text-[var(--foreground)]"
+              : "border-transparent text-[var(--muted)] hover:text-[var(--foreground)]"
+          )}
+        >
+          <List className="h-4 w-4" />
+          My Library
+        </button>
+        <button
+          onClick={() => handleTabChange("playlists")}
+          className={cn(
+            "flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-medium transition-colors",
+            activeTab === "playlists"
+              ? "border-[var(--foreground)] text-[var(--foreground)]"
+              : "border-transparent text-[var(--muted)] hover:text-[var(--foreground)]"
+          )}
+        >
+          <ListMusic className="h-4 w-4" />
+          Playlists
+        </button>
+        <button
+          onClick={() => handleTabChange("explore")}
+          className={cn(
+            "flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-medium transition-colors",
+            activeTab === "explore"
+              ? "border-[var(--foreground)] text-[var(--foreground)]"
+              : "border-transparent text-[var(--muted)] hover:text-[var(--foreground)]"
+          )}
+        >
+          <Compass className="h-4 w-4" />
+          Explore
+        </button>
+      </div>
 
-              return (
-                <div
-                  key={item.id}
-                  className={cn(
-                    "group relative rounded-xl p-4 transition-all",
-                    isSelected
-                      ? "bg-[#1a1a1a] text-white"
-                      : "bg-white hover:bg-[#1a1a1a] hover:text-white"
-                  )}
-                >
-                  <div className="flex gap-4">
-                    {/* Play Button */}
-                    <button
-                      onClick={() => setSelectedItem(item)}
+      {/* Tab Content */}
+      {activeTab === "explore" ? (
+        <ExploreTab />
+      ) : activeTab === "playlists" ? (
+        <PlaylistsTab />
+      ) : (
+        <>
+          {error && (
+            <div className="mb-8 rounded-lg bg-[var(--card)] border border-[var(--destructive)] p-4 text-center">
+              <p className="mb-2 text-[var(--destructive)]">{error}</p>
+              <button
+                onClick={loadLibrary}
+                className="rounded-lg bg-[var(--foreground)] px-6 py-2 font-bold text-[var(--background)]"
+              >
+                Retry
+              </button>
+            </div>
+          )}
+
+          {isLoading ? (
+            <div className="flex min-h-[40vh] items-center justify-center">
+              <Loader2 className="h-8 w-8 animate-spin text-[var(--foreground)]" />
+            </div>
+          ) : items.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-[var(--border)] bg-[var(--card)] p-12 text-center">
+              <Library className="mx-auto mb-4 h-12 w-12 text-[var(--muted)]" />
+              <h2 className="mb-2 text-lg font-bold text-[var(--foreground)]">
+                Your library is empty
+              </h2>
+              <p className="mb-6 font-normal text-[var(--muted)]">
+                Generate your first podcast to get started
+              </p>
+              <Link
+                href="/dashboard"
+                className="inline-flex items-center gap-2 rounded-lg bg-[var(--foreground)] px-6 py-3 font-bold text-[var(--background)] transition-colors hover:opacity-80"
+              >
+                <PlusCircle className="h-5 w-5" />
+                Generate Podcast
+              </Link>
+            </div>
+          ) : (
+            <div className="grid gap-8 lg:grid-cols-2">
+              {/* Library List */}
+              <div className="space-y-3">
+                <p className="mb-4 text-sm text-[var(--muted)]">
+                  {items.length} {items.length === 1 ? "item" : "items"}
+                </p>
+                {items.map((item) => {
+                  const progress = getProgress(item);
+                  const isSelected = selectedItem?.audio_id === item.audio_id;
+
+                  return (
+                    <div
+                      key={item.id}
                       className={cn(
-                        "flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl transition-colors",
+                        "group relative rounded-xl p-4 transition-all",
                         isSelected
-                          ? "bg-white text-[#1a1a1a]"
-                          : "bg-[#1a1a1a] text-white group-hover:bg-white group-hover:text-[#1a1a1a]"
+                          ? "bg-[var(--foreground)] text-[var(--background)]"
+                          : "bg-[var(--card)] hover:bg-[var(--foreground)] hover:text-[var(--background)]"
                       )}
                     >
-                      {isSelected ? (
-                        <Headphones className="h-5 w-5" />
-                      ) : (
-                        <Play className="ml-0.5 h-5 w-5" />
-                      )}
-                    </button>
-
-                    {/* Content */}
-                    <div className="min-w-0 flex-1">
-                      <h3 className={cn(
-                        "line-clamp-2 font-bold",
-                        isSelected ? "text-white" : "text-[#1a1a1a] group-hover:text-white"
-                      )}>
-                        {item.title}
-                      </h3>
-                      <div className={cn(
-                        "mt-1 flex items-center gap-3 text-xs font-normal",
-                        isSelected ? "text-white/70" : "text-[#737373] group-hover:text-white/70"
-                      )}>
-                        <span className="flex items-center gap-1">
-                          <Clock className="h-3 w-3" />
-                          {formatDuration(item.duration)}
-                        </span>
-                        <span>{formatDate(item.created_at)}</span>
-                        {item.is_played && (
-                          <span className="flex items-center gap-1 text-green-500">
-                            <Check className="h-3 w-3" />
-                            Played
-                          </span>
-                        )}
-                      </div>
-
-                      {/* Progress Bar */}
-                      {progress > 0 && progress < 100 && (
-                        <div className={cn(
-                          "mt-2 h-1 overflow-hidden rounded-full",
-                          isSelected ? "bg-white/20" : "bg-[#e5e5e5] group-hover:bg-white/20"
-                        )}>
-                          <div
-                            className={cn(
-                              "h-full rounded-full",
-                              isSelected ? "bg-white" : "bg-[#1a1a1a] group-hover:bg-white"
-                            )}
-                            style={{ width: `${progress}%` }}
-                          />
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Delete Button with Confirmation */}
-                    {confirmingDeleteId === item.audio_id ? (
-                      <div className="flex flex-shrink-0 items-center gap-1" role="group" aria-label="Confirm deletion">
+                      <div className="flex gap-4">
+                        {/* Play Button */}
                         <button
-                          onClick={() => {
-                            handleDelete(item.audio_id);
-                            setConfirmingDeleteId(null);
-                          }}
-                          disabled={deletingId === item.audio_id}
-                          aria-label="Confirm delete"
-                          className="rounded-lg bg-red-500 px-2 py-1 text-xs font-bold text-white hover:bg-red-600"
+                          onClick={() => setSelectedItem(item)}
+                          className={cn(
+                            "flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl transition-colors",
+                            isSelected
+                              ? "bg-[var(--background)] text-[var(--foreground)]"
+                              : "bg-[var(--foreground)] text-[var(--background)] group-hover:bg-[var(--background)] group-hover:text-[var(--foreground)]"
+                          )}
                         >
-                          {deletingId === item.audio_id ? (
-                            <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
+                          {isSelected ? (
+                            <Headphones className="h-5 w-5" />
                           ) : (
-                            "Delete"
+                            <Play className="ml-0.5 h-5 w-5" />
                           )}
                         </button>
-                        <button
-                          onClick={() => setConfirmingDeleteId(null)}
-                          aria-label="Cancel delete"
-                          className="rounded-lg bg-[#1a1a1a] px-2 py-1 text-xs font-bold text-white hover:bg-white hover:text-[#1a1a1a]"
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    ) : (
-                      <button
-                        onClick={() => setConfirmingDeleteId(item.audio_id)}
-                        disabled={deletingId === item.audio_id}
-                        aria-label={`Delete ${item.title}`}
-                        className={cn(
-                          "flex-shrink-0 rounded-lg p-2 transition-all hover:bg-red-500 hover:text-white",
-                          isSelected ? "text-white" : "text-[#1a1a1a] group-hover:text-white",
-                          deletingId === item.audio_id ? "opacity-100" : "opacity-0 group-hover:opacity-100"
-                        )}
-                      >
-                        {deletingId === item.audio_id ? (
-                          <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-                        ) : (
-                          <Trash2 className="h-4 w-4" aria-hidden="true" />
-                        )}
-                      </button>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
 
-          {/* Player */}
-          <div className="sticky top-24">
-            {selectedItem ? (
-              <ErrorBoundary>
-                <WebPlayer
-                  audioUrl={selectedItem.audio_url}
-                  title={selectedItem.title}
-                  initialPosition={selectedItem.playback_position}
-                  onPositionChange={handlePositionChange}
-                />
-              </ErrorBoundary>
-            ) : (
-              <div className="flex h-64 items-center justify-center rounded-2xl border border-dashed border-[#e5e5e5] bg-white">
-                <div className="text-center text-[#737373]">
-                  <Headphones className="mx-auto mb-2 h-8 w-8" />
-                  <p className="font-normal">Select an item to play</p>
-                </div>
+                        {/* Content */}
+                        <div className="min-w-0 flex-1">
+                          <h3 className={cn(
+                            "line-clamp-2 font-bold",
+                            isSelected ? "text-[var(--background)]" : "text-[var(--foreground)] group-hover:text-[var(--background)]"
+                          )}>
+                            {item.title}
+                          </h3>
+                          <div className={cn(
+                            "mt-1 flex items-center gap-3 text-xs font-normal",
+                            isSelected ? "opacity-70" : "text-[var(--muted)] group-hover:opacity-70 group-hover:text-[var(--background)]"
+                          )}>
+                            <span className="flex items-center gap-1">
+                              <Clock className="h-3 w-3" />
+                              {formatDuration(item.duration)}
+                            </span>
+                            <span>{formatDate(item.created_at)}</span>
+                            {isNewItem(item.created_at) && !item.is_played && (
+                              <span className="flex items-center gap-1 text-[var(--success)]">
+                                <Sparkles className="h-3 w-3" />
+                                New
+                              </span>
+                            )}
+                            {item.is_played && (
+                              <span className="flex items-center gap-1 text-[var(--success)]">
+                                <Check className="h-3 w-3" />
+                                Played
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Progress Bar */}
+                          {progress > 0 && progress < 100 && (
+                            <div className={cn(
+                              "mt-2 h-1 overflow-hidden rounded-full",
+                              isSelected ? "bg-[var(--background)]/20" : "bg-[var(--border)] group-hover:bg-[var(--background)]/20"
+                            )}>
+                              <div
+                                className={cn(
+                                  "h-full rounded-full",
+                                  isSelected ? "bg-[var(--background)]" : "bg-[var(--foreground)] group-hover:bg-[var(--background)]"
+                                )}
+                                style={{ width: `${progress}%` }}
+                              />
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Action Buttons */}
+                        <div className="flex flex-shrink-0 items-center gap-1">
+                          {/* Add to Queue Button */}
+                          <button
+                            onClick={() => handleAddToQueue(item)}
+                            aria-label={queuedItemId === item.audio_id ? "Added to queue" : `Add ${item.title} to queue`}
+                            className={cn(
+                              "rounded-lg p-2 transition-all",
+                              isSelected ? "text-[var(--background)]" : "text-[var(--foreground)] group-hover:text-[var(--background)]",
+                              queuedItemId === item.audio_id
+                                ? "opacity-100 text-[var(--success)]"
+                                : "opacity-0 group-hover:opacity-100 hover:bg-[var(--secondary)]"
+                            )}
+                          >
+                            {queuedItemId === item.audio_id ? (
+                              <Check className="h-4 w-4" aria-hidden="true" />
+                            ) : (
+                              <ListPlus className="h-4 w-4" aria-hidden="true" />
+                            )}
+                          </button>
+
+                          {/* Delete Button with Confirmation */}
+                          {confirmingDeleteId === item.audio_id ? (
+                            <div className="flex items-center gap-1" role="group" aria-label="Confirm deletion">
+                              <button
+                                onClick={() => {
+                                  handleDelete(item.audio_id);
+                                  setConfirmingDeleteId(null);
+                                }}
+                                disabled={deletingId === item.audio_id}
+                                aria-label="Confirm delete"
+                                className="rounded-lg bg-[var(--destructive)] px-2 py-1 text-xs font-bold text-white hover:opacity-90"
+                              >
+                                {deletingId === item.audio_id ? (
+                                  <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
+                                ) : (
+                                  "Delete"
+                                )}
+                              </button>
+                              <button
+                                onClick={() => setConfirmingDeleteId(null)}
+                                aria-label="Cancel delete"
+                                className="rounded-lg bg-[var(--foreground)] px-2 py-1 text-xs font-bold text-[var(--background)] hover:opacity-80"
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => setConfirmingDeleteId(item.audio_id)}
+                              disabled={deletingId === item.audio_id}
+                              aria-label={`Delete ${item.title}`}
+                              className={cn(
+                                "rounded-lg p-2 transition-all hover:bg-[var(--destructive)] hover:text-white",
+                                isSelected ? "text-[var(--background)]" : "text-[var(--foreground)] group-hover:text-[var(--background)]",
+                                deletingId === item.audio_id ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+                              )}
+                            >
+                              {deletingId === item.audio_id ? (
+                                <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                              ) : (
+                                <Trash2 className="h-4 w-4" aria-hidden="true" />
+                              )}
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
-            )}
-          </div>
-        </div>
+
+              {/* Player */}
+              <div className="sticky top-24">
+                {selectedItem ? (
+                  <ErrorBoundary>
+                    <WebPlayer
+                      audioUrl={selectedItem.audio_url}
+                      title={selectedItem.title}
+                      initialPosition={selectedItem.playback_position}
+                      onPositionChange={handlePositionChange}
+                    />
+                  </ErrorBoundary>
+                ) : (
+                  <div className="flex h-64 items-center justify-center rounded-2xl border border-dashed border-[var(--border)] bg-[var(--card)]">
+                    <div className="text-center text-[var(--muted)]">
+                      <Headphones className="mx-auto mb-2 h-8 w-8" />
+                      <p className="font-normal">Select an item to play</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </>
       )}
     </div>
   );

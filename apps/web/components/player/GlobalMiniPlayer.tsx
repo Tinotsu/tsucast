@@ -1,115 +1,135 @@
 "use client";
 
-import { Play, Pause, X, Loader2 } from "lucide-react";
-import { useAudioPlayerOptional } from "@/providers/AudioPlayerProvider";
+import { Play, Pause, X, ChevronUp, Loader2, FileAudio } from "lucide-react";
+import { useAudioPlayer } from "@/hooks/useAudioPlayer";
+import { PlayerModal } from "./PlayerModal";
 import { cn } from "@/lib/utils";
-import { usePathname, useRouter } from "next/navigation";
 
-interface GlobalMiniPlayerProps {
-  className?: string;
+function formatTime(seconds: number): string {
+  if (isNaN(seconds) || seconds < 0) return "0:00";
+  const mins = Math.floor(seconds / 60);
+  const secs = Math.floor(seconds % 60);
+  return `${mins}:${secs.toString().padStart(2, "0")}`;
 }
 
-export function GlobalMiniPlayer({ className }: GlobalMiniPlayerProps) {
-  const audioPlayer = useAudioPlayerOptional();
-  const pathname = usePathname();
-  const router = useRouter();
+export function GlobalMiniPlayer() {
+  const {
+    track,
+    isPlaying,
+    isLoading,
+    currentTime,
+    duration,
+    togglePlayPause,
+    seek,
+    stop,
+    openModal,
+  } = useAudioPlayer();
 
-  // Don't render if no audio context or no track loaded
-  if (!audioPlayer || !audioPlayer.currentTrack || !audioPlayer.state.src) {
-    return null;
-  }
+  // Don't render if no track
+  if (!track) return null;
 
-  const { state, currentTrack, togglePlay, pause } = audioPlayer;
+  const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
 
-  // Don't show mini player on landing page
-  if (pathname === "/") {
-    return null;
-  }
-
-  // Don't show if currently on player page (if we had one)
-  // For now, always show on authenticated routes
-
-  const progress =
-    state.duration > 0 ? (state.currentTime / state.duration) * 100 : 0;
-
-  const formatTime = (time: number) => {
-    if (isNaN(time) || time === 0) return "0:00";
-    const minutes = Math.floor(time / 60);
-    const seconds = Math.floor(time % 60);
-    return `${minutes}:${seconds.toString().padStart(2, "0")}`;
-  };
-
-  const handleClose = () => {
-    pause();
-    // Optionally clear the track - for now just pause
-  };
-
-  const handleClick = () => {
-    // Navigate to library item if we have an ID
-    if (currentTrack.id) {
-      router.push(`/library?item=${currentTrack.id}`);
-    }
+  const handleProgressClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!duration) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const clickX = e.clientX - rect.left;
+    const percentage = clickX / rect.width;
+    seek(percentage * duration);
   };
 
   return (
-    <div
-      className={cn(
-        "fixed bottom-0 left-0 right-0 z-50 border-t border-gray-200 bg-white shadow-lg",
-        "safe-area-bottom",
-        className
-      )}
-    >
-      {/* Progress bar at top */}
-      <div className="h-1 w-full bg-gray-100">
+    <>
+      <div
+        className={cn(
+          "fixed left-0 right-0 z-50 h-16 border-t border-[var(--border)] bg-[var(--card)] shadow-lg transition-all",
+          // Position above BottomNav on mobile, at bottom on desktop
+          "bottom-16 lg:bottom-0 lg:left-60"
+        )}
+      >
+        {/* Progress bar (clickable) */}
         <div
-          className="h-full bg-[#1a1a1a] transition-all duration-150"
-          style={{ width: `${progress}%` }}
-        />
+          className="absolute top-0 left-0 right-0 h-1 cursor-pointer bg-[var(--border)]"
+          onClick={handleProgressClick}
+          role="slider"
+          aria-label="Playback progress"
+          aria-valuenow={Math.round(progress)}
+          aria-valuemin={0}
+          aria-valuemax={100}
+        >
+          <div
+            className="h-full bg-[var(--foreground)] transition-all"
+            style={{ width: `${progress}%` }}
+          />
+        </div>
+
+        {/* Compact view */}
+        <div className="flex h-16 items-center gap-3 px-4">
+          {/* Thumbnail */}
+          <div className="h-10 w-10 flex-shrink-0 overflow-hidden rounded-lg bg-[var(--secondary)]">
+            {track.artwork ? (
+              <img src={track.artwork} alt="" className="h-full w-full object-cover" />
+            ) : (
+              <div className="flex h-full w-full items-center justify-center">
+                <FileAudio className="h-5 w-5 text-[var(--muted)]" />
+              </div>
+            )}
+          </div>
+
+          {/* Play/Pause button */}
+          <button
+            onClick={togglePlayPause}
+            disabled={isLoading}
+            aria-label={isPlaying ? "Pause" : "Play"}
+            className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-[var(--foreground)] text-[var(--background)] transition-colors hover:opacity-80 disabled:opacity-50"
+          >
+            {isLoading ? (
+              <Loader2 className="h-5 w-5 animate-spin" />
+            ) : isPlaying ? (
+              <Pause className="h-5 w-5" />
+            ) : (
+              <Play className="h-5 w-5 ml-0.5" />
+            )}
+          </button>
+
+          {/* Track info - clickable to open modal */}
+          <button
+            onClick={openModal}
+            className="flex-1 min-w-0 text-left"
+            aria-label="Open full player"
+          >
+            <p className="truncate text-sm font-medium text-[var(--foreground)]">
+              {track.title}
+            </p>
+            <p className="text-xs text-[var(--muted)]">
+              {formatTime(currentTime)} / {formatTime(duration)}
+            </p>
+          </button>
+
+          {/* Expand button - opens full modal */}
+          <button
+            onClick={openModal}
+            aria-label="Expand player"
+            className="rounded-full p-2 text-[var(--muted)] hover:bg-[var(--secondary)] hover:text-[var(--foreground)]"
+          >
+            <ChevronUp className="h-5 w-5" />
+          </button>
+
+          {/* Close button */}
+          <button
+            onClick={stop}
+            aria-label="Close player"
+            className="rounded-full p-2 text-[var(--muted)] hover:bg-[var(--secondary)] hover:text-[var(--foreground)]"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
       </div>
 
-      <div className="flex items-center gap-3 px-4 py-3">
-        {/* Play/Pause button */}
-        <button
-          onClick={togglePlay}
-          disabled={state.isLoading}
-          aria-label={state.isPlaying ? "Pause" : "Play"}
-          className={cn(
-            "flex h-10 w-10 shrink-0 items-center justify-center rounded-full",
-            "bg-[#1a1a1a] text-white transition-colors",
-            "hover:bg-gray-800 disabled:opacity-50"
-          )}
-        >
-          {state.isLoading ? (
-            <Loader2 className="h-5 w-5 animate-spin" aria-hidden="true" />
-          ) : state.isPlaying ? (
-            <Pause className="h-5 w-5" aria-hidden="true" />
-          ) : (
-            <Play className="ml-0.5 h-5 w-5" aria-hidden="true" />
-          )}
-        </button>
-
-        {/* Track info - clickable */}
-        <button
-          onClick={handleClick}
-          className="flex min-w-0 flex-1 flex-col text-left"
-        >
-          <span className="truncate text-sm font-medium text-[#1a1a1a]">
-            {currentTrack.title}
-          </span>
-          <span className="text-xs text-gray-500">
-            {formatTime(state.currentTime)} / {formatTime(state.duration)}
-          </span>
-        </button>
-
-        {/* Close button */}
-        <button
-          onClick={handleClose}
-          aria-label="Close player"
-          className="shrink-0 rounded-full p-2 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
-        >
-          <X className="h-5 w-5" aria-hidden="true" />
-        </button>
-      </div>
-    </div>
+      {/* Full Player Modal */}
+      <PlayerModal />
+    </>
   );
 }
+
+export default GlobalMiniPlayer;

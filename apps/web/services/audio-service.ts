@@ -1,119 +1,425 @@
 /**
- * AudioService - Singleton for global audio management
+ * AudioService - Singleton managing a single persistent audio element
  *
- * This service creates a single <audio> element that persists across route changes,
- * enabling seamless playback like SoundCloud or Spotify Web.
- *
- * Key features:
- * - Singleton pattern - audio element never unmounts
- * - Media Session API integration for lock screen controls
- * - localStorage persistence for playback position
- * - Event-based state updates for React integration
+ * This service ensures audio playback persists across page navigation.
+ * The audio element is created once and never destroyed.
  */
 
-export interface AudioState {
-  isPlaying: boolean;
-  currentTime: number;
-  duration: number;
-  src: string | null;
-  playbackRate: number;
-  isMuted: boolean;
-  isLoading: boolean;
-  error: string | null;
-}
-
-export interface TrackMetadata {
+export interface AudioTrack {
   id: string;
+  url: string;
   title: string;
   artist?: string;
   artwork?: string;
+  duration?: number;
 }
 
-type AudioEventType =
-  | "statechange"
-  | "timeupdate"
-  | "ended"
-  | "error"
-  | "trackchange";
+export interface SleepTimerState {
+  isActive: boolean;
+  remainingSeconds: number;
+  endOfTrack: boolean;
+}
 
-type AudioEventCallback = (state: AudioState) => void;
+export interface AudioState {
+  isPlaying: boolean;
+  isLoading: boolean;
+  currentTime: number;
+  duration: number;
+  playbackRate: number;
+  volume: number;
+  isMuted: boolean;
+  track: AudioTrack | null;
+  error: string | null;
+  sleepTimer: SleepTimerState;
+  queue: AudioTrack[];
+}
 
-const POSITION_STORAGE_PREFIX = "playback-position-";
-const LAST_TRACK_KEY = "last-played-track";
-const POSITION_SAVE_INTERVAL = 5000; // Save position every 5 seconds
+type AudioEventListener = (state: AudioState) => void;
 
-class AudioServiceClass {
-  private static instance: AudioServiceClass | null = null;
+const POSITION_STORAGE_PREFIX = "tsucast-playback-position-";
+const POSITION_SAVE_THROTTLE_MS = 5000;
 
+class AudioService {
+  private static instance: AudioService | null = null;
   private audio: HTMLAudioElement | null = null;
-  private currentTrack: TrackMetadata | null = null;
-  private listeners: Map<AudioEventType, Set<AudioEventCallback>> = new Map();
-  private positionSaveInterval: ReturnType<typeof setInterval> | null = null;
+  private listeners: Set<AudioEventListener> = new Set();
+  private currentTrack: AudioTrack | null = null;
+  private lastPositionSave = 0;
+  private error: string | null = null;
 
-  private state: AudioState = {
-    isPlaying: false,
-    currentTime: 0,
-    duration: 0,
-    src: null,
-    playbackRate: 1,
-    isMuted: false,
-    isLoading: false,
-    error: null,
-  };
+  // Sleep timer state
+  private sleepTimerInterval: ReturnType<typeof setInterval> | null = null;
+  private sleepTimerRemaining = 0;
+  private sleepTimerEndOfTrack = false;
+
+  // Queue state
+  private queue: AudioTrack[] = [];
 
   private constructor() {
-    // Only initialize in browser
     if (typeof window !== "undefined") {
       this.initAudioElement();
-      this.initMediaSession();
-      this.restoreLastTrack();
     }
   }
 
-  static getInstance(): AudioServiceClass {
-    if (!AudioServiceClass.instance) {
-      AudioServiceClass.instance = new AudioServiceClass();
+  static getInstance(): AudioService {
+    if (!AudioService.instance) {
+      AudioService.instance = new AudioService();
     }
-    return AudioServiceClass.instance;
+    return AudioService.instance;
   }
 
   private initAudioElement(): void {
     this.audio = document.createElement("audio");
     this.audio.preload = "metadata";
 
-    // Attach to DOM to ensure it persists (hidden)
-    this.audio.style.display = "none";
-    document.body.appendChild(this.audio);
-
     // Event listeners
     this.audio.addEventListener("timeupdate", this.handleTimeUpdate);
     this.audio.addEventListener("loadedmetadata", this.handleLoadedMetadata);
     this.audio.addEventListener("ended", this.handleEnded);
-    this.audio.addEventListener("error", this.handleError);
     this.audio.addEventListener("play", this.handlePlay);
     this.audio.addEventListener("pause", this.handlePause);
     this.audio.addEventListener("waiting", this.handleWaiting);
     this.audio.addEventListener("canplay", this.handleCanPlay);
-
-    // Start position saving interval
-    this.positionSaveInterval = setInterval(() => {
-      if (this.state.isPlaying && this.currentTrack) {
-        this.persistPosition(this.currentTrack.id);
-      }
-    }, POSITION_SAVE_INTERVAL);
+    this.audio.addEventListener("error", this.handleError);
+    this.audio.addEventListener("volumechange", this.handleVolumeChange);
+    this.audio.addEventListener("ratechange", this.handleRateChange);
   }
 
-  private initMediaSession(): void {
+  private handleTimeUpdate = (): void => {
+    this.notifyListeners();
+    this.throttledSavePosition();
+  };
+
+  private handleLoadedMetadata = (): void => {
+    this.notifyListeners();
+    if (this.currentTrack) {
+      this.setupMediaSession(this.currentTrack);
+    }
+  };
+
+  private handleEnded = (): void => {
+    // If sleep timer is set to end of track, trigger it
+    if (this.sleepTimerEndOfTrack) {
+      this.triggerSleepTimerEnd();
+      this.notifyListeners();
+      this.clearSavedPosition();
+      return;
+    }
+
+    this.clearSavedPosition();
+
+    // Auto-advance to next track in queue
+    if (this.queue.length > 0) {
+      const nextTrack = this.queue.shift()!;
+      this.play(nextTrack);
+    } else {
+      this.notifyListeners();
+    }
+  };
+
+  private handlePlay = (): void => {
+    this.error = null;
+    this.notifyListeners();
+    this.updateMediaSessionPlaybackState("playing");
+  };
+
+  private handlePause = (): void => {
+    this.notifyListeners();
+    this.updateMediaSessionPlaybackState("paused");
+    this.savePosition();
+  };
+
+  private handleWaiting = (): void => {
+    this.notifyListeners();
+  };
+
+  private handleCanPlay = (): void => {
+    this.notifyListeners();
+  };
+
+  private handleError = (): void => {
+    this.error = "Failed to load audio";
+    this.notifyListeners();
+  };
+
+  private handleVolumeChange = (): void => {
+    this.notifyListeners();
+  };
+
+  private handleRateChange = (): void => {
+    this.notifyListeners();
+  };
+
+  private notifyListeners(): void {
+    const state = this.getState();
+    this.listeners.forEach((listener) => listener(state));
+  }
+
+  subscribe(listener: AudioEventListener): () => void {
+    this.listeners.add(listener);
+    // Immediately call with current state
+    listener(this.getState());
+    return () => {
+      this.listeners.delete(listener);
+    };
+  }
+
+  getState(): AudioState {
+    const sleepTimer: SleepTimerState = {
+      isActive: this.sleepTimerInterval !== null || this.sleepTimerEndOfTrack,
+      remainingSeconds: this.sleepTimerRemaining,
+      endOfTrack: this.sleepTimerEndOfTrack,
+    };
+
+    if (!this.audio) {
+      return {
+        isPlaying: false,
+        isLoading: false,
+        currentTime: 0,
+        duration: 0,
+        playbackRate: 1,
+        volume: 1,
+        isMuted: false,
+        track: null,
+        error: null,
+        sleepTimer,
+        queue: [...this.queue],
+      };
+    }
+
+    return {
+      isPlaying: !this.audio.paused && !this.audio.ended,
+      isLoading: this.audio.readyState < 3 && !this.audio.paused,
+      currentTime: this.audio.currentTime,
+      duration: this.audio.duration || 0,
+      playbackRate: this.audio.playbackRate,
+      volume: this.audio.volume,
+      isMuted: this.audio.muted,
+      track: this.currentTrack,
+      error: this.error,
+      sleepTimer,
+      queue: [...this.queue],
+    };
+  }
+
+  async play(track: AudioTrack): Promise<void> {
+    if (!this.audio) return;
+
+    // If same track, just resume
+    if (this.currentTrack?.id === track.id && this.audio.src) {
+      await this.audio.play();
+      return;
+    }
+
+    // New track
+    this.currentTrack = track;
+    this.error = null;
+    this.audio.src = track.url;
+
+    // Restore saved position if available
+    const savedPosition = this.getSavedPosition(track.id);
+    if (savedPosition > 0) {
+      this.audio.currentTime = savedPosition;
+    }
+
+    this.setupMediaSession(track);
+    await this.audio.play();
+  }
+
+  pause(): void {
+    this.audio?.pause();
+  }
+
+  resume(): void {
+    this.audio?.play();
+  }
+
+  togglePlayPause(): void {
+    if (!this.audio) return;
+    if (this.audio.paused) {
+      this.audio.play();
+    } else {
+      this.audio.pause();
+    }
+  }
+
+  seek(time: number): void {
+    if (!this.audio) return;
+    const clampedTime = Math.max(0, Math.min(time, this.audio.duration || 0));
+    this.audio.currentTime = clampedTime;
+    this.notifyListeners();
+  }
+
+  seekRelative(delta: number): void {
+    if (!this.audio) return;
+    this.seek(this.audio.currentTime + delta);
+  }
+
+  setPlaybackRate(rate: number): void {
+    if (!this.audio) return;
+    this.audio.playbackRate = rate;
+  }
+
+  setVolume(volume: number): void {
+    if (!this.audio) return;
+    this.audio.volume = Math.max(0, Math.min(1, volume));
+  }
+
+  toggleMute(): void {
+    if (!this.audio) return;
+    this.audio.muted = !this.audio.muted;
+  }
+
+  stop(): void {
+    if (!this.audio) return;
+    this.audio.pause();
+    this.audio.currentTime = 0;
+    this.audio.src = "";
+    this.currentTrack = null;
+    this.error = null;
+    this.cancelSleepTimer();
+    this.notifyListeners();
+    this.clearMediaSession();
+  }
+
+  // Skip controls
+  skipForward(seconds = 15): void {
+    this.seekRelative(seconds);
+  }
+
+  skipBackward(seconds = 15): void {
+    this.seekRelative(-seconds);
+  }
+
+  // Sleep timer
+  setSleepTimer(minutes: number): void {
+    this.cancelSleepTimer();
+    this.sleepTimerEndOfTrack = false;
+    this.sleepTimerRemaining = minutes * 60;
+
+    this.sleepTimerInterval = setInterval(() => {
+      this.sleepTimerRemaining--;
+      this.notifyListeners();
+
+      if (this.sleepTimerRemaining <= 0) {
+        this.triggerSleepTimerEnd();
+      }
+    }, 1000);
+
+    this.notifyListeners();
+  }
+
+  setSleepTimerEndOfTrack(): void {
+    this.cancelSleepTimer();
+    this.sleepTimerEndOfTrack = true;
+    this.sleepTimerRemaining = 0;
+    this.notifyListeners();
+  }
+
+  cancelSleepTimer(): void {
+    if (this.sleepTimerInterval) {
+      clearInterval(this.sleepTimerInterval);
+      this.sleepTimerInterval = null;
+    }
+    this.sleepTimerRemaining = 0;
+    this.sleepTimerEndOfTrack = false;
+    this.notifyListeners();
+  }
+
+  private triggerSleepTimerEnd(): void {
+    this.cancelSleepTimer();
+    this.pause();
+  }
+
+  // Queue management
+  addToQueue(track: AudioTrack): void {
+    // Don't add duplicates
+    if (!this.queue.some((t) => t.id === track.id)) {
+      this.queue.push(track);
+      this.notifyListeners();
+    }
+  }
+
+  removeFromQueue(trackId: string): void {
+    const index = this.queue.findIndex((t) => t.id === trackId);
+    if (index !== -1) {
+      this.queue.splice(index, 1);
+      this.notifyListeners();
+    }
+  }
+
+  clearQueue(): void {
+    this.queue = [];
+    this.notifyListeners();
+  }
+
+  playNext(): void {
+    if (this.queue.length > 0) {
+      const nextTrack = this.queue.shift()!;
+      this.play(nextTrack);
+    }
+  }
+
+  // Position persistence
+  private throttledSavePosition(): void {
+    const now = Date.now();
+    if (now - this.lastPositionSave > POSITION_SAVE_THROTTLE_MS) {
+      this.savePosition();
+      this.lastPositionSave = now;
+    }
+  }
+
+  private savePosition(): void {
+    if (!this.currentTrack || !this.audio) return;
+    try {
+      const key = POSITION_STORAGE_PREFIX + this.currentTrack.id;
+      localStorage.setItem(key, String(this.audio.currentTime));
+    } catch {
+      // localStorage unavailable
+    }
+  }
+
+  private getSavedPosition(trackId: string): number {
+    try {
+      const key = POSITION_STORAGE_PREFIX + trackId;
+      const saved = localStorage.getItem(key);
+      return saved ? parseFloat(saved) : 0;
+    } catch {
+      return 0;
+    }
+  }
+
+  private clearSavedPosition(): void {
+    if (!this.currentTrack) return;
+    try {
+      const key = POSITION_STORAGE_PREFIX + this.currentTrack.id;
+      localStorage.removeItem(key);
+    } catch {
+      // localStorage unavailable
+    }
+  }
+
+  // Media Session API for lock screen / browser controls
+  private setupMediaSession(track: AudioTrack): void {
     if (!("mediaSession" in navigator)) return;
 
-    navigator.mediaSession.setActionHandler("play", () => this.play());
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title: track.title,
+      artist: track.artist || "tsucast",
+      album: "tsucast",
+      artwork: track.artwork
+        ? [{ src: track.artwork, sizes: "512x512", type: "image/png" }]
+        : [],
+    });
+
+    navigator.mediaSession.setActionHandler("play", () => this.resume());
     navigator.mediaSession.setActionHandler("pause", () => this.pause());
-    navigator.mediaSession.setActionHandler("seekbackward", (details) => {
-      this.skip(-(details.seekOffset || 15));
-    });
-    navigator.mediaSession.setActionHandler("seekforward", (details) => {
-      this.skip(details.seekOffset || 30);
-    });
+    navigator.mediaSession.setActionHandler("seekbackward", () =>
+      this.seekRelative(-15)
+    );
+    navigator.mediaSession.setActionHandler("seekforward", () =>
+      this.seekRelative(30)
+    );
     navigator.mediaSession.setActionHandler("seekto", (details) => {
       if (details.seekTime !== undefined) {
         this.seek(details.seekTime);
@@ -121,319 +427,27 @@ class AudioServiceClass {
     });
   }
 
-  private updateMediaSessionMetadata(): void {
-    if (!("mediaSession" in navigator) || !this.currentTrack) return;
-
-    const artwork = this.currentTrack.artwork
-      ? [{ src: this.currentTrack.artwork, sizes: "512x512", type: "image/png" }]
-      : [];
-
-    navigator.mediaSession.metadata = new MediaMetadata({
-      title: this.currentTrack.title,
-      artist: this.currentTrack.artist || "tsucast",
-      album: "tsucast",
-      artwork,
-    });
-  }
-
-  private updateMediaSessionPlaybackState(): void {
+  private updateMediaSessionPlaybackState(
+    state: "playing" | "paused" | "none"
+  ): void {
     if (!("mediaSession" in navigator)) return;
-
-    navigator.mediaSession.playbackState = this.state.isPlaying
-      ? "playing"
-      : "paused";
+    navigator.mediaSession.playbackState = state;
   }
 
-  private updateDocumentTitle(): void {
-    if (!this.currentTrack) return;
+  private clearMediaSession(): void {
+    if (!("mediaSession" in navigator)) return;
+    navigator.mediaSession.metadata = null;
+    navigator.mediaSession.playbackState = "none";
+  }
 
-    const baseTitle = "tsucast";
-    if (this.state.isPlaying) {
-      document.title = `▶ ${this.currentTrack.title} | ${baseTitle}`;
-    } else {
-      document.title = baseTitle;
+  // Update document title with playing indicator
+  updateDocumentTitle(originalTitle: string): string {
+    if (this.currentTrack && this.getState().isPlaying) {
+      return `▶ ${this.currentTrack.title} | ${originalTitle}`;
     }
-  }
-
-  // Event handlers
-  private handleTimeUpdate = (): void => {
-    if (!this.audio) return;
-    this.state.currentTime = this.audio.currentTime;
-    this.emit("timeupdate", this.state);
-  };
-
-  private handleLoadedMetadata = (): void => {
-    if (!this.audio) return;
-    this.state.duration = this.audio.duration;
-    this.state.isLoading = false;
-    this.emitStateChange();
-  };
-
-  private handleEnded = (): void => {
-    this.state.isPlaying = false;
-    this.updateMediaSessionPlaybackState();
-    this.updateDocumentTitle();
-    this.emit("ended", this.state);
-    this.emitStateChange();
-  };
-
-  private handleError = (): void => {
-    this.state.error = "Failed to load audio";
-    this.state.isLoading = false;
-    this.emit("error", this.state);
-    this.emitStateChange();
-  };
-
-  private handlePlay = (): void => {
-    this.state.isPlaying = true;
-    this.state.error = null;
-    this.updateMediaSessionPlaybackState();
-    this.updateDocumentTitle();
-    this.emitStateChange();
-  };
-
-  private handlePause = (): void => {
-    this.state.isPlaying = false;
-    this.updateMediaSessionPlaybackState();
-    this.updateDocumentTitle();
-    this.emitStateChange();
-  };
-
-  private handleWaiting = (): void => {
-    this.state.isLoading = true;
-    this.emitStateChange();
-  };
-
-  private handleCanPlay = (): void => {
-    this.state.isLoading = false;
-    this.emitStateChange();
-  };
-
-  // Event emitter
-  on(event: AudioEventType, callback: AudioEventCallback): () => void {
-    if (!this.listeners.has(event)) {
-      this.listeners.set(event, new Set());
-    }
-    this.listeners.get(event)!.add(callback);
-
-    // Return unsubscribe function
-    return () => {
-      this.listeners.get(event)?.delete(callback);
-    };
-  }
-
-  private emit(event: AudioEventType, state: AudioState): void {
-    this.listeners.get(event)?.forEach((callback) => callback(state));
-  }
-
-  private emitStateChange(): void {
-    this.emit("statechange", this.state);
-  }
-
-  // Public API
-  async loadTrack(url: string, metadata: TrackMetadata): Promise<void> {
-    if (!this.audio) return;
-
-    this.currentTrack = metadata;
-    this.state.src = url;
-    this.state.isLoading = true;
-    this.state.error = null;
-    this.state.currentTime = 0;
-    this.state.duration = 0;
-
-    this.audio.src = url;
-    this.audio.load();
-
-    // Restore position if available
-    const savedPosition = this.getSavedPosition(metadata.id);
-    if (savedPosition > 0) {
-      this.audio.currentTime = savedPosition;
-      this.state.currentTime = savedPosition;
-    }
-
-    this.updateMediaSessionMetadata();
-    this.saveLastTrack();
-    this.emit("trackchange", this.state);
-    this.emitStateChange();
-  }
-
-  async play(url?: string, metadata?: TrackMetadata): Promise<void> {
-    if (!this.audio) return;
-
-    // If URL provided, load new track
-    if (url && metadata) {
-      await this.loadTrack(url, metadata);
-    }
-
-    try {
-      await this.audio.play();
-    } catch (error) {
-      // Handle autoplay policy errors
-      console.error("Playback failed:", error);
-      this.state.error = "Playback failed. Please try again.";
-      this.emitStateChange();
-    }
-  }
-
-  pause(): void {
-    if (!this.audio) return;
-    this.audio.pause();
-
-    // Save position on pause
-    if (this.currentTrack) {
-      this.persistPosition(this.currentTrack.id);
-    }
-  }
-
-  togglePlay(): void {
-    if (this.state.isPlaying) {
-      this.pause();
-    } else {
-      this.play();
-    }
-  }
-
-  seek(time: number): void {
-    if (!this.audio) return;
-    const newTime = Math.max(0, Math.min(this.state.duration, time));
-    this.audio.currentTime = newTime;
-    this.state.currentTime = newTime;
-    this.emitStateChange();
-  }
-
-  skip(seconds: number): void {
-    this.seek(this.state.currentTime + seconds);
-  }
-
-  setPlaybackRate(rate: number): void {
-    if (!this.audio) return;
-    this.audio.playbackRate = rate;
-    this.state.playbackRate = rate;
-    this.emitStateChange();
-  }
-
-  cyclePlaybackRate(): void {
-    const speeds = [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2];
-    const currentIndex = speeds.indexOf(this.state.playbackRate);
-    const nextIndex = (currentIndex + 1) % speeds.length;
-    this.setPlaybackRate(speeds[nextIndex]);
-  }
-
-  setMuted(muted: boolean): void {
-    if (!this.audio) return;
-    this.audio.muted = muted;
-    this.state.isMuted = muted;
-    this.emitStateChange();
-  }
-
-  toggleMute(): void {
-    this.setMuted(!this.state.isMuted);
-  }
-
-  getState(): AudioState {
-    return { ...this.state };
-  }
-
-  getCurrentTrack(): TrackMetadata | null {
-    return this.currentTrack;
-  }
-
-  // Position persistence
-  persistPosition(trackId: string): void {
-    if (this.state.currentTime <= 0) return;
-
-    try {
-      localStorage.setItem(
-        `${POSITION_STORAGE_PREFIX}${trackId}`,
-        JSON.stringify({
-          position: this.state.currentTime,
-          timestamp: Date.now(),
-        })
-      );
-    } catch {
-      // localStorage unavailable
-    }
-  }
-
-  getSavedPosition(trackId: string): number {
-    try {
-      const saved = localStorage.getItem(`${POSITION_STORAGE_PREFIX}${trackId}`);
-      if (saved) {
-        const { position } = JSON.parse(saved);
-        return position;
-      }
-    } catch {
-      // localStorage unavailable or invalid data
-    }
-    return 0;
-  }
-
-  clearSavedPosition(trackId: string): void {
-    try {
-      localStorage.removeItem(`${POSITION_STORAGE_PREFIX}${trackId}`);
-    } catch {
-      // localStorage unavailable
-    }
-  }
-
-  // Last track persistence
-  private saveLastTrack(): void {
-    if (!this.currentTrack || !this.state.src) return;
-
-    try {
-      localStorage.setItem(
-        LAST_TRACK_KEY,
-        JSON.stringify({
-          url: this.state.src,
-          metadata: this.currentTrack,
-        })
-      );
-    } catch {
-      // localStorage unavailable
-    }
-  }
-
-  private restoreLastTrack(): void {
-    try {
-      const saved = localStorage.getItem(LAST_TRACK_KEY);
-      if (saved) {
-        const { url, metadata } = JSON.parse(saved);
-        // Load but don't auto-play
-        this.loadTrack(url, metadata);
-      }
-    } catch {
-      // localStorage unavailable or invalid data
-    }
-  }
-
-  // Cleanup (rarely needed, but good practice)
-  destroy(): void {
-    if (this.positionSaveInterval) {
-      clearInterval(this.positionSaveInterval);
-    }
-
-    if (this.audio) {
-      this.audio.removeEventListener("timeupdate", this.handleTimeUpdate);
-      this.audio.removeEventListener("loadedmetadata", this.handleLoadedMetadata);
-      this.audio.removeEventListener("ended", this.handleEnded);
-      this.audio.removeEventListener("error", this.handleError);
-      this.audio.removeEventListener("play", this.handlePlay);
-      this.audio.removeEventListener("pause", this.handlePause);
-      this.audio.removeEventListener("waiting", this.handleWaiting);
-      this.audio.removeEventListener("canplay", this.handleCanPlay);
-
-      this.audio.pause();
-      this.audio.remove();
-    }
-
-    AudioServiceClass.instance = null;
+    return originalTitle;
   }
 }
 
-// Export singleton getter
-export const AudioService = {
-  getInstance: () => AudioServiceClass.getInstance(),
-};
-
-// Export type for use in other files
-export type { AudioServiceClass };
+export const audioService = AudioService.getInstance();
+export default audioService;

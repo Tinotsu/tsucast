@@ -32,6 +32,16 @@ vi.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams(),
 }));
 
+// Mock useTheme hook
+const mockSetTheme = vi.fn();
+vi.mock("@/hooks/useTheme", () => ({
+  useTheme: () => ({
+    theme: "light",
+    resolvedTheme: "light",
+    setTheme: mockSetTheme,
+  }),
+}));
+
 describe("AuthForm Component", () => {
   beforeEach(() => {
     vi.clearAllMocks();

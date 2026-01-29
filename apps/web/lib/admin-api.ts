@@ -168,14 +168,10 @@ export async function createAdminFreeContent(data: {
 
 export async function updateAdminFreeContent(
   id: string,
-  data: {
-    title?: string;
-    voice_id?: string;
-    source_url?: string | null;
-  }
+  data: { title: string }
 ): Promise<{ item: FreeContentItem }> {
   return fetchAdminApi(`/api/free-content/admin/${id}`, {
-    method: "PUT",
+    method: "PATCH",
     body: JSON.stringify(data),
   });
 }

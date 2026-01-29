@@ -419,6 +419,77 @@ export async function getCheckoutSessionStatus(sessionId: string): Promise<Check
   return fetchApi<CheckoutSessionStatus>(`/api/checkout/session/${sessionId}`);
 }
 
+// Playlist types and API
+
+export interface Playlist {
+  id: string;
+  name: string;
+  created_at: string;
+  updated_at: string;
+  itemCount: number;
+}
+
+export interface PlaylistItem {
+  id: string;
+  position: number;
+  added_at: string;
+  audio: {
+    id: string;
+    title: string;
+    audio_url: string;
+    duration_seconds: number;
+    original_url: string;
+  };
+}
+
+export interface PlaylistWithItems extends Omit<Playlist, 'itemCount'> {
+  items: PlaylistItem[];
+}
+
+export async function getPlaylists(): Promise<Playlist[]> {
+  const response = await fetchApi<{ playlists: Playlist[] }>("/api/playlists");
+  return response.playlists;
+}
+
+export async function getPlaylist(id: string): Promise<PlaylistWithItems> {
+  const response = await fetchApi<{ playlist: PlaylistWithItems }>(`/api/playlists/${id}`);
+  return response.playlist;
+}
+
+export async function createPlaylist(name: string): Promise<Playlist> {
+  const response = await fetchApi<{ playlist: Playlist }>("/api/playlists", {
+    method: "POST",
+    body: JSON.stringify({ name }),
+  });
+  return response.playlist;
+}
+
+export async function renamePlaylist(id: string, name: string): Promise<void> {
+  await fetchApi(`/api/playlists/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify({ name }),
+  });
+}
+
+export async function deletePlaylist(id: string): Promise<void> {
+  await fetchApi(`/api/playlists/${id}`, {
+    method: "DELETE",
+  });
+}
+
+export async function addToPlaylist(playlistId: string, audioId: string): Promise<void> {
+  await fetchApi(`/api/playlists/${playlistId}/items`, {
+    method: "POST",
+    body: JSON.stringify({ audioId }),
+  });
+}
+
+export async function removeFromPlaylist(playlistId: string, itemId: string): Promise<void> {
+  await fetchApi(`/api/playlists/${playlistId}/items/${itemId}`, {
+    method: "DELETE",
+  });
+}
+
 export type { CreditBalance, CreditPreview, CheckoutResponse, CheckoutSessionStatus };
 
 export type {

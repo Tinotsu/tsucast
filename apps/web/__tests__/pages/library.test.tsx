@@ -47,6 +47,17 @@ vi.mock("@/hooks/useAuth", () => ({
   useAuth: () => mockUseAuth(),
 }));
 
+// Mock useAudioPlayer for queue functionality
+const mockAddToQueue = vi.fn();
+vi.mock("@/hooks/useAudioPlayer", () => ({
+  useAudioPlayer: () => ({
+    addToQueue: mockAddToQueue,
+    track: null,
+    isPlaying: false,
+    queue: [],
+  }),
+}));
+
 // Mock WebPlayer component to avoid audio element issues
 vi.mock("@/components/app/WebPlayer", () => ({
   WebPlayer: ({ title }: { title: string }) => (
@@ -431,17 +442,17 @@ describe("Library Page", () => {
       });
     });
 
-    it("[P2] should link to generate page", async () => {
+    it("[P2] should link to dashboard page", async () => {
       // GIVEN: Library with items
       mockGetLibrary.mockResolvedValue([createLibraryItem()]);
 
       // WHEN: Rendering library page
       render(<LibraryPage />);
 
-      // THEN: Add New links to /generate
+      // THEN: Add New links to /dashboard
       await waitFor(() => {
         const addButton = screen.getByRole("link", { name: /add new/i });
-        expect(addButton).toHaveAttribute("href", "/generate");
+        expect(addButton).toHaveAttribute("href", "/dashboard");
       });
     });
   });

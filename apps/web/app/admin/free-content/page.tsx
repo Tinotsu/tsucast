@@ -19,8 +19,8 @@ import {
   XCircle,
   AlertTriangle,
   ExternalLink,
-  Star,
   Pencil,
+  Check,
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -74,13 +74,10 @@ export default function AdminFreeContentPage() {
   // Polling state - track multiple processing items
   const [processingIds, setProcessingIds] = useState<Set<string>>(new Set());
 
-  // Edit modal state
-  const [editingItem, setEditingItem] = useState<FreeContentItem | null>(null);
+  // Edit state
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState("");
-  const [editVoiceId, setEditVoiceId] = useState("");
-  const [editSourceUrl, setEditSourceUrl] = useState("");
-  const [isUpdating, setIsUpdating] = useState(false);
-  const [editError, setEditError] = useState<string | null>(null);
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
 
   const loadItems = useCallback(async () => {
     try {
@@ -170,6 +167,34 @@ export default function AdminFreeContentPage() {
       setFormError(err instanceof Error ? err.message : "Failed to create free content");
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleStartEdit = (item: FreeContentItem) => {
+    setEditingId(item.id);
+    setEditTitle(item.title);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingId(null);
+    setEditTitle("");
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingId || !editTitle.trim()) return;
+
+    setIsSavingEdit(true);
+    try {
+      const result = await updateAdminFreeContent(editingId, { title: editTitle.trim() });
+      setItems((prev) =>
+        prev.map((i) => (i.id === editingId ? result.item : i))
+      );
+      setEditingId(null);
+      setEditTitle("");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to update");
+    } finally {
+      setIsSavingEdit(false);
     }
   };
 
@@ -443,13 +468,12 @@ export default function AdminFreeContentPage() {
         ) : (
           <div className="divide-y divide-[#e5e5e5]">
             {/* Table Header */}
-            <div className="grid grid-cols-[1fr_100px_80px_100px_120px_60px_70px] gap-4 px-4 py-3 text-xs font-medium text-[#737373]">
+            <div className="grid grid-cols-[1fr_100px_80px_100px_120px_80px] gap-4 px-4 py-3 text-xs font-medium text-[#737373]">
               <span>Title</span>
               <span>Voice</span>
               <span>Status</span>
               <span>Duration</span>
               <span>Created</span>
-              <span>Featured</span>
               <span>Actions</span>
             </div>
 
@@ -457,15 +481,30 @@ export default function AdminFreeContentPage() {
               const status = statusConfig[item.status];
               const StatusIcon = status.icon;
               const isProcessing = item.status === "processing" || item.status === "pending";
+              const isEditing = editingId === item.id;
 
               return (
                 <div
                   key={item.id}
-                  className="grid grid-cols-[1fr_100px_80px_100px_120px_60px_70px] items-center gap-4 px-4 py-3 text-sm"
+                  className="grid grid-cols-[1fr_100px_80px_100px_120px_80px] items-center gap-4 px-4 py-3 text-sm"
                 >
                   {/* Title + URL */}
                   <div className="min-w-0">
-                    <p className="truncate font-medium text-[#1a1a1a]">{item.title}</p>
+                    {isEditing ? (
+                      <input
+                        type="text"
+                        value={editTitle}
+                        onChange={(e) => setEditTitle(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") handleSaveEdit();
+                          if (e.key === "Escape") handleCancelEdit();
+                        }}
+                        autoFocus
+                        className="w-full rounded border border-[#1a1a1a] px-2 py-1 text-sm font-medium text-[#1a1a1a] focus:outline-none"
+                      />
+                    ) : (
+                      <p className="truncate font-medium text-[#1a1a1a]">{item.title}</p>
+                    )}
                     {item.source_url && (
                       <a
                         href={item.source_url}
@@ -525,40 +564,49 @@ export default function AdminFreeContentPage() {
                     {formatDate(item.created_at)}
                   </span>
 
-                  {/* Featured Toggle */}
-                  <button
-                    onClick={() => handleToggleFeatured(item.id, item.featured)}
-                    disabled={item.status !== "ready"}
-                    className={cn(
-                      "flex justify-center rounded p-1 transition-colors",
-                      item.featured
-                        ? "text-yellow-500 hover:text-yellow-600"
-                        : "text-[#737373] hover:text-yellow-500",
-                      item.status !== "ready" && "opacity-30 cursor-not-allowed"
-                    )}
-                    title={item.featured ? "Remove from featured" : "Set as featured (landing page hero)"}
-                  >
-                    <Star
-                      className={cn("h-4 w-4", item.featured && "fill-current")}
-                    />
-                  </button>
-
                   {/* Actions */}
                   <div className="flex items-center gap-1">
-                    <button
-                      onClick={() => openEditModal(item)}
-                      className="rounded p-1 text-[#737373] hover:bg-blue-50 hover:text-blue-500"
-                      title="Edit"
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </button>
-                    <button
-                      onClick={() => handleDelete(item.id)}
-                      className="rounded p-1 text-[#737373] hover:bg-red-50 hover:text-red-500"
-                      title="Delete"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
+                    {isEditing ? (
+                      <>
+                        <button
+                          onClick={handleSaveEdit}
+                          disabled={isSavingEdit}
+                          className="rounded p-1 text-green-600 hover:bg-green-50 disabled:opacity-50"
+                          title="Save"
+                        >
+                          {isSavingEdit ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Check className="h-4 w-4" />
+                          )}
+                        </button>
+                        <button
+                          onClick={handleCancelEdit}
+                          disabled={isSavingEdit}
+                          className="rounded p-1 text-[#737373] hover:bg-[#f5f5f5] disabled:opacity-50"
+                          title="Cancel"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <button
+                          onClick={() => handleStartEdit(item)}
+                          className="rounded p-1 text-[#737373] hover:bg-[#f5f5f5] hover:text-[#1a1a1a]"
+                          title="Edit title"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(item.id)}
+                          className="rounded p-1 text-[#737373] hover:bg-red-50 hover:text-red-500"
+                          title="Delete"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </>
+                    )}
                   </div>
                 </div>
               );

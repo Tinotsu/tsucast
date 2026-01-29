@@ -1,11 +1,9 @@
 /**
- * Re-export useAudioPlayer hook for easier importing
+ * useAudioPlayer hook
  *
- * Usage:
- *   import { useAudioPlayer } from "@/hooks/useAudioPlayer";
- *   const { state, play, pause, togglePlay } = useAudioPlayer();
+ * Provides access to the global audio player state and controls.
+ * Audio playback persists across page navigation.
  */
-export {
-  useAudioPlayer,
-  useAudioPlayerOptional,
-} from "@/providers/AudioPlayerProvider";
+
+export { useAudioPlayer } from "@/providers/AudioPlayerProvider";
+export type { AudioTrack, AudioState } from "@/services/audio-service";

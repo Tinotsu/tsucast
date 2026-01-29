@@ -6,157 +6,217 @@ import {
   useEffect,
   useState,
   useCallback,
-  ReactNode,
+  type ReactNode,
 } from "react";
 import {
-  AudioService,
-  AudioState,
-  TrackMetadata,
+  audioService,
+  type AudioState,
+  type AudioTrack,
 } from "@/services/audio-service";
 
-interface AudioPlayerContextValue {
-  // State
-  state: AudioState;
-  currentTrack: TrackMetadata | null;
-
-  // Actions
-  play: (url?: string, metadata?: TrackMetadata) => Promise<void>;
+interface AudioPlayerContextValue extends AudioState {
+  play: (track: AudioTrack) => Promise<void>;
   pause: () => void;
-  togglePlay: () => void;
+  resume: () => void;
+  togglePlayPause: () => void;
   seek: (time: number) => void;
-  skip: (seconds: number) => void;
+  seekRelative: (delta: number) => void;
+  skipForward: (seconds?: number) => void;
+  skipBackward: (seconds?: number) => void;
   setPlaybackRate: (rate: number) => void;
-  cyclePlaybackRate: () => void;
+  setVolume: (volume: number) => void;
   toggleMute: () => void;
-
-  // Position
-  getSavedPosition: (trackId: string) => number;
-  clearSavedPosition: (trackId: string) => void;
+  stop: () => void;
+  // Sleep timer
+  setSleepTimer: (minutes: number) => void;
+  setSleepTimerEndOfTrack: () => void;
+  cancelSleepTimer: () => void;
+  // Queue management
+  addToQueue: (track: AudioTrack) => void;
+  removeFromQueue: (trackId: string) => void;
+  clearQueue: () => void;
+  playNext: () => void;
+  // Modal state
+  isModalOpen: boolean;
+  openModal: () => void;
+  closeModal: () => void;
+  // Queue panel state
+  isQueueOpen: boolean;
+  openQueue: () => void;
+  closeQueue: () => void;
 }
 
 const AudioPlayerContext = createContext<AudioPlayerContextValue | null>(null);
 
-const initialState: AudioState = {
-  isPlaying: false,
-  currentTime: 0,
-  duration: 0,
-  src: null,
-  playbackRate: 1,
-  isMuted: false,
-  isLoading: false,
-  error: null,
-};
-
 export function AudioPlayerProvider({ children }: { children: ReactNode }) {
-  const [state, setState] = useState<AudioState>(initialState);
-  const [currentTrack, setCurrentTrack] = useState<TrackMetadata | null>(null);
-  const [isInitialized, setIsInitialized] = useState(false);
+  const [state, setState] = useState<AudioState>(() => audioService.getState());
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isQueueOpen, setIsQueueOpen] = useState(false);
 
-  // Initialize audio service
   useEffect(() => {
-    // Only run on client
-    if (typeof window === "undefined") return;
-
-    const audioService = AudioService.getInstance();
-
-    // Sync initial state
-    setState(audioService.getState());
-    setCurrentTrack(audioService.getCurrentTrack());
-    setIsInitialized(true);
-
-    // Subscribe to state changes
-    const unsubscribeState = audioService.on("statechange", (newState) => {
+    // Subscribe to audio service state changes
+    const unsubscribe = audioService.subscribe((newState) => {
       setState(newState);
     });
 
-    const unsubscribeTimeUpdate = audioService.on("timeupdate", (newState) => {
-      setState((prev) => ({ ...prev, currentTime: newState.currentTime }));
-    });
-
-    const unsubscribeTrackChange = audioService.on("trackchange", () => {
-      setCurrentTrack(audioService.getCurrentTrack());
-    });
-
     return () => {
-      unsubscribeState();
-      unsubscribeTimeUpdate();
-      unsubscribeTrackChange();
+      unsubscribe();
     };
   }, []);
 
-  // Actions
-  const play = useCallback(
-    async (url?: string, metadata?: TrackMetadata): Promise<void> => {
-      const audioService = AudioService.getInstance();
-      await audioService.play(url, metadata);
-    },
-    []
-  );
+  // Update document title when playing
+  useEffect(() => {
+    if (typeof document === "undefined") return;
 
-  const pause = useCallback((): void => {
-    const audioService = AudioService.getInstance();
+    const baseTitle = "tsucast";
+    if (state.isPlaying && state.track) {
+      document.title = `▶ ${state.track.title} | ${baseTitle}`;
+    } else {
+      document.title = baseTitle;
+    }
+  }, [state.isPlaying, state.track]);
+
+  // Keyboard shortcuts for modal
+  useEffect(() => {
+    if (!isModalOpen) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setIsModalOpen(false);
+      } else if (e.key === " " && e.target === document.body) {
+        e.preventDefault();
+        audioService.togglePlayPause();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isModalOpen]);
+
+  const play = useCallback(async (track: AudioTrack) => {
+    await audioService.play(track);
+  }, []);
+
+  const pause = useCallback(() => {
     audioService.pause();
   }, []);
 
-  const togglePlay = useCallback((): void => {
-    const audioService = AudioService.getInstance();
-    audioService.togglePlay();
+  const resume = useCallback(() => {
+    audioService.resume();
   }, []);
 
-  const seek = useCallback((time: number): void => {
-    const audioService = AudioService.getInstance();
+  const togglePlayPause = useCallback(() => {
+    audioService.togglePlayPause();
+  }, []);
+
+  const seek = useCallback((time: number) => {
     audioService.seek(time);
   }, []);
 
-  const skip = useCallback((seconds: number): void => {
-    const audioService = AudioService.getInstance();
-    audioService.skip(seconds);
+  const seekRelative = useCallback((delta: number) => {
+    audioService.seekRelative(delta);
   }, []);
 
-  const setPlaybackRate = useCallback((rate: number): void => {
-    const audioService = AudioService.getInstance();
+  const skipForward = useCallback((seconds = 15) => {
+    audioService.skipForward(seconds);
+  }, []);
+
+  const skipBackward = useCallback((seconds = 15) => {
+    audioService.skipBackward(seconds);
+  }, []);
+
+  const setPlaybackRate = useCallback((rate: number) => {
     audioService.setPlaybackRate(rate);
   }, []);
 
-  const cyclePlaybackRate = useCallback((): void => {
-    const audioService = AudioService.getInstance();
-    audioService.cyclePlaybackRate();
+  const setVolume = useCallback((volume: number) => {
+    audioService.setVolume(volume);
   }, []);
 
-  const toggleMute = useCallback((): void => {
-    const audioService = AudioService.getInstance();
+  const toggleMute = useCallback(() => {
     audioService.toggleMute();
   }, []);
 
-  const getSavedPosition = useCallback((trackId: string): number => {
-    const audioService = AudioService.getInstance();
-    return audioService.getSavedPosition(trackId);
+  const stop = useCallback(() => {
+    audioService.stop();
   }, []);
 
-  const clearSavedPosition = useCallback((trackId: string): void => {
-    const audioService = AudioService.getInstance();
-    audioService.clearSavedPosition(trackId);
+  // Sleep timer methods
+  const setSleepTimer = useCallback((minutes: number) => {
+    audioService.setSleepTimer(minutes);
+  }, []);
+
+  const setSleepTimerEndOfTrack = useCallback(() => {
+    audioService.setSleepTimerEndOfTrack();
+  }, []);
+
+  const cancelSleepTimer = useCallback(() => {
+    audioService.cancelSleepTimer();
+  }, []);
+
+  // Queue methods
+  const addToQueue = useCallback((track: AudioTrack) => {
+    audioService.addToQueue(track);
+  }, []);
+
+  const removeFromQueue = useCallback((trackId: string) => {
+    audioService.removeFromQueue(trackId);
+  }, []);
+
+  const clearQueue = useCallback(() => {
+    audioService.clearQueue();
+  }, []);
+
+  const playNext = useCallback(() => {
+    audioService.playNext();
+  }, []);
+
+  // Modal methods
+  const openModal = useCallback(() => {
+    setIsModalOpen(true);
+  }, []);
+
+  const closeModal = useCallback(() => {
+    setIsModalOpen(false);
+  }, []);
+
+  // Queue panel methods
+  const openQueue = useCallback(() => {
+    setIsQueueOpen(true);
+  }, []);
+
+  const closeQueue = useCallback(() => {
+    setIsQueueOpen(false);
   }, []);
 
   const value: AudioPlayerContextValue = {
-    state,
-    currentTrack,
+    ...state,
     play,
     pause,
-    togglePlay,
+    resume,
+    togglePlayPause,
     seek,
-    skip,
+    seekRelative,
+    skipForward,
+    skipBackward,
     setPlaybackRate,
-    cyclePlaybackRate,
+    setVolume,
     toggleMute,
-    getSavedPosition,
-    clearSavedPosition,
+    stop,
+    setSleepTimer,
+    setSleepTimerEndOfTrack,
+    cancelSleepTimer,
+    addToQueue,
+    removeFromQueue,
+    clearQueue,
+    playNext,
+    isModalOpen,
+    openModal,
+    closeModal,
+    isQueueOpen,
+    openQueue,
+    closeQueue,
   };
-
-  // Don't render anything server-side that depends on audio
-  if (!isInitialized) {
-    return <>{children}</>;
-  }
 
   return (
     <AudioPlayerContext.Provider value={value}>
@@ -167,17 +227,10 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
 
 export function useAudioPlayer(): AudioPlayerContextValue {
   const context = useContext(AudioPlayerContext);
-
   if (!context) {
-    throw new Error(
-      "useAudioPlayer must be used within an AudioPlayerProvider"
-    );
+    throw new Error("useAudioPlayer must be used within AudioPlayerProvider");
   }
-
   return context;
 }
 
-// Optional hook for components that may be outside provider
-export function useAudioPlayerOptional(): AudioPlayerContextValue | null {
-  return useContext(AudioPlayerContext);
-}
+export { AudioPlayerContext };

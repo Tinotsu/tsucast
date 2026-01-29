@@ -13,7 +13,11 @@ import {
   Trash2,
   AlertTriangle,
   X,
+  Sun,
+  Moon,
+  Monitor,
 } from "lucide-react";
+import { useTheme } from "@/hooks/useTheme";
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import { deleteAccount } from "@/lib/api";
@@ -21,6 +25,7 @@ import { deleteAccount } from "@/lib/api";
 export default function SettingsPage() {
   const { profile, signOut, isLoading, isAuthenticated } = useAuth();
   const { credits, timeBank, isLoading: creditsLoading } = useCredits();
+  const { theme, setTheme } = useTheme();
   const router = useRouter();
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -39,7 +44,7 @@ export default function SettingsPage() {
   if (isLoading || !isAuthenticated) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-[#1a1a1a]" />
+        <Loader2 className="h-8 w-8 animate-spin text-[var(--foreground)]" />
       </div>
     );
   }
@@ -87,25 +92,25 @@ export default function SettingsPage() {
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-12 sm:px-6 lg:px-8">
-      <h1 className="mb-12 text-3xl font-bold tracking-tight text-[#1a1a1a]">
+      <h1 className="mb-12 text-3xl font-bold tracking-tight text-[var(--foreground)]">
         Settings
       </h1>
 
       {/* Profile Section */}
       <section className="mb-12">
-        <h2 className="mb-4 text-lg font-bold text-[#1a1a1a]">
+        <h2 className="mb-4 text-lg font-bold text-[var(--foreground)]">
           Profile
         </h2>
-        <div className="rounded-2xl bg-white p-6">
+        <div className="rounded-2xl bg-[var(--card)] p-6">
           <div className="flex items-center gap-4">
-            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#1a1a1a]">
-              <User className="h-8 w-8 text-white" />
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[var(--foreground)]">
+              <User className="h-8 w-8 text-[var(--background)]" />
             </div>
             <div>
-              <p className="font-bold text-[#1a1a1a]">
+              <p className="font-bold text-[var(--foreground)]">
                 {profile?.display_name || profile?.email?.split("@")[0]}
               </p>
-              <p className="flex items-center gap-2 text-sm font-normal text-[#737373]">
+              <p className="flex items-center gap-2 text-sm font-normal text-[var(--muted)]">
                 <Mail className="h-4 w-4" />
                 {profile?.email}
               </p>
@@ -116,21 +121,21 @@ export default function SettingsPage() {
 
       {/* Credits Section */}
       <section className="mb-12">
-        <h2 className="mb-4 text-lg font-bold text-[#1a1a1a]">
+        <h2 className="mb-4 text-lg font-bold text-[var(--foreground)]">
           Credits
         </h2>
-        <div className="rounded-2xl bg-white p-6">
+        <div className="rounded-2xl bg-[var(--card)] p-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#1a1a1a]">
-                <Ticket className="h-5 w-5 text-white" />
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--foreground)]">
+                <Ticket className="h-5 w-5 text-[var(--background)]" />
               </div>
               <div>
-                <p className="font-bold text-[#1a1a1a]">
+                <p className="font-bold text-[var(--foreground)]">
                   {creditsLoading ? "..." : `${credits} credits available`}
                 </p>
                 {timeBank > 0 && (
-                  <p className="text-sm font-normal text-[#737373]">
+                  <p className="text-sm font-normal text-[var(--muted)]">
                     {timeBank} min banked
                   </p>
                 )}
@@ -138,7 +143,7 @@ export default function SettingsPage() {
             </div>
             <Link
               href="/upgrade"
-              className="rounded-lg bg-[#1a1a1a] px-4 py-2 font-bold text-white hover:bg-white hover:text-[#1a1a1a] hover:border hover:border-[#1a1a1a]"
+              className="rounded-lg bg-[var(--foreground)] px-4 py-2 font-bold text-[var(--background)] transition-colors hover:opacity-80"
             >
               Buy more credits
             </Link>
@@ -146,16 +151,63 @@ export default function SettingsPage() {
         </div>
       </section>
 
+      {/* Theme Section */}
+      <section className="mb-12">
+        <h2 className="mb-4 text-lg font-bold text-[var(--foreground)]">
+          Appearance
+        </h2>
+        <div className="rounded-2xl bg-[var(--card)] p-6">
+          <p className="mb-4 text-sm text-[var(--muted)]">
+            Choose your preferred theme
+          </p>
+          <div className="grid grid-cols-3 gap-3">
+            <button
+              onClick={() => setTheme("light")}
+              className={`flex flex-col items-center gap-2 rounded-xl border-2 px-4 py-4 transition-colors ${
+                theme === "light"
+                  ? "border-[var(--foreground)] bg-[var(--secondary)]"
+                  : "border-[var(--border)] hover:border-[var(--muted)]"
+              }`}
+            >
+              <Sun className="h-6 w-6" />
+              <span className="text-sm font-medium">Light</span>
+            </button>
+            <button
+              onClick={() => setTheme("dark")}
+              className={`flex flex-col items-center gap-2 rounded-xl border-2 px-4 py-4 transition-colors ${
+                theme === "dark"
+                  ? "border-[var(--foreground)] bg-[var(--secondary)]"
+                  : "border-[var(--border)] hover:border-[var(--muted)]"
+              }`}
+            >
+              <Moon className="h-6 w-6" />
+              <span className="text-sm font-medium">Dark</span>
+            </button>
+            <button
+              onClick={() => setTheme("system")}
+              className={`flex flex-col items-center gap-2 rounded-xl border-2 px-4 py-4 transition-colors ${
+                theme === "system"
+                  ? "border-[var(--foreground)] bg-[var(--secondary)]"
+                  : "border-[var(--border)] hover:border-[var(--muted)]"
+              }`}
+            >
+              <Monitor className="h-6 w-6" />
+              <span className="text-sm font-medium">System</span>
+            </button>
+          </div>
+        </div>
+      </section>
+
       {/* Account Section */}
       <section className="mb-12">
-        <h2 className="mb-4 text-lg font-bold text-[#1a1a1a]">
+        <h2 className="mb-4 text-lg font-bold text-[var(--foreground)]">
           Account
         </h2>
-        <div className="rounded-2xl bg-white">
+        <div className="rounded-2xl bg-[var(--card)]">
           <button
             onClick={handleSignOut}
             disabled={isSigningOut}
-            className="flex w-full items-center justify-between border-b border-[#e5e5e5] px-6 py-4 text-left text-[#1a1a1a] transition-colors hover:bg-[#1a1a1a] hover:text-white"
+            className="flex w-full items-center justify-between border-b border-[var(--border)] px-6 py-4 text-left text-[var(--foreground)] transition-colors hover:bg-[var(--foreground)] hover:text-[var(--background)]"
           >
             <span className="flex items-center gap-3 font-bold">
               <LogOut className="h-5 w-5" />
@@ -165,7 +217,7 @@ export default function SettingsPage() {
           </button>
           <button
             onClick={() => setShowDeleteDialog(true)}
-            className="flex w-full items-center justify-between px-6 py-4 text-left text-red-500 transition-colors hover:bg-red-500 hover:text-white"
+            className="flex w-full items-center justify-between px-6 py-4 text-left text-[var(--destructive)] transition-colors hover:bg-[var(--destructive)] hover:text-white"
           >
             <span className="flex items-center gap-3 font-bold">
               <Trash2 className="h-5 w-5" />
@@ -177,20 +229,20 @@ export default function SettingsPage() {
 
       {/* Legal Links */}
       <section>
-        <h2 className="mb-4 text-lg font-bold text-[#1a1a1a]">
+        <h2 className="mb-4 text-lg font-bold text-[var(--foreground)]">
           Legal
         </h2>
-        <div className="rounded-2xl bg-white">
+        <div className="rounded-2xl bg-[var(--card)]">
           <Link
             href="/privacy"
-            className="flex items-center justify-between border-b border-[#e5e5e5] px-6 py-4 font-medium text-[#1a1a1a] transition-colors hover:bg-[#1a1a1a] hover:text-white"
+            className="flex items-center justify-between border-b border-[var(--border)] px-6 py-4 font-medium text-[var(--foreground)] transition-colors hover:bg-[var(--foreground)] hover:text-[var(--background)]"
           >
             Privacy Policy
             <ExternalLink className="h-4 w-4" />
           </Link>
           <Link
             href="/terms"
-            className="flex items-center justify-between px-6 py-4 font-medium text-[#1a1a1a] transition-colors hover:bg-[#1a1a1a] hover:text-white"
+            className="flex items-center justify-between px-6 py-4 font-medium text-[var(--foreground)] transition-colors hover:bg-[var(--foreground)] hover:text-[var(--background)]"
           >
             Terms of Service
             <ExternalLink className="h-4 w-4" />
@@ -199,34 +251,34 @@ export default function SettingsPage() {
       </section>
 
       {/* App Version */}
-      <p className="mt-12 text-center text-xs font-normal text-[#737373]">
+      <p className="mt-12 text-center text-xs font-normal text-[var(--muted)]">
         tsucast Web v1.0.0
       </p>
 
       {/* Delete Account Confirmation Dialog */}
       {showDeleteDialog && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/80 p-4">
-          <div className="w-full max-w-md rounded-2xl border border-[#e5e5e5] bg-white p-6">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--background)]/80 backdrop-blur-sm p-4">
+          <div className="w-full max-w-md rounded-2xl border border-[var(--border)] bg-[var(--card)] p-6">
             <div className="mb-4 flex items-start justify-between">
               <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-500">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--destructive)]">
                   <AlertTriangle className="h-5 w-5 text-white" />
                 </div>
-                <h3 className="text-lg font-bold text-[#1a1a1a]">
+                <h3 className="text-lg font-bold text-[var(--foreground)]">
                   Delete Account
                 </h3>
               </div>
               <button
                 onClick={closeDeleteDialog}
-                className="rounded-lg p-1 text-[#737373] hover:bg-[#1a1a1a] hover:text-white"
+                className="rounded-lg p-1 text-[var(--muted)] hover:bg-[var(--foreground)] hover:text-[var(--background)]"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
 
-            <div className="mb-6 space-y-3 text-sm font-normal text-[#737373]">
+            <div className="mb-6 space-y-3 text-sm font-normal text-[var(--muted)]">
               <p>
-                This action <span className="text-red-500">cannot be undone</span>.
+                This action <span className="text-[var(--destructive)]">cannot be undone</span>.
                 All your data will be permanently deleted, including:
               </p>
               <ul className="ml-4 list-disc space-y-1">
@@ -236,7 +288,7 @@ export default function SettingsPage() {
                 <li>Account information</li>
               </ul>
               <p className="pt-2">
-                To confirm, type <span className="font-mono text-[#1a1a1a]">DELETE</span> below:
+                To confirm, type <span className="font-mono text-[var(--foreground)]">DELETE</span> below:
               </p>
             </div>
 
@@ -245,12 +297,12 @@ export default function SettingsPage() {
               value={deleteConfirmText}
               onChange={(e) => setDeleteConfirmText(e.target.value)}
               placeholder="Type DELETE to confirm"
-              className="mb-4 w-full rounded-lg border border-[#e5e5e5] bg-white px-4 py-3 font-normal text-[#1a1a1a] placeholder:text-[#a3a3a3] focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500"
+              className="mb-4 w-full rounded-lg border border-[var(--border)] bg-[var(--input)] px-4 py-3 font-normal text-[var(--foreground)] placeholder:text-[var(--muted)] focus:border-[var(--destructive)] focus:outline-none focus:ring-1 focus:ring-[var(--destructive)]"
               disabled={isDeleting}
             />
 
             {deleteError && (
-              <div className="mb-4 rounded-lg border border-red-500 bg-white px-4 py-3 text-sm text-red-500">
+              <div className="mb-4 rounded-lg border border-[var(--destructive)] bg-[var(--card)] px-4 py-3 text-sm text-[var(--destructive)]">
                 {deleteError}
               </div>
             )}
@@ -259,14 +311,14 @@ export default function SettingsPage() {
               <button
                 onClick={closeDeleteDialog}
                 disabled={isDeleting}
-                className="flex-1 rounded-lg border border-[#1a1a1a] px-4 py-3 font-bold text-[#1a1a1a] hover:bg-[#1a1a1a] hover:text-white disabled:opacity-50"
+                className="flex-1 rounded-lg border border-[var(--foreground)] px-4 py-3 font-bold text-[var(--foreground)] hover:bg-[var(--foreground)] hover:text-[var(--background)] disabled:opacity-50"
               >
                 Cancel
               </button>
               <button
                 onClick={handleDeleteAccount}
                 disabled={deleteConfirmText !== "DELETE" || isDeleting}
-                className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-red-600 px-4 py-3 font-bold text-white hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-50"
+                className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-[var(--destructive)] px-4 py-3 font-bold text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {isDeleting ? (
                   <>

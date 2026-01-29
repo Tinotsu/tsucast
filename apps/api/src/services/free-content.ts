@@ -265,6 +265,36 @@ export async function updateFreeContent(
 }
 
 /**
+ * Update a free content item's title.
+ * Returns the updated item or null if not found.
+ */
+export async function updateFreeContent(
+  id: string,
+  updates: { title: string }
+): Promise<FreeContentItem | null> {
+  const supabase = getSupabase();
+  if (!supabase) throw new Error('Supabase not configured');
+
+  const { data, error } = await supabase
+    .from('free_content')
+    .update({ title: updates.title })
+    .eq('id', id)
+    .select()
+    .single();
+
+  if (error) {
+    if (error.code === 'PGRST116') {
+      // No rows returned
+      return null;
+    }
+    logger.error({ id, error }, 'Failed to update free content');
+    throw error;
+  }
+
+  return data as FreeContentItem;
+}
+
+/**
  * Delete a free content item by ID.
  * Does NOT delete from R2 (audio files are cheap, can be cleaned up later).
  */

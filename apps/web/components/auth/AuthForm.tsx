@@ -4,8 +4,8 @@ import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/hooks/useAuth";
+import { Mail, Lock, Loader2, Sun, Moon } from "lucide-react";
 import { useTheme } from "@/hooks/useTheme";
-import { Mail, Lock, Loader2, Moon, Sun } from "lucide-react";
 import { Logo } from "@/components/ui/Logo";
 import { cn } from "@/lib/utils";
 
@@ -24,7 +24,7 @@ export function AuthForm({ mode }: AuthFormProps) {
 
   const { signInWithEmail, signUpWithEmail, signInWithGoogle, signInWithApple } =
     useAuth();
-  const { theme, toggleTheme, mounted } = useTheme();
+  const { resolvedTheme, setTheme } = useTheme();
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirect = searchParams.get("redirect") || "/dashboard";
@@ -96,8 +96,12 @@ export function AuthForm({ mode }: AuthFormProps) {
 
   const isLogin = mode === "login";
 
+  const toggleTheme = () => {
+    setTheme(resolvedTheme === "dark" ? "light" : "dark");
+  };
+
   return (
-    <div className="mx-auto w-full max-w-md">
+    <div className="animate-fade-in mx-auto w-full max-w-md">
       {/* Logo */}
       <div className="mb-10 text-center">
         <Link href="/" className="inline-flex items-center gap-2">
@@ -323,22 +327,19 @@ export function AuthForm({ mode }: AuthFormProps) {
         </p>
       )}
 
-      {/* Night Mode Toggle */}
+      {/* Theme Toggle */}
       <div className="mt-8 flex justify-center">
         <button
           onClick={toggleTheme}
-          className="rounded-lg p-2 text-[var(--muted)] hover:bg-[var(--border)] hover:text-[var(--foreground)] transition-colors"
-          aria-label={
-            mounted
-              ? `Switch to ${theme === "light" ? "dark" : "light"} mode`
-              : "Toggle theme"
-          }
+          type="button"
+          className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-[var(--muted)] transition-colors hover:bg-[var(--secondary)] hover:text-[var(--foreground)]"
         >
-          {mounted && theme === "dark" ? (
-            <Sun className="h-5 w-5" />
+          {resolvedTheme === "dark" ? (
+            <Sun className="h-4 w-4" />
           ) : (
-            <Moon className="h-5 w-5" />
+            <Moon className="h-4 w-4" />
           )}
+          {resolvedTheme === "dark" ? "Light Mode" : "Night Mode"}
         </button>
       </div>
     </div>
