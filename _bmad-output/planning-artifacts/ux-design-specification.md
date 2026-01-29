@@ -516,14 +516,16 @@ _Source: [Spotify Design - Audio-Forward UX](https://spotify.design/article/audi
 - Volume slider
 - "Download to Mobile" CTA (app store links)
 
-**Limitations vs Mobile:**
-- No background audio playback (audio stops when tab hidden)
-- No lock screen controls
-- No sleep timer functionality
-- No CarPlay/Android Auto integration
-- No Bluetooth control integration
-- HTML5 audio only (not podcast-optimized)
-- Disclaimer banner: "For best experience, use the mobile app"
+**Web Player Capabilities:**
+- ✅ Background audio playback (continues when screen off, like SoundCloud)
+- ✅ Lock screen controls via Media Session API
+- ✅ Sleep timer (works while audio playing)
+- ✅ Bluetooth control integration (via Media Session)
+- HTML5 Audio API (fully capable for podcast playback)
+
+**Not Supported on Web:**
+- CarPlay/Android Auto (native app only)
+- Offline playback (requires native app with downloads)
 
 ---
 
@@ -581,5 +583,1364 @@ _Source: [Spotify Design - Audio-Forward UX](https://spotify.design/article/audi
 - Headings: `tracking-tight` for dense headlines
 - Body text: `leading-relaxed` (line-height 1.6) for comfortable reading
 - System fonts (Inter, SF Pro, Roboto, system-ui)
+
+---
+
+## Web-First UX Revision (2026-01-29)
+
+**Context:** This revision pivots from mobile-first to web-first design. The web app becomes the premium flagship that mobile apps will follow. Focus is on the core 3.5 app screens only (Landing, Pricing, Admin handled separately).
+
+### Architecture Decisions
+
+| Decision | Choice | Rationale |
+|----------|--------|-----------|
+| **Navigation** | Sidebar (icons + text) | Premium feel, persistent access, Apple Podcasts style |
+| **Player** | Mini-player + full modal | Seamless playback across screens, industry standard |
+| **Library** | Tabs (All / Playlists) | Clean organization, matches wireframe spirit |
+| **Theme** | Light + Dark (#121212) | Dark gray night mode (Spotify style), softer on eyes |
+
+### Responsive Breakpoints
+
+| Breakpoint | Width | Layout |
+|------------|-------|--------|
+| **Mobile** | < 768px | Bottom nav, stacked layout, full-width content |
+| **Tablet** | 768px - 1024px | Collapsible sidebar, 2-column where appropriate |
+| **Desktop** | > 1024px | Fixed sidebar, max-width content area, side-by-side layouts |
+
+---
+
+### Color System Revision
+
+**Light Mode (Default):**
+```
+Background:     #FFFFFF (pure white)
+Surface:        #FFFFFF (cards, inputs)
+Border:         #000000 (pure black, 1px)
+Text Primary:   #000000 (pure black)
+Text Secondary: #000000 at 60% opacity
+Accent:         #000000 (buttons, active states)
+Error:          #EF4444 (red-500)
+Success:        #22C55E (green-500)
+```
+
+**Night Mode:**
+```
+Background:     #121212 (dark gray)
+Surface:        #1E1E1E (elevated surfaces)
+Border:         #FFFFFF at 20% opacity
+Text Primary:   #FFFFFF (pure white)
+Text Secondary: #FFFFFF at 60% opacity
+Accent:         #FFFFFF (buttons, active states)
+Error:          #F87171 (red-400, lighter for dark bg)
+Success:        #4ADE80 (green-400, lighter for dark bg)
+```
+
+**Design Rules:**
+- No intermediate grays except for borders in dark mode
+- Borders define all surfaces (1px solid)
+- Use opacity for secondary text, not gray colors
+- Accent is always the inverse of background (white on black, black on white)
+
+---
+
+### Navigation: Sidebar
+
+**Desktop (> 1024px):**
+```
+┌─────────────────────────────────────────────────────────┐
+│ ┌──────────┐                                            │
+│ │          │                                            │
+│ │  tsucast │                                            │
+│ │          │                                            │
+│ ├──────────┤                                            │
+│ │ ⊕ Add    │  ← Primary CTA, filled button              │
+│ ├──────────┤                                            │
+│ │ 📚 Library│ ← Active state: filled bg                 │
+│ │ ⚙ Settings│                                           │
+│ ├──────────┤                                            │
+│ │          │                                            │
+│ │          │                                            │
+│ │          │                                            │
+│ ├──────────┤                                            │
+│ │ 🌙 Night │  ← Toggle at bottom                        │
+│ └──────────┘                                            │
+│    240px                        Content Area            │
+└─────────────────────────────────────────────────────────┘
+```
+
+**Sidebar Specifications:**
+- Width: 240px fixed (desktop), 72px collapsed (tablet), hidden (mobile)
+- Logo: tsucast wordmark, links to /library
+- Nav items: Icon (20px) + Label (14px bold), 48px height, 16px padding
+- Active state: Inverted colors (white bg + black text in light mode)
+- Night mode toggle: At bottom of sidebar, icon + "Night" label
+
+**Mobile (< 768px):**
+```
+┌─────────────────────────────────────────────┐
+│ Header: Logo ─────────────────────── ☰ Menu │
+├─────────────────────────────────────────────┤
+│                                             │
+│              Content Area                   │
+│                                             │
+├─────────────────────────────────────────────┤
+│   ⊕ Add      📚 Library     ⚙ Settings     │
+│              (bottom nav)                   │
+└─────────────────────────────────────────────┘
+```
+
+---
+
+### Screen 1: Add URL (/add)
+
+**Purpose:** Paste article URL, select voice, generate audio.
+
+**Desktop Layout:**
+```
+┌─ Sidebar ─┬──────────────────────────────────────────┐
+│           │                                          │
+│  tsucast  │  ┌────────────────────────────────────┐  │
+│           │  │                                    │  │
+│  ⊕ Add ●  │  │        Generate Podcast           │  │
+│  📚 Library│  │                                    │  │
+│  ⚙ Settings│  │  ┌────────────────────────────┐   │  │
+│           │  │  │ Paste article URL...       │   │  │
+│           │  │  └────────────────────────────┘   │  │
+│           │  │                                    │  │
+│           │  │  Voice: [Default ▼]               │  │
+│           │  │                                    │  │
+│           │  │  ┌────────────────────────────┐   │  │
+│           │  │  │ Estimated: 8 min           │   │  │
+│           │  │  │ Credits: 1                 │   │  │
+│           │  │  └────────────────────────────┘   │  │
+│           │  │                                    │  │
+│           │  │  [████████ Generate ████████]     │  │
+│           │  │                                    │  │
+│  🌙 Night │  └────────────────────────────────────┘  │
+├───────────┼──────────────────────────────────────────┤
+│           │  ▶ Currently Playing Title... ━━━━━━━━   │ ← Mini-player
+└───────────┴──────────────────────────────────────────┘
+```
+
+**Components:**
+1. **Page Header:** "Generate Podcast" (H1, 28px bold)
+2. **URL Input:** Full-width, auto-focus, paste detection, border on focus
+3. **Voice Selector:** Dropdown or chip group (Default, Paul, Sarah, etc.)
+4. **Credit Preview Card:** Shows estimated duration, credits needed, balance
+5. **Generate Button:** Full-width, primary style (inverted colors)
+6. **Success State:** Transitions to player modal automatically
+
+**Interactions:**
+- URL paste triggers auto-preview (debounced 500ms)
+- Generate shows loading spinner in button
+- On success: Add to library + open player modal
+- On error: Inline error message with retry
+
+---
+
+### Screen 2: Library (/library)
+
+**Purpose:** Browse articles and playlists, manage content.
+
+**Desktop Layout:**
+```
+┌─ Sidebar ─┬──────────────────────────────────────────┐
+│           │                                          │
+│  tsucast  │  Library                    [+ Create]   │
+│           │  ─────────────────────────────────────   │
+│  ⊕ Add    │  [ All ]  [ Playlists ]     ← Tabs      │
+│  📚 Library●│                                         │
+│  ⚙ Settings│  ┌──────────────────────────────────┐   │
+│           │  │ ▶ │ Article Title Here         │   │
+│           │  │   │ 12 min • Jan 28            │   │
+│           │  │   │ ━━━━━━━━░░░░░░░░ 35%       │   │
+│           │  ├──────────────────────────────────┤   │
+│           │  │ ▶ │ Another Great Article      │   │
+│           │  │   │ 8 min • Jan 27 • ✓ Played  │   │
+│           │  │   │ ━━━━━━━━━━━━━━━━━━ 100%    │   │
+│           │  ├──────────────────────────────────┤   │
+│           │  │ ▶ │ Third Article Title        │   │
+│           │  │   │ 15 min • Jan 26            │   │
+│           │  │   │ New                         │   │
+│           │  └──────────────────────────────────┘   │
+│  🌙 Night │                                          │
+├───────────┼──────────────────────────────────────────┤
+│           │  ▶ Article Title... ━━━━━━━━━━━━ 4:32   │
+└───────────┴──────────────────────────────────────────┘
+```
+
+**All Tab - Article List:**
+- Each item: Play button (48px), Title (bold), Meta (duration, date, status)
+- Progress bar under meta (if in progress)
+- Hover: Show delete icon (right side)
+- Click item: Start playback + open mini-player
+- Swipe left (mobile): Reveal delete action
+
+**Playlists Tab:**
+```
+┌──────────────────────────────────────────────────────┐
+│  Playlists                          [+ New Playlist] │
+├──────────────────────────────────────────────────────┤
+│  ┌────────────────────────────────────────────────┐  │
+│  │ 📚  Morning Reads                    ▶  5 items│  │
+│  ├────────────────────────────────────────────────┤  │
+│  │ 🌙  Bedtime Stories                  ▶  3 items│  │
+│  └────────────────────────────────────────────────┘  │
+│                                                      │
+│  Click playlist → Expand to show items              │
+│  Drag items to reorder (desktop)                    │
+└──────────────────────────────────────────────────────┘
+```
+
+**Playlist Expanded:**
+- Shows all items in playlist
+- Drag handle for reordering
+- Remove item button
+- Play all button
+- Edit playlist name (inline)
+
+---
+
+### Screen 3: Player (Modal)
+
+**Purpose:** Full playback experience with controls.
+
+**Triggered by:** Clicking mini-player or tapping "expand" icon.
+
+**Desktop Modal Layout:**
+```
+┌──────────────────────────────────────────────────────┐
+│                                              [✕]     │
+│                                                      │
+│            ┌────────────────────────┐                │
+│            │                        │                │
+│            │      🎧 Artwork        │   280x280px    │
+│            │    (or placeholder)    │                │
+│            │                        │                │
+│            └────────────────────────┘                │
+│                                                      │
+│              How to Think for Yourself               │
+│              paulgraham.com • Paul voice             │
+│                                                      │
+│         ━━━━━━━━━━━━━━━━━━░░░░░░░░░░░░░             │
+│         4:32                            12:45        │
+│                                                      │
+│              ⏪ 15    ▶/⏸    ⏩ 15                  │
+│                      (72px)                          │
+│                                                      │
+│    ─────────────────────────────────────────────    │
+│                                                      │
+│     1x        🌙         📋        📝               │
+│    Speed     Sleep     Queue      Text               │
+│                                                      │
+└──────────────────────────────────────────────────────┘
+```
+
+**Player Controls:**
+1. **Artwork:** 280x280px placeholder (gradient or icon)
+2. **Title:** H1 (24px bold), centered
+3. **Source:** Meta text (14px, 60% opacity)
+4. **Progress Bar:** Seekable, shows buffered state
+5. **Time Display:** Current / Total
+6. **Transport:** Skip -15s, Play/Pause (72px primary button), Skip +15s
+7. **Extras Row:** Speed (0.5x-2x), Sleep timer, Queue, Show text
+
+**Speed Options:** 0.5x, 0.75x, 1x, 1.25x, 1.5x, 1.75x, 2x
+
+**Sleep Timer Options:** Off, 5 min, 15 min, 30 min, 45 min, 1 hour, End of article
+
+**Web Player Capabilities:**
+- ✅ Background audio works when screen is off (like SoundCloud)
+- ✅ Sleep timer works via JavaScript timers + Media Session
+- ✅ Lock screen controls via Media Session API
+- Queue persists in localStorage
+
+---
+
+### Screen 3.5: Settings (/settings)
+
+**Purpose:** Account management, preferences, night mode.
+
+**Desktop Layout:**
+```
+┌─ Sidebar ─┬──────────────────────────────────────────┐
+│           │                                          │
+│  tsucast  │  Settings                                │
+│           │  ─────────────────────────────────────   │
+│  ⊕ Add    │                                          │
+│  📚 Library│  Profile                                 │
+│  ⚙ Settings●│  ┌────────────────────────────────────┐ │
+│           │  │ 👤  Display Name                    │ │
+│           │  │     email@example.com               │ │
+│           │  └────────────────────────────────────┘ │
+│           │                                          │
+│           │  Credits                                 │
+│           │  ┌────────────────────────────────────┐ │
+│           │  │ 🎫  12 credits        [Buy More →] │ │
+│           │  │     +45 min time bank              │ │
+│           │  └────────────────────────────────────┘ │
+│           │                                          │
+│           │  Appearance                              │
+│           │  ┌────────────────────────────────────┐ │
+│           │  │ 🌙  Night Mode           [Toggle]  │ │
+│           │  └────────────────────────────────────┘ │
+│           │                                          │
+│           │  Account                                 │
+│           │  ┌────────────────────────────────────┐ │
+│           │  │ Sign Out                           │ │
+│           │  │ Delete Account                     │ │
+│           │  └────────────────────────────────────┘ │
+│           │                                          │
+│           │  Legal                                   │
+│           │  ┌────────────────────────────────────┐ │
+│  🌙 Night │  │ Privacy Policy    Terms of Service│ │
+│           │  └────────────────────────────────────┘ │
+├───────────┼──────────────────────────────────────────┤
+│           │  ▶ Currently Playing... ━━━━━━━━━━━━━   │
+└───────────┴──────────────────────────────────────────┘
+```
+
+**Settings Sections:**
+1. **Profile:** Avatar, name, email (read-only for now)
+2. **Credits:** Current balance, time bank, buy more link
+3. **Appearance:** Night mode toggle (persisted to localStorage)
+4. **Account:** Sign out, Delete account (with confirmation modal)
+5. **Legal:** Links to /privacy and /terms
+
+---
+
+### Mini-Player (Persistent)
+
+**Purpose:** Always-visible playback bar when audio is playing.
+
+**Desktop Layout (bottom of viewport):**
+```
+┌───────────────────────────────────────────────────────┐
+│ ┌────┐                                                │
+│ │ 🎧 │  Article Title Here...  ━━━━━━━░░░  4:32  ▶⏸  │
+│ └────┘                                                │
+│  48px        flex-grow           progress   time  btn │
+└───────────────────────────────────────────────────────┘
+```
+
+**Specifications:**
+- Height: 72px (desktop), 64px (mobile)
+- Thumbnail: 48px square (artwork or placeholder)
+- Title: Truncated with ellipsis
+- Progress: Thin bar (4px) or text time
+- Play/Pause: 40px button
+- Click anywhere (except button): Opens full player modal
+
+**States:**
+- Hidden: No audio loaded
+- Playing: Pause icon, progress updating
+- Paused: Play icon, progress static
+- Loading: Spinner in place of play icon
+
+---
+
+### Transitions & Animations (Apple Podcasts Inspiration)
+
+**Principles:**
+- Smooth, not flashy (200-300ms duration)
+- Use transform and opacity (GPU accelerated)
+- Ease-out for entering, ease-in for exiting
+
+**Specific Animations:**
+1. **Page transitions:** Fade (opacity 0→1, 200ms ease-out)
+2. **Modal open:** Scale up from mini-player (0.95→1) + fade
+3. **Modal close:** Scale down to mini-player (1→0.95) + fade
+4. **List items:** Stagger fade-in on load (50ms delay per item, max 5)
+5. **Hover states:** Background color transition (150ms)
+6. **Night mode toggle:** All colors transition (300ms)
+
+**CSS Variables for Theme:**
+```css
+:root {
+  --bg: #FFFFFF;
+  --surface: #FFFFFF;
+  --border: #000000;
+  --text-primary: #000000;
+  --text-secondary: rgba(0, 0, 0, 0.6);
+  --accent: #000000;
+  --transition-fast: 150ms;
+  --transition-normal: 200ms;
+  --transition-slow: 300ms;
+}
+
+[data-theme="dark"] {
+  --bg: #121212;
+  --surface: #1E1E1E;
+  --border: rgba(255, 255, 255, 0.2);
+  --text-primary: #FFFFFF;
+  --text-secondary: rgba(255, 255, 255, 0.6);
+  --accent: #FFFFFF;
+}
+```
+
+---
+
+### Mobile Web Specifics (< 768px)
+
+**Key Differences from Desktop:**
+1. Bottom navigation instead of sidebar
+2. Full-width cards and inputs
+3. Mini-player above bottom nav
+4. Player modal is full-screen (not centered modal)
+5. Swipe gestures for delete/actions
+
+**Bottom Navigation:**
+```
+┌─────────────────────────────────────────────────────┐
+│  ⊕ Add         📚 Library         ⚙ Settings       │
+│                  (active)                            │
+└─────────────────────────────────────────────────────┘
+Height: 64px + safe area inset
+```
+
+**Mobile Player (Full Screen):**
+- Artwork: 280px centered
+- Drag handle at top (swipe down to minimize)
+- All controls stack vertically
+- Extras in scrollable row
+
+---
+
+### Playlist Feature Specifications
+
+**Create Playlist:**
+- Trigger: "+ Create" button or "+ New Playlist" in tab
+- Modal: Name input + Create button
+- Default name: "New Playlist" (auto-selected for editing)
+
+**Add to Playlist:**
+- From library item: Long-press (mobile) or "..." menu (desktop)
+- Options: Add to existing playlist OR create new
+- Toast confirmation: "Added to [Playlist Name]"
+
+**Playlist Detail View (Expanded):**
+- Header: Playlist name (editable), item count, total duration
+- Play all button
+- Items: Drag to reorder, tap to play, swipe to remove
+- Empty state: "Add articles from your library"
+
+**API Mapping:**
+| Feature | API Endpoint |
+|---------|--------------|
+| List playlists | GET /api/playlists |
+| Create playlist | POST /api/playlists |
+| Get playlist items | GET /api/playlists/:id |
+| Add item | POST /api/playlists/:id/items |
+| Remove item | DELETE /api/playlists/:id/items/:itemId |
+| Reorder | PUT /api/playlists/:id/reorder |
+| Rename | PATCH /api/playlists/:id |
+| Delete playlist | DELETE /api/playlists/:id |
+
+---
+
+### Implementation Priority
+
+**Phase 1: Core Structure**
+1. Sidebar navigation component
+2. Night mode toggle + theme system
+3. Layout wrapper with mini-player slot
+
+**Phase 2: Player Experience**
+4. Mini-player component
+5. Full player modal
+6. Audio playback service (HTML5 Audio)
+
+**Phase 3: Library Upgrade**
+7. Tabs component (All / Playlists)
+8. Playlist CRUD UI
+9. Add to playlist flow
+
+**Phase 4: Polish**
+10. Transitions and animations
+11. Mobile responsive refinements
+12. Loading states and skeletons
+
+---
+
+### Backlog (Not in MVP, API Support Unclear)
+
+| Feature | Notes |
+|---------|-------|
+| Queue management | API supports playlists, could adapt |
+| Show article text | Would need new API endpoint |
+| Share playlist | No API support yet |
+| Collaborative playlists | No API support |
+| Playback statistics | No API support |
+
+---
+
+### Library Tabs: All / Playlists / Explore
+
+**Updated Tab Structure:**
+```
+[ All ]  [ Playlists ]  [ Explore ]
+```
+
+| Tab | Content | Source |
+|-----|---------|--------|
+| **All** | User's generated articles | `/api/library` |
+| **Playlists** | User-created playlists | `/api/playlists` |
+| **Explore** | Curated free content from admin | `/api/free-content` |
+
+**Explore Tab Specifications:**
+- Shows curated content added via admin dashboard
+- No authentication required to play (free samples)
+- Each item shows: Title, duration, play button
+- No delete action (read-only)
+- Can be added to user's playlists (if logged in)
+- Goal: Showcase quality, drive conversions
+
+**Explore Tab Layout:**
+```
+┌──────────────────────────────────────────────────────┐
+│  Explore                                             │
+│  Curated articles to discover                        │
+├──────────────────────────────────────────────────────┤
+│  ┌────────────────────────────────────────────────┐  │
+│  │ ▶ │ Featured: How AI is Changing...     12 min│  │
+│  ├────────────────────────────────────────────────┤  │
+│  │ ▶ │ The Future of Remote Work           8 min │  │
+│  ├────────────────────────────────────────────────┤  │
+│  │ ▶ │ Understanding Climate Tech          15 min│  │
+│  └────────────────────────────────────────────────┘  │
+│                                                      │
+│  [Sign up to save to your library]  ← if not logged  │
+└──────────────────────────────────────────────────────┘
+```
+
+---
+
+### Embeddable Player (Landing Page)
+
+**Purpose:** Allow the player to be used on the landing page for demos and free content preview.
+
+**Requirements:**
+- Player component must work WITHOUT full app layout (no sidebar, no auth required)
+- Can play free content items directly
+- Mini-player can expand to modal overlay
+- Should work in marketing pages (landing, free-content page)
+
+**Implementation:**
+- Create `<EmbeddablePlayer />` component that wraps the core player logic
+- Accepts `audioUrl`, `title`, `duration` as props
+- Does NOT require auth context
+- Can be dropped into any page
+
+**Landing Page Usage:**
+```tsx
+// On landing page
+<EmbeddablePlayer
+  audioUrl={freeContentItem.audio_url}
+  title={freeContentItem.title}
+  duration={freeContentItem.duration_seconds}
+  showExpandButton={true}
+/>
+```
+
+**Visual Treatment:**
+- Same styling as app player (respects theme)
+- Floating mini-player style OR inline card
+- "Try the app →" CTA visible
+
+---
+
+### UI States & Edge Cases
+
+#### Generation Flow States
+
+**1. Idle State (Default)**
+- URL input empty, placeholder visible
+- Generate button disabled
+- No preview card shown
+
+**2. URL Entered State**
+- URL input filled
+- Loading preview: "Analyzing article..."
+- Preview card appears with estimated duration/credits
+
+**3. Generating State**
+```
+┌────────────────────────────────────────────────────┐
+│                                                    │
+│            ◐ Generating your podcast...           │
+│                                                    │
+│            ━━━━━━━━━━━━░░░░░░░░░░░░░              │
+│            Extracting content...                   │
+│                                                    │
+│            This usually takes 5-10 seconds         │
+│                                                    │
+└────────────────────────────────────────────────────┘
+```
+- Spinner animation
+- Progress indication (if available from API)
+- Reassuring message
+- Cancel button (optional)
+
+**4. Success State**
+- Player appears with generated audio
+- "Added to Library" confirmation
+- "Generate Another" and "View in Library" buttons
+- Auto-play option (user preference)
+
+**5. Error States**
+
+| Error | Message | Action |
+|-------|---------|--------|
+| Invalid URL | "That doesn't look like a valid URL" | Clear input |
+| Paywall detected | "This article is behind a paywall" | Try another |
+| Parse failed | "Couldn't extract content from this page" | Report + Try another |
+| Too long | "Article is too long (max 50,000 words)" | — |
+| Network error | "Connection failed. Check your internet." | Retry |
+| Insufficient credits | "Not enough credits" | Buy credits link |
+| Rate limited | "Too many requests. Please wait." | Auto-retry countdown |
+
+**Error UI:**
+```
+┌────────────────────────────────────────────────────┐
+│  ⚠️  Couldn't extract content                      │
+│                                                    │
+│  This page might be behind a paywall or use       │
+│  a format we don't support yet.                   │
+│                                                    │
+│  [Report Issue]    [Try Another URL]              │
+└────────────────────────────────────────────────────┘
+```
+
+#### Empty States
+
+**Empty Library (All Tab):**
+```
+┌────────────────────────────────────────────────────┐
+│                                                    │
+│                    📚                              │
+│                                                    │
+│           Your library is empty                   │
+│                                                    │
+│     Generate your first podcast to get started    │
+│                                                    │
+│         [+ Generate Podcast]                       │
+│                                                    │
+└────────────────────────────────────────────────────┘
+```
+
+**Empty Playlists Tab:**
+```
+┌────────────────────────────────────────────────────┐
+│                                                    │
+│                    📋                              │
+│                                                    │
+│           No playlists yet                        │
+│                                                    │
+│     Create a playlist to organize your content    │
+│                                                    │
+│         [+ Create Playlist]                        │
+│                                                    │
+└────────────────────────────────────────────────────┘
+```
+
+**Empty Playlist (Detail View):**
+```
+┌────────────────────────────────────────────────────┐
+│  Morning Reads                           [Edit ✎]  │
+│  0 articles • 0 min                                │
+├────────────────────────────────────────────────────┤
+│                                                    │
+│           This playlist is empty                  │
+│                                                    │
+│     Add articles from your library                │
+│                                                    │
+│         [Browse Library]                           │
+│                                                    │
+└────────────────────────────────────────────────────┘
+```
+
+**Empty Explore Tab:**
+```
+┌────────────────────────────────────────────────────┐
+│                                                    │
+│                    🔍                              │
+│                                                    │
+│           No content to explore yet               │
+│                                                    │
+│     Check back soon for curated articles          │
+│                                                    │
+└────────────────────────────────────────────────────┘
+```
+
+#### Loading States (Skeletons)
+
+**Library List Skeleton:**
+```
+┌────────────────────────────────────────────────────┐
+│  ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░  │
+│  ┌─────┐  ░░░░░░░░░░░░░░░░░░░░░░░░░░░░            │
+│  │░░░░░│  ░░░░░░░░░░ • ░░░░░░                     │
+│  └─────┘                                           │
+│  ┌─────┐  ░░░░░░░░░░░░░░░░░░░░░░░░░░░░            │
+│  │░░░░░│  ░░░░░░░░░░ • ░░░░░░                     │
+│  └─────┘                                           │
+│  ┌─────┐  ░░░░░░░░░░░░░░░░░░░░░░░░░░░░            │
+│  │░░░░░│  ░░░░░░░░░░ • ░░░░░░                     │
+│  └─────┘                                           │
+└────────────────────────────────────────────────────┘
+```
+
+- Pulse animation on skeleton blocks
+- Match exact layout of loaded state
+- 3 skeleton items by default
+
+#### Toast Notifications
+
+| Event | Message | Duration |
+|-------|---------|----------|
+| Added to playlist | "Added to Morning Reads" | 3s |
+| Removed from playlist | "Removed from playlist" | 3s |
+| Playlist created | "Playlist created" | 3s |
+| Playlist deleted | "Playlist deleted" | 3s |
+| Generation complete | "Your podcast is ready!" | 4s |
+| Copied to clipboard | "Link copied" | 2s |
+| Error | "Something went wrong. Try again." | 5s |
+
+**Toast Position:** Bottom center (mobile), Bottom right (desktop)
+
+**Toast Style:**
+```
+┌────────────────────────────────────────┐
+│  ✓  Added to Morning Reads      [✕]   │
+└────────────────────────────────────────┘
+```
+
+#### Confirmation Dialogs
+
+**Delete Playlist:**
+```
+┌────────────────────────────────────────────────────┐
+│  Delete "Morning Reads"?                           │
+│                                                    │
+│  This playlist will be permanently deleted.       │
+│  Articles will remain in your library.            │
+│                                                    │
+│         [Cancel]        [Delete]                   │
+└────────────────────────────────────────────────────┘
+```
+
+**Remove from Playlist:**
+- No confirmation needed (can undo via toast)
+
+**Delete from Library:**
+```
+┌────────────────────────────────────────────────────┐
+│  Remove from library?                              │
+│                                                    │
+│  "How to Think for Yourself" will be removed.    │
+│  It will also be removed from any playlists.      │
+│                                                    │
+│         [Cancel]        [Remove]                   │
+└────────────────────────────────────────────────────┘
+```
+
+---
+
+### Playback Completion Behavior
+
+**When article finishes playing:**
+1. Progress bar shows 100%
+2. Play button changes to "replay" icon (↻)
+3. Mark as "Played" in library
+4. If in playlist: Auto-advance to next item (with 3s delay)
+5. If last in playlist or single item: Stop playback
+6. Mini-player remains visible with replay option
+
+**Auto-advance indicator:**
+```
+┌────────────────────────────────────────────────────┐
+│  Up next in 3s...                                  │
+│  "The Age of AI"                      [Cancel]    │
+└────────────────────────────────────────────────────┘
+```
+
+---
+
+### Light Mode Visual Reference
+
+**Light Mode Colors (already defined but for clarity):**
+```
+Background:     #FFFFFF
+Surface:        #FFFFFF
+Border:         #000000 (1px solid)
+Text Primary:   #000000
+Text Secondary: rgba(0, 0, 0, 0.6)
+Accent/CTA:     #000000 bg, #FFFFFF text
+```
+
+**Light Mode UI Notes:**
+- Maintain same layout/spacing as dark mode
+- Borders become more prominent (define surfaces)
+- Active states: Black background, white text
+- Hover states: Light gray background or inverted
+- All transitions apply equally
+
+---
+
+## API Checklist for Full Feature Support
+
+### Currently Available ✅
+
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `/api/generate` | POST | Generate audio from URL |
+| `/api/generate/preview` | POST | Preview credit cost |
+| `/api/generate/status/:id` | GET | Poll generation status |
+| `/api/library` | GET | Get user's library |
+| `/api/library` | POST | Add to library |
+| `/api/library/:id` | DELETE | Remove from library |
+| `/api/library/:id/position` | PATCH | Update playback position |
+| `/api/playlists` | GET | List user's playlists |
+| `/api/playlists` | POST | Create playlist |
+| `/api/playlists/:id` | GET | Get playlist with items |
+| `/api/playlists/:id` | PATCH | Rename playlist |
+| `/api/playlists/:id` | DELETE | Delete playlist |
+| `/api/playlists/:id/items` | POST | Add item to playlist |
+| `/api/playlists/:id/items/:itemId` | DELETE | Remove item from playlist |
+| `/api/playlists/:id/reorder` | PUT | Reorder playlist items |
+| `/api/free-content` | GET | Get curated free content |
+| `/api/user/profile` | GET | Get user profile |
+| `/api/user/credits` | GET | Get credit balance |
+| `/api/user/subscription` | GET | Get subscription status |
+| `/api/user/account` | DELETE | Delete account |
+| `/api/checkout/credits` | POST | Create Stripe checkout |
+| `/api/checkout/session/:id` | GET | Get checkout session |
+
+### Needs to be Added ❌
+
+| Endpoint | Method | Purpose | Priority |
+|----------|--------|---------|----------|
+| `/api/library/search` | GET | Search user's library by title | Medium |
+| `/api/library?sort=` | GET | Sort library (date, duration, title) | Low |
+| `/api/library/:id/text` | GET | Get original article text | Low |
+| `/api/generate/progress/:id` | WS/SSE | Real-time generation progress | Medium |
+| `/api/user/preferences` | GET/PATCH | User preferences (theme, autoplay) | Medium |
+| `/api/free-content/:id/add` | POST | Add free content to user library | High |
+| `/api/share/:audioId` | GET | Generate shareable link | Low |
+
+### API Enhancement Suggestions
+
+**1. Add free content to library (High Priority)**
+```
+POST /api/free-content/:id/add
+Response: { success: true, libraryItemId: "..." }
+```
+Allows users to save Explore content to their own library.
+
+**2. User preferences (Medium Priority)**
+```
+GET /api/user/preferences
+Response: { theme: "dark", autoplay: true, playbackSpeed: 1.0 }
+
+PATCH /api/user/preferences
+Body: { theme: "light" }
+```
+Persist user settings server-side for cross-device sync.
+
+**3. Generation progress (Medium Priority)**
+```
+GET /api/generate/progress/:id (SSE)
+Events: { stage: "extracting" | "generating" | "uploading", percent: 0-100 }
+```
+Better UX for the 10-second wait.
+
+**4. Library search (Medium Priority)**
+```
+GET /api/library?q=search+term
+Response: { items: [...filtered items...] }
+```
+Useful once users have many items.
+
+**5. Article text endpoint (Low Priority)**
+```
+GET /api/library/:id/text
+Response: { text: "Full article content...", wordCount: 2500 }
+```
+Powers the "Text" button in player extras.
+
+---
+
+## Implementation Checklist
+
+### Phase 1: Core Structure
+- [ ] Sidebar navigation component
+- [ ] Bottom nav component (mobile)
+- [ ] Theme system (CSS variables + context)
+- [ ] Night mode toggle + localStorage persistence
+- [ ] Layout wrapper with player slot
+- [ ] EmbeddablePlayer component for landing page
+
+### Phase 2: Player Experience
+- [ ] Mini-player component
+- [ ] Full player modal
+- [ ] Audio playback service (HTML5 Audio API)
+- [ ] Playback position save (debounced)
+- [ ] Speed control UI
+- [ ] Sleep timer UI
+
+### Phase 3: Library & Tabs
+- [ ] Tabs component (All / Playlists / Explore)
+- [ ] Library list with progress indicators
+- [ ] Playlist list view
+- [ ] Playlist detail/expanded view
+- [ ] Explore tab (free content)
+- [ ] Playlist CRUD modals
+- [ ] Add to playlist flow
+- [ ] Drag-to-reorder (desktop)
+
+### Phase 4: States & Polish
+- [ ] Generation flow states (idle → loading → success/error)
+- [ ] Empty states (library, playlists, explore)
+- [ ] Skeleton loaders
+- [ ] Toast notification system
+- [ ] Confirmation dialogs
+- [ ] Error boundaries
+- [ ] Transitions and animations
+
+### Phase 5: Responsive & Accessibility
+- [ ] Tablet breakpoint (768-1024px)
+- [ ] Light mode wireframe verification
+- [ ] Keyboard navigation
+- [ ] Focus states
+- [ ] Screen reader labels
+- [ ] Reduced motion support
+
+---
+
+## Tech Spec: Global Persistent Audio Player
+
+### Problem
+
+The current `WebPlayer` component:
+- Creates a local `<audio>` element that stops on page navigation
+- Cannot be controlled from other pages
+- Has no mini-player persistence
+- Doesn't integrate with browser Media Session API
+
+### Solution: Apple Podcasts Architecture
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                      Root Layout                            │
+│  ┌───────────────────────────────────────────────────────┐  │
+│  │                AudioPlayerProvider                     │  │
+│  │  ┌─────────────────────────────────────────────────┐  │  │
+│  │  │         AudioService (Singleton)                │  │  │
+│  │  │  - ONE HTMLAudioElement (persists forever)      │  │  │
+│  │  │  - Media Session API integration                │  │  │
+│  │  │  - State management (track, position, playing)  │  │  │
+│  │  └─────────────────────────────────────────────────┘  │  │
+│  │                                                        │  │
+│  │  {children} ← All pages subscribe to player state     │  │
+│  │                                                        │  │
+│  │  ┌─────────────────────────────────────────────────┐  │  │
+│  │  │         MiniPlayer (fixed bottom bar)           │  │  │
+│  │  └─────────────────────────────────────────────────┘  │  │
+│  │                                                        │  │
+│  │  ┌─────────────────────────────────────────────────┐  │  │
+│  │  │       PlayerModal (portal to document.body)     │  │  │
+│  │  └─────────────────────────────────────────────────┘  │  │
+│  └───────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Core Components
+
+| Component | Purpose |
+|-----------|---------|
+| `AudioService` | Singleton class managing the audio element - persists forever |
+| `AudioPlayerProvider` | React context wrapping entire app |
+| `useAudioPlayer()` | Hook to control player from any component |
+| `MiniPlayer` | Persistent bar at bottom (visible when track loaded) |
+| `PlayerModal` | Full-screen player (portal to body) |
+| `EmbeddablePlayer` | Standalone player for landing page (no auth required) |
+
+### AudioService Singleton
+
+```typescript
+class AudioService {
+  private static instance: AudioService;
+  private audio: HTMLAudioElement;  // Created ONCE, never destroyed
+  private state: AudioState;
+  private listeners: Set<Callback>;
+
+  static getInstance(): AudioService {
+    if (!AudioService.instance) {
+      AudioService.instance = new AudioService();
+    }
+    return AudioService.instance;
+  }
+
+  // Methods: play, pause, seek, setTrack, skip, setPlaybackRate
+  // Events: subscribe, unsubscribe
+  // Media Session: setupMediaSession, updateMediaSession
+}
+```
+
+### Background Audio (REQUIREMENT)
+
+Audio MUST continue playing when:
+- User locks phone screen
+- User switches to another app
+- Browser is minimized
+- Tab is in background
+
+**How SoundCloud/Spotify achieve this:**
+1. Single persistent `<audio>` element (never destroyed)
+2. Media Session API configured before playback starts
+3. Audio source set and playing before user navigates away
+4. No dynamic creation/destruction of audio elements on navigation
+
+**Critical Implementation Details:**
+- Create audio element ONCE at app initialization
+- Never call `audio.remove()` or let React unmount it
+- Keep audio element in a singleton service, not component state
+- Set Media Session metadata immediately when track loads
+
+### Media Session API
+
+Enables browser/OS media controls:
+```typescript
+navigator.mediaSession.setActionHandler('play', () => this.play());
+navigator.mediaSession.setActionHandler('pause', () => this.pause());
+navigator.mediaSession.setActionHandler('seekbackward', () => this.skipBack(15));
+navigator.mediaSession.setActionHandler('seekforward', () => this.skipForward(15));
+
+navigator.mediaSession.metadata = new MediaMetadata({
+  title: track.title,
+  artist: 'tsucast',
+  artwork: [{ src: '/icons/icon-512.png', sizes: '512x512' }]
+});
+```
+
+### Landing Page Usage (EmbeddablePlayer)
+
+```tsx
+// Works WITHOUT auth, WITHOUT full app layout
+<EmbeddablePlayer
+  audioUrl={freeContent.audio_url}
+  title={freeContent.title}
+  showExpandButton={true}  // "Open in app →"
+/>
+```
+
+### File Structure
+
+```
+apps/web/
+├── lib/
+│   └── audio-service.ts          # Singleton audio service
+├── providers/
+│   └── AudioPlayerProvider.tsx   # React context provider
+├── hooks/
+│   └── useAudioPlayer.ts         # Hook to access player
+└── components/player/
+    ├── MiniPlayer.tsx            # Persistent bottom bar
+    ├── PlayerModal.tsx           # Full-screen modal
+    ├── EmbeddablePlayer.tsx      # Standalone for landing
+    ├── ProgressBar.tsx           # Seekable progress
+    ├── SpeedControl.tsx          # Speed selector
+    └── VolumeControl.tsx         # Volume slider
+```
+
+### Browser Compatibility
+
+| Feature | Chrome | Safari | Firefox | Mobile Safari |
+|---------|--------|--------|---------|---------------|
+| Audio playback | ✅ | ✅ | ✅ | ✅ |
+| Persists navigation | ✅ | ✅ | ✅ | ✅ |
+| Media Session | ✅ | ⚠️ Partial | ✅ | ✅ |
+| Background (screen off) | ✅ | ✅ | ✅ | ✅ |
+
+**Background Audio Requirement:** Audio MUST continue playing when:
+- Browser tab is hidden/minimized
+- Phone screen is locked/off
+- User switches to another app
+
+This is achievable (SoundCloud, Spotify Web do it) with:
+1. Media Session API properly configured
+2. Audio element in DOM (not dynamically created/destroyed)
+3. User interaction to start playback (browser policy)
+
+---
+
+## Premium UX Polish (Spotify/Apple Podcasts Level)
+
+### What Makes Playback Feel Premium
+
+The difference between "functional" and "delightful" comes from micro-interactions, visual feedback, and smooth animations.
+
+### 1. Mini-Player to Modal Transition
+
+**Current:** Modal just appears
+**Premium:** Mini-player morphs into full player
+
+```
+Animation sequence:
+1. Mini-player starts expanding (scale + position)
+2. Background dims with fade
+3. Artwork scales up from mini-player thumbnail position
+4. Controls fade in with slight delay
+5. Duration: 300ms ease-out
+
+Reverse on close:
+1. Controls fade out
+2. Artwork scales down to mini-player position
+3. Background fades out
+4. Mini-player appears in final position
+```
+
+**Implementation:** Use Framer Motion's `layoutId` for shared element transitions.
+
+### 2. Play Button Animation
+
+**Current:** Static icon swap
+**Premium:** Morphing play/pause with scale bounce
+
+```css
+.play-button {
+  transition: transform 150ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.play-button:active {
+  transform: scale(0.9);
+}
+```
+
+**Icon transition:** Use animated SVG or Lottie for play→pause morph.
+
+### 3. Progress Bar Interactions
+
+**Current:** Basic HTML range input
+**Premium:** Custom progress with scrubbing preview
+
+| Feature | Description |
+|---------|-------------|
+| **Thumb enlarges on hover** | 8px → 16px |
+| **Time tooltip follows thumb** | Shows "4:32" above thumb while dragging |
+| **Buffered state visible** | Lighter shade shows loaded portion |
+| **Scrub preview (optional)** | Hear audio at scrub position |
+| **Haptic feedback (mobile)** | Vibrate on seek |
+
+```
+Visual:
+Buffered:  ░░░░░░░░░░░░░░░░░░░░░░░░░░
+Progress:  ━━━━━━━━━━━━━━░░░░░░░░░░░░
+                        ●
+                      [4:32]  ← tooltip
+```
+
+### 4. "Now Playing" Indicator
+
+**Current:** No visual indication of which item is playing
+**Premium:** Animated equalizer bars + highlight
+
+```
+Library item (playing):
+┌────────────────────────────────────────┐
+│  ▮▮▮  │  Article Title            │  ▮▮▮ = animated bars
+│  ▮ ▮  │  12 min • Playing...      │
+└────────────────────────────────────────┘
+
+CSS animation:
+@keyframes equalizer {
+  0%, 100% { height: 4px; }
+  50% { height: 16px; }
+}
+.bar { animation: equalizer 0.5s ease infinite; }
+.bar:nth-child(2) { animation-delay: 0.1s; }
+.bar:nth-child(3) { animation-delay: 0.2s; }
+```
+
+### 5. Artwork Ambient Background (Optional)
+
+**Premium:** Blur of artwork creates ambient background color
+
+```
+Player modal background:
+┌──────────────────────────────────────┐
+│  ╔══════════════════════════════╗   │
+│  ║                              ║   │  ← Blurred/dimmed
+│  ║       🎧 Artwork             ║   │     artwork as
+│  ║                              ║   │     background
+│  ╚══════════════════════════════╝   │
+│         Title                        │
+│         Source                       │
+└──────────────────────────────────────┘
+
+Implementation:
+- Extract dominant color from artwork (or use placeholder gradient)
+- Apply as radial gradient behind player
+- For B&W theme: Use subtle gray gradient instead
+```
+
+### 6. Loading States That Feel Fast
+
+**Current:** Spinner
+**Premium:** Optimistic UI + skeleton
+
+| Scenario | Behavior |
+|----------|----------|
+| Play button pressed | Immediately show "loading" state, don't wait |
+| Track loading | Show track info instantly, audio loads in bg |
+| Seek action | Move progress immediately (optimistic) |
+| Generation | Show skeleton of player while generating |
+
+### 7. Skip Animation
+
+**Current:** Just seek
+**Premium:** Visual feedback showing seconds skipped
+
+```
+On skip -15s:
+  ┌─────────────────┐
+  │    ⏪ -15s      │  ← Overlay appears briefly
+  └─────────────────┘
+  Duration: 600ms fade out
+
+Optional: Progress bar shows "jump" animation
+```
+
+### 8. Speed Change Animation
+
+**Current:** Just changes number
+**Premium:** Number animates between values
+
+```
+1x → 1.5x
+
+Animation: Counter rolls through
+1.0 → 1.1 → 1.2 → 1.3 → 1.4 → 1.5
+Duration: 200ms
+```
+
+### 9. Toast Notifications
+
+**Premium touches:**
+- Slide in from bottom with spring physics
+- Success toasts have subtle green accent
+- Error toasts shake briefly
+- Undo action has countdown indicator
+
+```
+┌────────────────────────────────────────┐
+│ ✓  Added to Morning Reads    [Undo 5s] │
+│    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━   │ ← countdown bar
+└────────────────────────────────────────┘
+```
+
+### 10. Keyboard Shortcuts
+
+| Key | Action |
+|-----|--------|
+| `Space` | Play/Pause |
+| `←` | Skip back 15s |
+| `→` | Skip forward 15s |
+| `↑` | Volume up |
+| `↓` | Volume down |
+| `M` | Mute toggle |
+| `F` | Full player toggle |
+| `Esc` | Close modal |
+
+Show keyboard hint on hover:
+```
+[Play ▶]
+  ↳ "Space to play"
+```
+
+### 11. Gesture Support (Mobile Web)
+
+| Gesture | Action |
+|---------|--------|
+| Swipe down on modal | Close modal |
+| Swipe left on mini-player | Skip forward |
+| Swipe right on mini-player | Skip back |
+| Long press on progress | Fine scrub mode |
+
+### 12. Sound Design (Optional)
+
+Subtle audio feedback:
+- Soft click on play/pause (optional, user preference)
+- Gentle "pop" on adding to playlist
+- No sounds on errors (annoying)
+
+---
+
+## Premium UX Checklist
+
+### Must Have (MVP)
+- [ ] Mini-player to modal shared element transition
+- [ ] Play button scale animation on press
+- [ ] Progress bar with hover/drag states
+- [ ] Now playing indicator (animated bars or highlight)
+- [ ] Optimistic UI for play/seek actions
+- [ ] Skip feedback overlay (-15s / +15s)
+- [ ] Keyboard shortcuts (Space, arrows)
+- [ ] Smooth page transitions (fade)
+
+### Nice to Have (Post-MVP)
+- [ ] Artwork ambient background
+- [ ] Speed change number animation
+- [ ] Toast with undo countdown
+- [ ] Gesture support (swipe to close)
+- [ ] Scrubbing time preview tooltip
+- [ ] Buffered progress indicator
+- [ ] Reduced motion support
+
+### Dependencies for Premium Animations
+
+| Library | Purpose | Bundle Size |
+|---------|---------|-------------|
+| `framer-motion` | Shared element transitions, springs | ~30kb |
+| `@radix-ui/react-slider` | Accessible progress bar | ~5kb |
+| `sonner` | Toast notifications | ~5kb |
+
+**Alternative:** Use CSS animations + React state for lighter bundle.
+
+---
+
+## Implementation Priority (Updated)
+
+### Phase 1: Core Structure
+1. Sidebar navigation + bottom nav
+2. Theme system + night mode
+3. Layout wrapper with player slot
+
+### Phase 2: Global Player (Critical)
+4. **AudioService singleton**
+5. **AudioPlayerProvider context**
+6. **MiniPlayer component**
+7. **PlayerModal component**
+8. Media Session API
+9. EmbeddablePlayer for landing
+
+### Phase 3: Library & Tabs
+10. Tabs (All / Playlists / Explore)
+11. Library list with now-playing indicator
+12. Playlist CRUD
+13. Explore tab
+
+### Phase 4: Premium Polish
+14. **Mini-player ↔ modal transition**
+15. **Play button animation**
+16. **Progress bar premium interactions**
+17. **Skip feedback overlay**
+18. Keyboard shortcuts
+19. Toast system with undo
+
+### Phase 5: Responsive & Accessibility
+20. Tablet breakpoint
+21. Gesture support
+22. Focus states
+23. Reduced motion
 
 ---

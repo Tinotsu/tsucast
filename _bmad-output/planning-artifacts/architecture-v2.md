@@ -15,12 +15,14 @@ workflowType: 'architecture'
 project_name: 'tsucast'
 user_name: 'Tino'
 date: '2026-01-20'
-lastEdited: "2026-01-24"
+lastEdited: "2026-01-29"
 editHistory:
   - date: "2026-01-21"
     changes: "Added Next.js web app architecture (secondary platform for testing/marketing/admin)"
   - date: "2026-01-24"
     changes: "Fixed cache status terminology ('generating' → 'processing'), added voice_id to cache key, documented /api/generate/status/:id endpoint"
+  - date: "2026-01-29"
+    changes: "Updated web playback to support background audio (like SoundCloud). Added free_content table, Explore tab, night mode, embeddable player. Added /api/free-content, /api/user/preferences, /api/admin/free-content endpoints."
 ---
 
 # Architecture Decision Document: tsucast (v2.4)
@@ -416,6 +418,26 @@ CREATE TABLE extraction_reports (
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
+-- Free Content (Explore tab - admin curated)
+CREATE TABLE free_content (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  audio_id UUID NOT NULL REFERENCES audio_cache(id) ON DELETE CASCADE,
+  title TEXT NOT NULL,
+  description TEXT,
+  category TEXT DEFAULT 'featured',  -- 'featured', 'popular', 'new'
+  position INTEGER DEFAULT 0,         -- Display order
+  is_active BOOLEAN DEFAULT true,
+  created_by UUID REFERENCES auth.users(id),
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE INDEX idx_free_content_active ON free_content(is_active) WHERE is_active = true;
+CREATE INDEX idx_free_content_category ON free_content(category);
+
+-- User Preferences (theme, etc.)
+ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS theme TEXT DEFAULT 'system'; -- 'light', 'dark', 'system'
+
 -- Row Level Security (RLS) policies
 ALTER TABLE user_profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_library ENABLE ROW LEVEL SECURITY;
@@ -480,6 +502,28 @@ CREATE POLICY "Users manage own playlist items" ON playlist_items FOR ALL
 | DELETE | `/api/playlists/:id` | Delete playlist | Supabase JWT |
 | POST | `/api/playlists/:id/items` | Add item to playlist | Supabase JWT |
 | DELETE | `/api/playlists/:id/items/:itemId` | Remove from playlist | Supabase JWT |
+
+### VPS API - Free Content (Explore Tab)
+
+| Method | Endpoint | Description | Auth |
+|--------|----------|-------------|------|
+| GET | `/api/free-content` | Get active free content | Public |
+
+### VPS API - User Preferences
+
+| Method | Endpoint | Description | Auth |
+|--------|----------|-------------|------|
+| GET | `/api/user/preferences` | Get user preferences | Supabase JWT |
+| PATCH | `/api/user/preferences` | Update preferences (theme) | Supabase JWT |
+
+### VPS API - Admin (Free Content Management)
+
+| Method | Endpoint | Description | Auth |
+|--------|----------|-------------|------|
+| GET | `/api/admin/free-content` | List all free content | Admin JWT |
+| POST | `/api/admin/free-content` | Add free content | Admin JWT |
+| PATCH | `/api/admin/free-content/:id` | Update free content | Admin JWT |
+| DELETE | `/api/admin/free-content/:id` | Remove free content | Admin JWT |
 
 ### VPS API - Webhooks
 
@@ -1167,39 +1211,51 @@ export async function createServerSupabase() {
 | **Landing page (FR48-50)** | High | SEO, marketing, app store links |
 | **Basic auth (FR51)** | High | Same Supabase as mobile |
 | **Generate audio (FR52)** | High | Test API without mobile |
-| **Basic player (FR53)** | Medium | HTML5 audio, no background play |
-| **View library (FR54)** | Medium | Read-only library view |
+| **Global player (FR53)** | High | Persistent audio with background playback |
+| **View library (FR54)** | Medium | Library with tabs (All/Playlists/Explore) |
+| **Explore tab (FR63)** | Medium | Free curated content from admin |
+| **Night mode (FR64)** | Low | Dark/light theme toggle |
+| **Embeddable player (FR65)** | Medium | Landing page audio samples |
 | **Admin: Users (FR56)** | Medium | User list, usage stats |
 | **Admin: Health (FR57)** | Medium | API metrics dashboard |
 | **Admin: Reports (FR58-59)** | Low | URL parsing reports |
+| **Admin: Free content (FR63)** | Medium | CRUD for Explore tab content |
 | **Creator dashboard (FR60-62)** | Post-MVP | Voice management |
 
-### Web Playback Limitations
+### Web Playback Capabilities
 
-Unlike mobile, web has inherent limitations:
+Web audio works like SoundCloud/Spotify Web when implemented correctly:
 
-| Feature | Mobile | Web |
-|---------|--------|-----|
-| Background audio | ✅ | ❌ Tab must stay open |
-| Lock screen controls | ✅ | ❌ |
-| Sleep timer (screen off) | ✅ | ❌ |
-| CarPlay/Android Auto | ✅ | ❌ |
-| Offline download | Future | ❌ |
+| Feature | Mobile | Web | Notes |
+|---------|--------|-----|-------|
+| Background audio | ✅ | ✅ | Requires singleton AudioService |
+| Lock screen controls | ✅ | ✅ | Via Media Session API |
+| Sleep timer | ✅ | ✅ | Works while audio playing |
+| CarPlay/Android Auto | ✅ | ❌ | Native app only |
+| Offline download | Future | ❌ | Native app only |
+
+**How Web Background Audio Works:**
+1. Single persistent `<audio>` element (never destroyed on navigation)
+2. Media Session API configured before playback starts
+3. AudioService singleton pattern (not React component state)
+4. Audio continues when screen locks, tab hidden, or app switched
 
 ### Web Routes Structure
 
 ```
-/                     # Landing page (marketing)
+/                     # Landing page (marketing) + embeddable player
 /features             # Feature showcase
 /pricing              # Pricing page
 /login                # Auth (Supabase)
 /signup               # Auth (Supabase)
-/dashboard            # Basic playback interface
-/library              # View generated audio
+/add                  # URL input + generate
+/library              # Library (tabs: All / Playlists / Explore)
+/settings             # User settings + night mode toggle
 /admin                # Admin panel (role-protected)
 /admin/users          # User management
 /admin/health         # System health
 /admin/reports        # URL parsing reports
+/admin/free-content   # Manage Explore tab content
 ```
 
 ---

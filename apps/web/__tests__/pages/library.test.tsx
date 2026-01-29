@@ -442,17 +442,17 @@ describe("Library Page", () => {
       });
     });
 
-    it("[P2] should link to generate page", async () => {
+    it("[P2] should link to dashboard page", async () => {
       // GIVEN: Library with items
       mockGetLibrary.mockResolvedValue([createLibraryItem()]);
 
       // WHEN: Rendering library page
       render(<LibraryPage />);
 
-      // THEN: Add New links to /generate
+      // THEN: Add New links to /dashboard
       await waitFor(() => {
         const addButton = screen.getByRole("link", { name: /add new/i });
-        expect(addButton).toHaveAttribute("href", "/generate");
+        expect(addButton).toHaveAttribute("href", "/dashboard");
       });
     });
   });

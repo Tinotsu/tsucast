@@ -1,6 +1,6 @@
 "use client";
 
-import { Play, Pause, X, ChevronUp, Loader2 } from "lucide-react";
+import { Play, Pause, X, ChevronUp, Loader2, FileAudio } from "lucide-react";
 import { useAudioPlayer } from "@/hooks/useAudioPlayer";
 import { PlayerModal } from "./PlayerModal";
 import { cn } from "@/lib/utils";
@@ -65,6 +65,17 @@ export function GlobalMiniPlayer() {
 
         {/* Compact view */}
         <div className="flex h-16 items-center gap-3 px-4">
+          {/* Thumbnail */}
+          <div className="h-10 w-10 flex-shrink-0 overflow-hidden rounded-lg bg-[var(--secondary)]">
+            {track.artwork ? (
+              <img src={track.artwork} alt="" className="h-full w-full object-cover" />
+            ) : (
+              <div className="flex h-full w-full items-center justify-center">
+                <FileAudio className="h-5 w-5 text-[var(--muted)]" />
+              </div>
+            )}
+          </div>
+
           {/* Play/Pause button */}
           <button
             onClick={togglePlayPause}

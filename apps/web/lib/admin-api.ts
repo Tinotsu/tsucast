@@ -165,6 +165,16 @@ export async function createAdminFreeContent(data: {
   });
 }
 
+export async function updateAdminFreeContent(
+  id: string,
+  data: { title: string }
+): Promise<{ item: FreeContentItem }> {
+  return fetchAdminApi(`/api/free-content/admin/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(data),
+  });
+}
+
 export async function deleteAdminFreeContent(
   id: string
 ): Promise<{ success: boolean }> {

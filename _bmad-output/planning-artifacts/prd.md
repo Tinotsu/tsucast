@@ -2,10 +2,12 @@
 stepsCompleted: [step-01-init, step-02-discovery, step-03-success, step-04-journeys, step-05-domain-skipped, step-06-innovation, step-07-project-type, step-08-scoping, step-09-functional, step-10-nonfunctional, step-11-polish, step-12-complete]
 workflowCompleted: true
 completedDate: "2026-01-19"
-lastEdited: "2026-01-21"
+lastEdited: "2026-01-29"
 editHistory:
   - date: "2026-01-21"
     changes: "Added Next.js web app strategy for backend testing, marketing, and admin panel. Added FR48-FR62 for web platform. Clarified mobile as primary product, web as secondary."
+  - date: "2026-01-29"
+    changes: "Added FR63-FR68 for premium web UX features: Explore tab, night mode, embeddable player, background audio (like SoundCloud). Updated web limitations to reflect new capabilities."
 classification:
   projectType: mobile_app_crossplatform
   domain: general_consumer_content
@@ -489,12 +491,19 @@ No special compliance requirements - standard consumer audio app.
 - **FR61:** Creators can view analytics on voice usage
 - **FR62:** Creators can manage voice monetization settings
 
+**Web App - Premium UX Features:**
+- **FR63:** Web user can browse curated free content in Explore tab
+- **FR64:** Web user can toggle between light, dark, and system theme
+- **FR65:** Landing page visitor can play sample audio without authentication
+
+**Web App - Background Audio (like SoundCloud):**
+- **FR66:** Web audio continues playing when user navigates between pages
+- **FR67:** Web audio continues playing when screen is locked (mobile web)
+- **FR68:** Web audio continues playing when browser tab is hidden
+
 **Web Limitations (Explicitly NOT Supported):**
-- No background audio playback
-- No lock screen controls
-- No offline mode
-- No sleep timer with screen-off functionality
 - No CarPlay/Android Auto integration
+- No offline mode/downloads
 
 ## Non-Functional Requirements
 

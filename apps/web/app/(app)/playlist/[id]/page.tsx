@@ -1,0 +1,361 @@
+"use client";
+
+import { useState, useEffect, useCallback } from "react";
+import { useRouter, useParams } from "next/navigation";
+import Link from "next/link";
+import {
+  getPlaylist,
+  removeFromPlaylist,
+  renamePlaylist,
+  deletePlaylist,
+  type PlaylistWithItems,
+} from "@/lib/api";
+import { useAudioPlayer } from "@/hooks/useAudioPlayer";
+import {
+  ArrowLeft,
+  Play,
+  Trash2,
+  Loader2,
+  MoreVertical,
+  Clock,
+  Pencil,
+  ListMusic,
+  Music,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
+
+function formatDuration(seconds: number | null): string {
+  if (!seconds) return "--:--";
+  const mins = Math.floor(seconds / 60);
+  const secs = Math.floor(seconds % 60);
+  return `${mins}:${secs.toString().padStart(2, "0")}`;
+}
+
+export default function PlaylistPage() {
+  const router = useRouter();
+  const params = useParams();
+  const playlistId = params.id as string;
+
+  const { play, addToQueue } = useAudioPlayer();
+
+  const [playlist, setPlaylist] = useState<PlaylistWithItems | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editName, setEditName] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+  const [removingItemId, setRemovingItemId] = useState<string | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const loadPlaylist = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const data = await getPlaylist(playlistId);
+      setPlaylist(data);
+      setEditName(data.name);
+    } catch (err) {
+      console.error("Failed to load playlist:", err);
+      setError("Failed to load playlist");
+    } finally {
+      setIsLoading(false);
+    }
+  }, [playlistId]);
+
+  useEffect(() => {
+    loadPlaylist();
+  }, [loadPlaylist]);
+
+  const handlePlayAll = () => {
+    if (!playlist || playlist.items.length === 0) return;
+
+    // Play the first item
+    const firstItem = playlist.items[0];
+    play({
+      id: firstItem.audio.id,
+      url: firstItem.audio.audio_url,
+      title: firstItem.audio.title,
+      duration: firstItem.audio.duration_seconds,
+    });
+
+    // Add rest to queue
+    playlist.items.slice(1).forEach((item) => {
+      addToQueue({
+        id: item.audio.id,
+        url: item.audio.audio_url,
+        title: item.audio.title,
+        duration: item.audio.duration_seconds,
+      });
+    });
+  };
+
+  const handlePlayItem = (item: PlaylistWithItems["items"][0]) => {
+    play({
+      id: item.audio.id,
+      url: item.audio.audio_url,
+      title: item.audio.title,
+      duration: item.audio.duration_seconds,
+    });
+  };
+
+  const handleRemoveItem = async (itemId: string) => {
+    if (!playlist) return;
+    setRemovingItemId(itemId);
+    try {
+      await removeFromPlaylist(playlist.id, itemId);
+      setPlaylist((prev) =>
+        prev
+          ? { ...prev, items: prev.items.filter((i) => i.id !== itemId) }
+          : null
+      );
+    } catch (err) {
+      console.error("Failed to remove item:", err);
+    } finally {
+      setRemovingItemId(null);
+    }
+  };
+
+  const handleRename = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!playlist || !editName.trim()) return;
+
+    setIsSaving(true);
+    try {
+      await renamePlaylist(playlist.id, editName.trim());
+      setPlaylist((prev) => (prev ? { ...prev, name: editName.trim() } : null));
+      setIsEditing(false);
+    } catch (err) {
+      console.error("Failed to rename playlist:", err);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!playlist) return;
+    setIsDeleting(true);
+    try {
+      await deletePlaylist(playlist.id);
+      router.push("/library?tab=playlists");
+    } catch (err) {
+      console.error("Failed to delete playlist:", err);
+      setIsDeleting(false);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-[var(--foreground)]" />
+      </div>
+    );
+  }
+
+  if (error || !playlist) {
+    return (
+      <div className="mx-auto max-w-4xl px-4 py-12">
+        <div className="text-center">
+          <p className="mb-4 text-[var(--muted)]">{error || "Playlist not found"}</p>
+          <Link
+            href="/library?tab=playlists"
+            className="text-[var(--foreground)] underline"
+          >
+            Back to Playlists
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  const totalDuration = playlist.items.reduce(
+    (sum, item) => sum + (item.audio.duration_seconds || 0),
+    0
+  );
+
+  return (
+    <div className="mx-auto max-w-4xl px-4 py-12 sm:px-6 lg:px-8">
+      {/* Back Link */}
+      <Link
+        href="/library?tab=playlists"
+        className="mb-6 inline-flex items-center gap-2 text-sm text-[var(--muted)] hover:text-[var(--foreground)]"
+      >
+        <ArrowLeft className="h-4 w-4" />
+        Back to Playlists
+      </Link>
+
+      {/* Header */}
+      <div className="mb-8 flex items-start justify-between gap-4">
+        <div className="flex-1">
+          {isEditing ? (
+            <form onSubmit={handleRename} className="flex items-center gap-2">
+              <input
+                type="text"
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                autoFocus
+                maxLength={255}
+                className="w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-4 py-2 text-2xl font-bold text-[var(--foreground)] focus:border-[var(--foreground)] focus:outline-none"
+              />
+              <button
+                type="submit"
+                disabled={!editName.trim() || isSaving}
+                className="rounded-lg bg-[var(--foreground)] px-4 py-2 font-bold text-[var(--background)] disabled:opacity-50"
+              >
+                {isSaving ? (
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                ) : (
+                  "Save"
+                )}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsEditing(false);
+                  setEditName(playlist.name);
+                }}
+                className="rounded-lg border border-[var(--border)] px-4 py-2 font-bold text-[var(--foreground)]"
+              >
+                Cancel
+              </button>
+            </form>
+          ) : (
+            <>
+              <div className="flex items-center gap-3">
+                <h1 className="text-3xl font-bold tracking-tight text-[var(--foreground)]">
+                  {playlist.name}
+                </h1>
+                <button
+                  onClick={() => setIsEditing(true)}
+                  className="rounded-full p-2 text-[var(--muted)] hover:bg-[var(--secondary)] hover:text-[var(--foreground)]"
+                  aria-label="Edit playlist name"
+                >
+                  <Pencil className="h-4 w-4" />
+                </button>
+              </div>
+              <p className="mt-2 flex items-center gap-4 text-sm text-[var(--muted)]">
+                <span>
+                  {playlist.items.length}{" "}
+                  {playlist.items.length === 1 ? "item" : "items"}
+                </span>
+                <span className="flex items-center gap-1">
+                  <Clock className="h-3 w-3" />
+                  {Math.floor(totalDuration / 60)} min total
+                </span>
+              </p>
+            </>
+          )}
+        </div>
+
+        <div className="flex items-center gap-2">
+          {playlist.items.length > 0 && (
+            <button
+              onClick={handlePlayAll}
+              className="flex items-center gap-2 rounded-lg bg-[var(--foreground)] px-6 py-3 font-bold text-[var(--background)] transition-colors hover:opacity-90"
+            >
+              <Play className="h-5 w-5" />
+              Play All
+            </button>
+          )}
+          <button
+            onClick={() => setShowDeleteConfirm(true)}
+            className="rounded-lg border border-[var(--border)] p-3 text-[var(--muted)] transition-colors hover:border-red-500 hover:text-red-500"
+            aria-label="Delete playlist"
+          >
+            <Trash2 className="h-5 w-5" />
+          </button>
+        </div>
+      </div>
+
+      {/* Items List */}
+      {playlist.items.length === 0 ? (
+        <div className="rounded-2xl border border-dashed border-[var(--border)] bg-[var(--card)] p-12 text-center">
+          <ListMusic className="mx-auto mb-4 h-12 w-12 text-[var(--muted)]" />
+          <h2 className="mb-2 text-lg font-bold text-[var(--foreground)]">
+            This playlist is empty
+          </h2>
+          <p className="text-[var(--muted)]">
+            Add items from your library to get started
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {playlist.items.map((item, index) => (
+            <div
+              key={item.id}
+              className="group flex items-center gap-4 rounded-xl bg-[var(--card)] p-4 transition-colors hover:bg-[var(--secondary)]"
+            >
+              {/* Position */}
+              <span className="w-8 text-center text-sm text-[var(--muted)]">
+                {index + 1}
+              </span>
+
+              {/* Play Button */}
+              <button
+                onClick={() => handlePlayItem(item)}
+                className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-[var(--foreground)] text-[var(--background)] transition-colors hover:opacity-90"
+              >
+                <Play className="ml-0.5 h-4 w-4" />
+              </button>
+
+              {/* Track Info */}
+              <div className="min-w-0 flex-1">
+                <h3 className="truncate font-medium text-[var(--foreground)]">
+                  {item.audio.title}
+                </h3>
+                <p className="text-sm text-[var(--muted)]">
+                  {formatDuration(item.audio.duration_seconds)}
+                </p>
+              </div>
+
+              {/* Remove Button */}
+              <button
+                onClick={() => handleRemoveItem(item.id)}
+                disabled={removingItemId === item.id}
+                className="rounded-full p-2 text-[var(--muted)] opacity-0 transition-opacity group-hover:opacity-100 hover:bg-[var(--background)] hover:text-red-500"
+                aria-label={`Remove ${item.audio.title}`}
+              >
+                {removingItemId === item.id ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Trash2 className="h-4 w-4" />
+                )}
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-2xl bg-[var(--card)] p-6 shadow-xl">
+            <h2 className="mb-4 text-lg font-bold text-[var(--foreground)]">
+              Delete Playlist?
+            </h2>
+            <p className="mb-6 text-[var(--muted)]">
+              Are you sure you want to delete "{playlist.name}"? This cannot be
+              undone. Items will remain in your library.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                className="flex-1 rounded-lg border border-[var(--border)] px-4 py-2 font-bold text-[var(--foreground)] transition-colors hover:bg-[var(--secondary)]"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDelete}
+                disabled={isDeleting}
+                className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-red-500 px-4 py-2 font-bold text-white transition-colors hover:bg-red-600 disabled:opacity-50"
+              >
+                {isDeleting && <Loader2 className="h-4 w-4 animate-spin" />}
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

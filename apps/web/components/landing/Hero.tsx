@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { Play, Headphones } from "lucide-react";
+import { Headphones } from "lucide-react";
+import { HeroPlayer } from "@/components/marketing/HeroPlayer";
 
 export function Hero() {
   return (
@@ -49,35 +50,9 @@ export function Hero() {
 
         </div>
 
-        {/* Demo Preview */}
-        <div className="mx-auto mt-20 max-w-3xl">
-          <div className="overflow-hidden rounded-2xl bg-white shadow-lg ring-1 ring-[#e5e5e5]">
-            {/* Mock App UI */}
-            <div className="border-b border-[#e5e5e5] bg-white px-6 py-4">
-              <div className="flex items-center gap-3">
-                <div className="h-3 w-3 rounded-full bg-red-400" />
-                <div className="h-3 w-3 rounded-full bg-yellow-400" />
-                <div className="h-3 w-3 rounded-full bg-green-400" />
-              </div>
-            </div>
-            <div className="p-8">
-              <div className="mb-4 text-sm font-medium text-[#737373]">
-                Paste any article URL
-              </div>
-              <div className="mb-6 flex gap-4">
-                <div className="flex-1 rounded-xl border border-[#e5e5e5] bg-white px-4 py-3 text-[#737373]">
-                  https://example.com/article...
-                </div>
-                <button className="flex items-center gap-2 rounded-xl bg-black px-6 py-3 font-bold text-white">
-                  <Play className="h-5 w-5" />
-                  Generate
-                </button>
-              </div>
-              <div className="text-center text-sm text-[#737373]">
-                Audio ready in &lt;10 seconds
-              </div>
-            </div>
-          </div>
+        {/* Sample Player */}
+        <div className="mx-auto mt-16 max-w-3xl">
+          <HeroPlayer />
         </div>
       </div>
     </section>

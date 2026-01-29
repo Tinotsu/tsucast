@@ -45,6 +45,15 @@ vi.mock("@/hooks/useCredits", () => ({
   useCredits: () => mockUseCreditsReturn,
 }));
 
+// Mock useTheme
+vi.mock("@/hooks/useTheme", () => ({
+  useTheme: () => ({
+    theme: "system",
+    resolvedTheme: "light",
+    setTheme: vi.fn(),
+  }),
+}));
+
 describe("Settings Page", () => {
   beforeEach(() => {
     vi.clearAllMocks();

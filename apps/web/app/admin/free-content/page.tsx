@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import {
   getAdminFreeContent,
   createAdminFreeContent,
+  updateAdminFreeContent,
   deleteAdminFreeContent,
   type FreeContentItem,
 } from "@/lib/admin-api";
@@ -17,6 +18,9 @@ import {
   XCircle,
   AlertTriangle,
   ExternalLink,
+  Pencil,
+  Check,
+  X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -68,6 +72,11 @@ export default function AdminFreeContentPage() {
 
   // Polling state - track multiple processing items
   const [processingIds, setProcessingIds] = useState<Set<string>>(new Set());
+
+  // Edit state
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editTitle, setEditTitle] = useState("");
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
 
   const loadItems = useCallback(async () => {
     try {
@@ -157,6 +166,34 @@ export default function AdminFreeContentPage() {
       setFormError(err instanceof Error ? err.message : "Failed to create free content");
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleStartEdit = (item: FreeContentItem) => {
+    setEditingId(item.id);
+    setEditTitle(item.title);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingId(null);
+    setEditTitle("");
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingId || !editTitle.trim()) return;
+
+    setIsSavingEdit(true);
+    try {
+      const result = await updateAdminFreeContent(editingId, { title: editTitle.trim() });
+      setItems((prev) =>
+        prev.map((i) => (i.id === editingId ? result.item : i))
+      );
+      setEditingId(null);
+      setEditTitle("");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to update");
+    } finally {
+      setIsSavingEdit(false);
     }
   };
 
@@ -347,28 +384,43 @@ export default function AdminFreeContentPage() {
         ) : (
           <div className="divide-y divide-[#e5e5e5]">
             {/* Table Header */}
-            <div className="grid grid-cols-[1fr_100px_80px_100px_120px_50px] gap-4 px-4 py-3 text-xs font-medium text-[#737373]">
+            <div className="grid grid-cols-[1fr_100px_80px_100px_120px_80px] gap-4 px-4 py-3 text-xs font-medium text-[#737373]">
               <span>Title</span>
               <span>Voice</span>
               <span>Status</span>
               <span>Duration</span>
               <span>Created</span>
-              <span></span>
+              <span>Actions</span>
             </div>
 
             {items.map((item) => {
               const status = statusConfig[item.status];
               const StatusIcon = status.icon;
               const isProcessing = item.status === "processing" || item.status === "pending";
+              const isEditing = editingId === item.id;
 
               return (
                 <div
                   key={item.id}
-                  className="grid grid-cols-[1fr_100px_80px_100px_120px_50px] items-center gap-4 px-4 py-3 text-sm"
+                  className="grid grid-cols-[1fr_100px_80px_100px_120px_80px] items-center gap-4 px-4 py-3 text-sm"
                 >
                   {/* Title + URL */}
                   <div className="min-w-0">
-                    <p className="truncate font-medium text-[#1a1a1a]">{item.title}</p>
+                    {isEditing ? (
+                      <input
+                        type="text"
+                        value={editTitle}
+                        onChange={(e) => setEditTitle(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") handleSaveEdit();
+                          if (e.key === "Escape") handleCancelEdit();
+                        }}
+                        autoFocus
+                        className="w-full rounded border border-[#1a1a1a] px-2 py-1 text-sm font-medium text-[#1a1a1a] focus:outline-none"
+                      />
+                    ) : (
+                      <p className="truncate font-medium text-[#1a1a1a]">{item.title}</p>
+                    )}
                     {item.source_url && (
                       <a
                         href={item.source_url}
@@ -429,13 +481,49 @@ export default function AdminFreeContentPage() {
                   </span>
 
                   {/* Actions */}
-                  <button
-                    onClick={() => handleDelete(item.id)}
-                    className="rounded p-1 text-[#737373] hover:bg-red-50 hover:text-red-500"
-                    title="Delete"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
+                  <div className="flex items-center gap-1">
+                    {isEditing ? (
+                      <>
+                        <button
+                          onClick={handleSaveEdit}
+                          disabled={isSavingEdit}
+                          className="rounded p-1 text-green-600 hover:bg-green-50 disabled:opacity-50"
+                          title="Save"
+                        >
+                          {isSavingEdit ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Check className="h-4 w-4" />
+                          )}
+                        </button>
+                        <button
+                          onClick={handleCancelEdit}
+                          disabled={isSavingEdit}
+                          className="rounded p-1 text-[#737373] hover:bg-[#f5f5f5] disabled:opacity-50"
+                          title="Cancel"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <button
+                          onClick={() => handleStartEdit(item)}
+                          className="rounded p-1 text-[#737373] hover:bg-[#f5f5f5] hover:text-[#1a1a1a]"
+                          title="Edit title"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(item.id)}
+                          className="rounded p-1 text-[#737373] hover:bg-red-50 hover:text-red-500"
+                          title="Delete"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </>
+                    )}
+                  </div>
                 </div>
               );
             })}

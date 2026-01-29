@@ -1,7 +1,7 @@
 /**
  * Page Tests: Dashboard Page
  *
- * Tests for the dashboard page including stats display and credits banner.
+ * Tests for the dashboard page including stats display and generation form.
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
@@ -44,9 +44,16 @@ vi.mock("@/hooks/useCredits", () => ({
   useCredits: () => mockUseCreditsReturn,
 }));
 
-// Mock getLibrary
+// Mock API functions
 vi.mock("@/lib/api", () => ({
   getLibrary: vi.fn().mockResolvedValue([]),
+  generateAudio: vi.fn(),
+  previewCreditCost: vi.fn(),
+  checkCache: vi.fn().mockResolvedValue({ cached: false }),
+  ApiError: class ApiError extends Error {
+    code?: string;
+    status?: number;
+  },
 }));
 
 describe("Dashboard Page", () => {
@@ -114,7 +121,7 @@ describe("Dashboard Page", () => {
   });
 
   describe("Credits Banner", () => {
-    it("[P1] should show banner when credits are 0", () => {
+    it("[P1] should show no credits message when credits are 0", () => {
       // GIVEN: User with no credits
       mockUseAuthReturn = {
         ...mockUseAuthReturn,
@@ -130,12 +137,12 @@ describe("Dashboard Page", () => {
       // WHEN: Rendering dashboard
       render(<DashboardPage />);
 
-      // THEN: Credits banner is shown
-      expect(screen.getByText("Need more credits?")).toBeInTheDocument();
+      // THEN: No credits message is shown
+      expect(screen.getByText("No Credits Available")).toBeInTheDocument();
       expect(screen.getByRole("link", { name: /buy credits/i })).toBeInTheDocument();
     });
 
-    it("[P1] should not show banner when user has credits", () => {
+    it("[P1] should not show no credits message when user has credits", () => {
       // GIVEN: User with credits
       mockUseAuthReturn = {
         ...mockUseAuthReturn,
@@ -151,14 +158,14 @@ describe("Dashboard Page", () => {
       // WHEN: Rendering dashboard
       render(<DashboardPage />);
 
-      // THEN: Credits banner is not shown
-      expect(screen.queryByText("Need more credits?")).not.toBeInTheDocument();
+      // THEN: No credits message is not shown
+      expect(screen.queryByText("No Credits Available")).not.toBeInTheDocument();
     });
   });
 
-  describe("Quick Actions", () => {
-    it("[P1] should show generate and library links", () => {
-      // GIVEN: Authenticated user
+  describe("Generation Form", () => {
+    it("[P1] should show URL input and generate button", () => {
+      // GIVEN: Authenticated user with credits
       mockUseAuthReturn = {
         ...mockUseAuthReturn,
         profile: createUserProfile(),
@@ -169,9 +176,10 @@ describe("Dashboard Page", () => {
       // WHEN: Rendering dashboard
       render(<DashboardPage />);
 
-      // THEN: Quick action links are present
-      expect(screen.getByText("Generate New")).toBeInTheDocument();
-      expect(screen.getByText("Your Library")).toBeInTheDocument();
+      // THEN: Generation form elements are present
+      expect(screen.getByRole("heading", { name: /generate podcast/i })).toBeInTheDocument();
+      expect(screen.getByPlaceholderText("https://example.com/article")).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /generate podcast/i })).toBeInTheDocument();
     });
   });
 });

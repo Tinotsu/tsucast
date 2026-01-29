@@ -102,7 +102,7 @@ function CreditSuccessContent() {
       {/* CTA */}
       <div className="mt-8 space-y-4">
         <Link
-          href="/generate"
+          href="/dashboard"
           className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#1a1a1a] py-4 font-bold text-white hover:bg-white hover:text-[#1a1a1a] hover:border hover:border-[#1a1a1a]"
         >
           <Sparkles className="h-5 w-5" />
@@ -111,10 +111,10 @@ function CreditSuccessContent() {
         </Link>
 
         <Link
-          href="/dashboard"
+          href="/library"
           className="block font-medium text-[#737373] underline hover:text-[#1a1a1a] hover:no-underline"
         >
-          Go to Dashboard
+          View Library
         </Link>
       </div>
     </div>
