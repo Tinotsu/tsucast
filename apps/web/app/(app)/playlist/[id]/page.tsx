@@ -16,11 +16,9 @@ import {
   Play,
   Trash2,
   Loader2,
-  MoreVertical,
   Clock,
   Pencil,
   ListMusic,
-  Music,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -279,48 +277,53 @@ export default function PlaylistPage() {
           </p>
         </div>
       ) : (
-        <div className="space-y-2">
+        <div className="space-y-3">
           {playlist.items.map((item, index) => (
             <div
               key={item.id}
-              className="group flex items-center gap-4 rounded-xl bg-[var(--card)] p-4 transition-colors hover:bg-[var(--secondary)]"
+              className="group relative rounded-xl bg-[var(--card)] p-4 transition-all hover:bg-[var(--foreground)] hover:text-[var(--background)]"
             >
-              {/* Position */}
-              <span className="w-8 text-center text-sm text-[var(--muted)]">
-                {index + 1}
-              </span>
+              <div className="flex gap-4">
+                {/* Position */}
+                <span className="flex w-6 items-center justify-center text-sm text-[var(--muted)] group-hover:text-[var(--background)] group-hover:opacity-70">
+                  {index + 1}
+                </span>
 
-              {/* Play Button */}
-              <button
-                onClick={() => handlePlayItem(item)}
-                className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-[var(--foreground)] text-[var(--background)] transition-colors hover:opacity-90"
-              >
-                <Play className="ml-0.5 h-4 w-4" />
-              </button>
+                {/* Play Button */}
+                <button
+                  onClick={() => handlePlayItem(item)}
+                  className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-[var(--foreground)] text-[var(--background)] transition-colors group-hover:bg-[var(--background)] group-hover:text-[var(--foreground)]"
+                >
+                  <Play className="ml-0.5 h-5 w-5" />
+                </button>
 
-              {/* Track Info */}
-              <div className="min-w-0 flex-1">
-                <h3 className="truncate font-medium text-[var(--foreground)]">
-                  {item.audio.title}
-                </h3>
-                <p className="text-sm text-[var(--muted)]">
-                  {formatDuration(item.audio.duration_seconds)}
-                </p>
+                {/* Track Info */}
+                <div className="min-w-0 flex-1">
+                  <h3 className="truncate font-bold text-[var(--foreground)] group-hover:text-[var(--background)]">
+                    {item.audio.title}
+                  </h3>
+                  <p className="mt-1 flex items-center gap-1 text-xs text-[var(--muted)] group-hover:text-[var(--background)] group-hover:opacity-70">
+                    <Clock className="h-3 w-3" />
+                    {formatDuration(item.audio.duration_seconds)}
+                  </p>
+                </div>
+
+                {/* Remove Button */}
+                <div className="flex flex-shrink-0 items-center">
+                  <button
+                    onClick={() => handleRemoveItem(item.id)}
+                    disabled={removingItemId === item.id}
+                    className="rounded-lg p-2 text-[var(--foreground)] opacity-0 transition-all group-hover:opacity-100 group-hover:text-[var(--background)] hover:bg-[var(--destructive)] hover:text-white"
+                    aria-label={`Remove ${item.audio.title}`}
+                  >
+                    {removingItemId === item.id ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Trash2 className="h-4 w-4" />
+                    )}
+                  </button>
+                </div>
               </div>
-
-              {/* Remove Button */}
-              <button
-                onClick={() => handleRemoveItem(item.id)}
-                disabled={removingItemId === item.id}
-                className="rounded-full p-2 text-[var(--muted)] opacity-0 transition-opacity group-hover:opacity-100 hover:bg-[var(--background)] hover:text-red-500"
-                aria-label={`Remove ${item.audio.title}`}
-              >
-                {removingItemId === item.id ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Trash2 className="h-4 w-4" />
-                )}
-              </button>
             </div>
           ))}
         </div>

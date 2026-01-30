@@ -47,27 +47,20 @@ vi.mock("@/hooks/useAuth", () => ({
   useAuth: () => mockUseAuth(),
 }));
 
-// Mock useAudioPlayer for queue functionality
-const mockAddToQueue = vi.fn();
+// Mock useAudioPlayer for playback functionality
+const mockPlay = vi.fn();
 vi.mock("@/hooks/useAudioPlayer", () => ({
   useAudioPlayer: () => ({
-    addToQueue: mockAddToQueue,
+    play: mockPlay,
     track: null,
     isPlaying: false,
-    queue: [],
   }),
-}));
-
-// Mock WebPlayer component to avoid audio element issues
-vi.mock("@/components/app/WebPlayer", () => ({
-  WebPlayer: ({ title }: { title: string }) => (
-    <div data-testid="web-player">{title}</div>
-  ),
 }));
 
 describe("Library Page", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockPlay.mockClear();
     // Default: authenticated user
     mockUseAuth.mockReturnValue({
       isLoading: false,
@@ -204,10 +197,10 @@ describe("Library Page", () => {
     });
   });
 
-  describe("Item Selection", () => {
-    it("[P1] should show player when item is selected", async () => {
+  describe("Item Playback", () => {
+    it("[P1] should call play when item is clicked", async () => {
       // GIVEN: Library with items
-      const items = [createLibraryItem({ title: "Test Article" })];
+      const items = [createLibraryItem({ title: "Test Article", audio_id: "test-audio-123", audio_url: "https://example.com/audio.mp3" })];
       mockGetLibrary.mockResolvedValue(items);
 
       render(<LibraryPage />);
@@ -216,30 +209,18 @@ describe("Library Page", () => {
         expect(screen.getByText("Test Article")).toBeInTheDocument();
       });
 
-      // WHEN: Clicking on item
-      const playButtons = screen.getAllByRole("button");
-      const playButton = playButtons.find((btn) =>
-        btn.className.includes("rounded-xl")
-      );
-      fireEvent.click(playButton!);
+      // WHEN: Clicking on play button
+      const playButton = screen.getByRole("button", { name: /play test article/i });
+      fireEvent.click(playButton);
 
-      // THEN: Player is shown with title
+      // THEN: Play function is called with correct arguments
       await waitFor(() => {
-        expect(screen.getByTestId("web-player")).toBeInTheDocument();
-      });
-    });
-
-    it("[P1] should show 'Select an item to play' when nothing selected", async () => {
-      // GIVEN: Library with items but nothing selected
-      const items = [createLibraryItem()];
-      mockGetLibrary.mockResolvedValue(items);
-
-      // WHEN: Rendering library page
-      render(<LibraryPage />);
-
-      // THEN: Placeholder message shown
-      await waitFor(() => {
-        expect(screen.getByText("Select an item to play")).toBeInTheDocument();
+        expect(mockPlay).toHaveBeenCalledWith({
+          id: "test-audio-123",
+          url: "https://example.com/audio.mp3",
+          title: "Test Article",
+          duration: expect.any(Number),
+        });
       });
     });
   });
@@ -354,29 +335,19 @@ describe("Library Page", () => {
       expect(mockDeleteLibraryItem).not.toHaveBeenCalled();
     });
 
-    it("[P2] should call delete API when selected item is confirmed for deletion", async () => {
-      // GIVEN: Library with one item that's selected
-      const item = createLibraryItem({ title: "Selected Item", audio_id: "sel-123" });
+    it("[P2] should call delete API when item deletion is confirmed", async () => {
+      // GIVEN: Library with one item
+      const item = createLibraryItem({ title: "Item to Delete", audio_id: "del-456" });
       mockGetLibrary.mockResolvedValue([item]);
       mockDeleteLibraryItem.mockResolvedValue(undefined);
 
       render(<LibraryPage />);
 
       await waitFor(() => {
-        expect(screen.getByText("Selected Item")).toBeInTheDocument();
+        expect(screen.getByText("Item to Delete")).toBeInTheDocument();
       });
 
-      // Select the item first
-      const playButtons = screen.getAllByRole("button").filter((btn) =>
-        btn.className.includes("rounded-xl")
-      );
-      fireEvent.click(playButtons[0]);
-
-      await waitFor(() => {
-        expect(screen.getByTestId("web-player")).toBeInTheDocument();
-      });
-
-      // WHEN: Deleting the selected item (click trash, then confirm)
+      // WHEN: Deleting the item (click trash, then confirm)
       const deleteButton = screen.getByRole("button", { name: /^delete /i });
       fireEvent.click(deleteButton);
 
@@ -388,7 +359,7 @@ describe("Library Page", () => {
 
       // THEN: Delete API should be called with the correct ID
       await waitFor(() => {
-        expect(mockDeleteLibraryItem).toHaveBeenCalledWith("sel-123");
+        expect(mockDeleteLibraryItem).toHaveBeenCalledWith("del-456");
       });
     });
   });

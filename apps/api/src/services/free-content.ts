@@ -134,7 +134,43 @@ async function processGeneration(
       keyPrefix: 'free-content',
     });
 
-    // Step 5: Update row to ready
+    // Step 5: Fetch the free content row to get title and source_url
+    const { data: contentRow, error: fetchError } = await supabase
+      .from('free_content')
+      .select('title, source_url, voice_id')
+      .eq('id', contentId)
+      .single();
+
+    if (fetchError) {
+      logger.error({ contentId, error: fetchError }, 'Failed to fetch free content row');
+      await updateFailed(supabase, contentId, 'Failed to fetch content data');
+      return;
+    }
+
+    // Step 6: Insert into audio_cache so it can be added to playlists
+    // Use the same ID as free_content so playlist references work
+    const { error: cacheError } = await supabase
+      .from('audio_cache')
+      .upsert({
+        id: contentId, // Use same ID as free_content
+        url_hash: `free-content:${contentId}`, // Unique hash for free content
+        original_url: contentRow.source_url || `free-content:${contentId}`,
+        normalized_url: contentRow.source_url || `free-content:${contentId}`,
+        voice_id: contentRow.voice_id || opts.voiceId,
+        title: contentRow.title,
+        audio_url: uploadResult.url,
+        duration_seconds: durationSeconds,
+        word_count: wordCount,
+        file_size_bytes: uploadResult.size,
+        status: 'ready',
+      }, { onConflict: 'id' });
+
+    if (cacheError) {
+      logger.error({ contentId, error: cacheError }, 'Failed to sync free content to audio_cache');
+      // Don't fail the whole operation - free content still works, just can't be added to playlists
+    }
+
+    // Step 7: Update free_content row to ready
     const { error: updateError } = await supabase
       .from('free_content')
       .update({

@@ -245,6 +245,49 @@ playlists.post('/:id/items', async (c) => {
     return c.json({ error: { code: 'NOT_FOUND', message: 'Playlist not found' } }, 404);
   }
 
+  // Check if audioId exists in audio_cache
+  const { data: audioExists } = await client
+    .from('audio_cache')
+    .select('id')
+    .eq('id', audioId)
+    .single();
+
+  // If not in audio_cache, check if it's free content and sync it
+  if (!audioExists) {
+    const { data: freeContent } = await client
+      .from('free_content')
+      .select('id, title, voice_id, source_url, audio_url, duration_seconds, word_count, file_size_bytes')
+      .eq('id', audioId)
+      .eq('status', 'ready')
+      .single();
+
+    if (freeContent && freeContent.audio_url) {
+      // Sync free content to audio_cache
+      const { error: syncError } = await client
+        .from('audio_cache')
+        .upsert({
+          id: freeContent.id,
+          url_hash: `free-content:${freeContent.id}`,
+          original_url: freeContent.source_url || `free-content:${freeContent.id}`,
+          normalized_url: freeContent.source_url || `free-content:${freeContent.id}`,
+          voice_id: freeContent.voice_id,
+          title: freeContent.title,
+          audio_url: freeContent.audio_url,
+          duration_seconds: freeContent.duration_seconds,
+          word_count: freeContent.word_count,
+          file_size_bytes: freeContent.file_size_bytes,
+          status: 'ready',
+        }, { onConflict: 'id' });
+
+      if (syncError) {
+        logger.error({ syncError, audioId }, 'Failed to sync free content to audio_cache');
+        return c.json({ error: { code: 'SYNC_FAILED', message: 'Failed to prepare audio for playlist' } }, 500);
+      }
+    } else {
+      return c.json({ error: { code: 'NOT_FOUND', message: 'Audio not found' } }, 404);
+    }
+  }
+
   // Get next position
   const { data: existing } = await client
     .from('playlist_items')

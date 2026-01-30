@@ -74,7 +74,7 @@ export async function updateSession(request: NextRequest) {
   }
 
   // Protected routes - redirect to login if not authenticated
-  const protectedPaths = ["/home", "/library", "/generate", "/upgrade", "/settings"];
+  const protectedPaths = ["/home", "/generate", "/upgrade", "/settings"];
   const adminPaths = ["/admin"];
   const pathname = request.nextUrl.pathname;
 
@@ -83,7 +83,12 @@ export async function updateSession(request: NextRequest) {
   );
   const isAdminRoute = adminPaths.some((path) => pathname.startsWith(path));
 
-  if ((isProtectedRoute || isAdminRoute) && !user && !isTimeout) {
+  // Library page is special: explore tab is public, other tabs require auth
+  const isLibraryRoute = pathname.startsWith("/library");
+  const libraryTab = request.nextUrl.searchParams.get("tab");
+  const isProtectedLibraryRoute = isLibraryRoute && libraryTab !== "explore";
+
+  if ((isProtectedRoute || isAdminRoute || isProtectedLibraryRoute) && !user && !isTimeout) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     url.searchParams.set("redirect", pathname);

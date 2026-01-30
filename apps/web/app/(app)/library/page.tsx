@@ -5,11 +5,10 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/hooks/useAuth";
 import { useAudioPlayer } from "@/hooks/useAudioPlayer";
-import { getLibrary, deleteLibraryItem, updatePlaybackPosition, ApiError, type LibraryItem } from "@/lib/api";
-import { WebPlayer } from "@/components/app/WebPlayer";
+import { getLibrary, deleteLibraryItem, ApiError, type LibraryItem } from "@/lib/api";
 import { ExploreTab } from "@/components/library/ExploreTab";
 import { PlaylistsTab } from "@/components/library/PlaylistsTab";
-import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { AddToPlaylistMenu } from "@/components/library/AddToPlaylistMenu";
 import {
   Headphones,
   Play,
@@ -42,36 +41,50 @@ export default function LibraryPage() {
 
 function LibraryPageContent() {
   const { isLoading: authLoading, isAuthenticated } = useAuth();
-  const { addToQueue } = useAudioPlayer();
+  const { play, track, isPlaying } = useAudioPlayer();
   const router = useRouter();
   const searchParams = useSearchParams();
   const highlightId = searchParams.get("highlight");
   const tabParam = searchParams.get("tab") as TabType | null;
 
-  const [activeTab, setActiveTab] = useState<TabType>(
-    tabParam === "explore" ? "explore" : tabParam === "playlists" ? "playlists" : "all"
-  );
+  // Use URL param directly to determine initial tab (avoids hydration mismatch)
+  const urlTab = tabParam === "explore" ? "explore" : tabParam === "playlists" ? "playlists" : "all";
+  const [activeTab, setActiveTab] = useState<TabType>(urlTab);
+
+  // Sync state with URL param when it changes
+  // Note: activeTab is intentionally excluded - we only want to sync FROM URL TO state,
+  // not create a circular dependency where state changes trigger this effect
+  useEffect(() => {
+    if (urlTab !== activeTab) {
+      setActiveTab(urlTab);
+    }
+  }, [urlTab]); // eslint-disable-line react-hooks/exhaustive-deps -- activeTab excluded to prevent circular sync
   const [items, setItems] = useState<LibraryItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [selectedItem, setSelectedItem] = useState<LibraryItem | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [confirmingDeleteId, setConfirmingDeleteId] = useState<string | null>(null);
-  const [queuedItemId, setQueuedItemId] = useState<string | null>(null);
-  const positionSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const lastSavedPositionRef = useRef<number>(0);
+  const [addingToPlaylistItem, setAddingToPlaylistItem] = useState<LibraryItem | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const successTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const handleAddToQueue = useCallback((item: LibraryItem) => {
-    addToQueue({
+  // Cleanup success message timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (successTimeoutRef.current) {
+        clearTimeout(successTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  const handlePlay = useCallback((item: LibraryItem) => {
+    play({
       id: item.audio_id,
       url: item.audio_url,
       title: item.title,
       duration: item.duration,
     });
-    // Show brief feedback
-    setQueuedItemId(item.audio_id);
-    setTimeout(() => setQueuedItemId(null), 1500);
-  }, [addToQueue]);
+  }, [play]);
 
   // Update URL when tab changes
   const handleTabChange = (tab: TabType) => {
@@ -108,11 +121,12 @@ function LibraryPageContent() {
   }, [router]);
 
   // Only redirect to login if on authenticated tabs and not authenticated
+  // Use urlTab directly to avoid race condition with state initialization
   useEffect(() => {
-    if (!authLoading && !isAuthenticated && (activeTab === "all" || activeTab === "playlists")) {
+    if (!authLoading && !isAuthenticated && (urlTab === "all" || urlTab === "playlists")) {
       router.push("/login?redirect=/library");
     }
-  }, [authLoading, isAuthenticated, activeTab, router]);
+  }, [authLoading, isAuthenticated, urlTab, router]);
 
   // Load library when on "all" tab and authenticated
   useEffect(() => {
@@ -124,64 +138,21 @@ function LibraryPageContent() {
     }
   }, [authLoading, isAuthenticated, activeTab, loadLibrary]);
 
-  // Auto-select highlighted item from URL param
+  // Auto-play highlighted item from URL param
   useEffect(() => {
-    if (highlightId && items.length > 0 && !selectedItem) {
+    if (highlightId && items.length > 0) {
       const item = items.find(i => i.audio_id === highlightId);
       if (item) {
-        setSelectedItem(item);
+        handlePlay(item);
       }
     }
-  }, [highlightId, items, selectedItem]);
-
-  // Debounced position save - only saves every 5 seconds to avoid excessive API calls
-  const handlePositionChange = useCallback((position: number) => {
-    if (!selectedItem) return;
-
-    // Update local state immediately for responsive UI
-    setItems(prev => prev.map(item =>
-      item.audio_id === selectedItem.audio_id
-        ? { ...item, playback_position: position }
-        : item
-    ));
-
-    // Debounce API call - only save if position changed significantly (>5 seconds)
-    const shouldSave = Math.abs(position - lastSavedPositionRef.current) >= 5;
-    if (!shouldSave) return;
-
-    // Clear any pending save
-    if (positionSaveTimeoutRef.current) {
-      clearTimeout(positionSaveTimeoutRef.current);
-    }
-
-    // Schedule save after 2 second debounce
-    positionSaveTimeoutRef.current = setTimeout(async () => {
-      try {
-        await updatePlaybackPosition(selectedItem.audio_id, position);
-        lastSavedPositionRef.current = position;
-      } catch (err) {
-        console.error("Failed to save position:", err);
-      }
-    }, 2000);
-  }, [selectedItem]);
-
-  // Clean up timeout on unmount and save final position
-  useEffect(() => {
-    return () => {
-      if (positionSaveTimeoutRef.current) {
-        clearTimeout(positionSaveTimeoutRef.current);
-      }
-    };
-  }, []);
+  }, [highlightId, items, handlePlay]);
 
   const handleDelete = async (audioId: string) => {
     setDeletingId(audioId);
     try {
       await deleteLibraryItem(audioId);
       setItems(prev => prev.filter((item) => item.audio_id !== audioId));
-      if (selectedItem?.audio_id === audioId) {
-        setSelectedItem(null);
-      }
     } catch (err) {
       console.error("Failed to delete:", err);
     } finally {
@@ -209,7 +180,7 @@ function LibraryPageContent() {
   };
 
   // Show loading while checking auth (except for explore tab)
-  if (authLoading && (activeTab === "all" || activeTab === "playlists")) {
+  if (authLoading && (urlTab === "all" || urlTab === "playlists")) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-[var(--foreground)]" />
@@ -218,7 +189,7 @@ function LibraryPageContent() {
   }
 
   // For authenticated tabs, don't render if not authenticated (redirect is happening)
-  if (!isAuthenticated && (activeTab === "all" || activeTab === "playlists") && !authLoading) {
+  if (!isAuthenticated && (urlTab === "all" || urlTab === "playlists") && !authLoading) {
     return null;
   }
 
@@ -312,22 +283,21 @@ function LibraryPageContent() {
               </Link>
             </div>
           ) : (
-            <div className="grid gap-8 lg:grid-cols-2">
-              {/* Library List */}
-              <div className="space-y-3">
-                <p className="mb-4 text-sm text-[var(--muted)]">
-                  {items.length} {items.length === 1 ? "item" : "items"}
-                </p>
+            <div className="space-y-3">
+              <p className="mb-4 text-sm text-[var(--muted)]">
+                {items.length} {items.length === 1 ? "item" : "items"}
+              </p>
                 {items.map((item) => {
                   const progress = getProgress(item);
-                  const isSelected = selectedItem?.audio_id === item.audio_id;
+                  const isCurrentTrack = track?.id === item.audio_id;
+                  const isThisPlaying = isCurrentTrack && isPlaying;
 
                   return (
                     <div
                       key={item.id}
                       className={cn(
                         "group relative rounded-xl p-4 transition-all",
-                        isSelected
+                        isThisPlaying
                           ? "bg-[var(--foreground)] text-[var(--background)]"
                           : "bg-[var(--card)] hover:bg-[var(--foreground)] hover:text-[var(--background)]"
                       )}
@@ -335,15 +305,16 @@ function LibraryPageContent() {
                       <div className="flex gap-4">
                         {/* Play Button */}
                         <button
-                          onClick={() => setSelectedItem(item)}
+                          onClick={() => handlePlay(item)}
+                          aria-label={isThisPlaying ? `Pause ${item.title}` : `Play ${item.title}`}
                           className={cn(
                             "flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl transition-colors",
-                            isSelected
+                            isThisPlaying
                               ? "bg-[var(--background)] text-[var(--foreground)]"
                               : "bg-[var(--foreground)] text-[var(--background)] group-hover:bg-[var(--background)] group-hover:text-[var(--foreground)]"
                           )}
                         >
-                          {isSelected ? (
+                          {isThisPlaying ? (
                             <Headphones className="h-5 w-5" />
                           ) : (
                             <Play className="ml-0.5 h-5 w-5" />
@@ -354,13 +325,13 @@ function LibraryPageContent() {
                         <div className="min-w-0 flex-1">
                           <h3 className={cn(
                             "line-clamp-2 font-bold",
-                            isSelected ? "text-[var(--background)]" : "text-[var(--foreground)] group-hover:text-[var(--background)]"
+                            isThisPlaying ? "text-[var(--background)]" : "text-[var(--foreground)] group-hover:text-[var(--background)]"
                           )}>
                             {item.title}
                           </h3>
                           <div className={cn(
                             "mt-1 flex items-center gap-3 text-xs font-normal",
-                            isSelected ? "opacity-70" : "text-[var(--muted)] group-hover:opacity-70 group-hover:text-[var(--background)]"
+                            isThisPlaying ? "opacity-70" : "text-[var(--muted)] group-hover:opacity-70 group-hover:text-[var(--background)]"
                           )}>
                             <span className="flex items-center gap-1">
                               <Clock className="h-3 w-3" />
@@ -379,12 +350,12 @@ function LibraryPageContent() {
                           {progress > 0 && progress < 100 && (
                             <div className={cn(
                               "mt-2 h-1 overflow-hidden rounded-full",
-                              isSelected ? "bg-[var(--background)]/20" : "bg-[var(--border)] group-hover:bg-[var(--background)]/20"
+                              isThisPlaying ? "bg-[var(--background)]/20" : "bg-[var(--border)] group-hover:bg-[var(--background)]/20"
                             )}>
                               <div
                                 className={cn(
                                   "h-full rounded-full",
-                                  isSelected ? "bg-[var(--background)]" : "bg-[var(--foreground)] group-hover:bg-[var(--background)]"
+                                  isThisPlaying ? "bg-[var(--background)]" : "bg-[var(--foreground)] group-hover:bg-[var(--background)]"
                                 )}
                                 style={{ width: `${progress}%` }}
                               />
@@ -394,23 +365,17 @@ function LibraryPageContent() {
 
                         {/* Action Buttons */}
                         <div className="flex flex-shrink-0 items-center gap-1">
-                          {/* Add to Queue Button */}
+                          {/* Add to Playlist Button */}
                           <button
-                            onClick={() => handleAddToQueue(item)}
-                            aria-label={queuedItemId === item.audio_id ? "Added to queue" : `Add ${item.title} to queue`}
+                            onClick={() => setAddingToPlaylistItem(item)}
+                            aria-label={`Add ${item.title} to playlist`}
                             className={cn(
                               "rounded-lg p-2 transition-all",
-                              isSelected ? "text-[var(--background)]" : "text-[var(--foreground)] group-hover:text-[var(--background)]",
-                              queuedItemId === item.audio_id
-                                ? "opacity-100 text-[var(--success)]"
-                                : "opacity-0 group-hover:opacity-100 hover:bg-[var(--secondary)]"
+                              isThisPlaying ? "text-[var(--background)]" : "text-[var(--foreground)] group-hover:text-[var(--background)]",
+                              "opacity-0 group-hover:opacity-100 hover:bg-[var(--secondary)]"
                             )}
                           >
-                            {queuedItemId === item.audio_id ? (
-                              <Check className="h-4 w-4" aria-hidden="true" />
-                            ) : (
-                              <ListPlus className="h-4 w-4" aria-hidden="true" />
-                            )}
+                            <ListPlus className="h-4 w-4" aria-hidden="true" />
                           </button>
 
                           {/* Delete Button with Confirmation */}
@@ -446,7 +411,7 @@ function LibraryPageContent() {
                               aria-label={`Delete ${item.title}`}
                               className={cn(
                                 "rounded-lg p-2 transition-all hover:bg-[var(--destructive)] hover:text-white",
-                                isSelected ? "text-[var(--background)]" : "text-[var(--foreground)] group-hover:text-[var(--background)]",
+                                isThisPlaying ? "text-[var(--background)]" : "text-[var(--foreground)] group-hover:text-[var(--background)]",
                                 deletingId === item.audio_id ? "opacity-100" : "opacity-0 group-hover:opacity-100"
                               )}
                             >
@@ -462,32 +427,32 @@ function LibraryPageContent() {
                     </div>
                   );
                 })}
-              </div>
-
-              {/* Player */}
-              <div className="sticky top-24">
-                {selectedItem ? (
-                  <ErrorBoundary>
-                    <WebPlayer
-                      audioUrl={selectedItem.audio_url}
-                      title={selectedItem.title}
-                      initialPosition={selectedItem.playback_position}
-                      onPositionChange={handlePositionChange}
-                    />
-                  </ErrorBoundary>
-                ) : (
-                  <div className="flex h-64 items-center justify-center rounded-2xl border border-dashed border-[var(--border)] bg-[var(--card)]">
-                    <div className="text-center text-[var(--muted)]">
-                      <Headphones className="mx-auto mb-2 h-8 w-8" />
-                      <p className="font-normal">Select an item to play</p>
-                    </div>
-                  </div>
-                )}
-              </div>
             </div>
           )}
         </>
       )}
+
+      {/* Success Message */}
+      {successMessage && (
+        <div className="fixed bottom-24 left-1/2 z-50 -translate-x-1/2 rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white shadow-lg">
+          {successMessage}
+        </div>
+      )}
+
+      {/* Add to Playlist Menu */}
+      <AddToPlaylistMenu
+        audioId={addingToPlaylistItem?.audio_id ?? ""}
+        audioTitle={addingToPlaylistItem?.title}
+        isOpen={addingToPlaylistItem !== null}
+        onClose={() => setAddingToPlaylistItem(null)}
+        onSuccess={(playlistName) => {
+          setSuccessMessage(`Added to "${playlistName}"`);
+          if (successTimeoutRef.current) {
+            clearTimeout(successTimeoutRef.current);
+          }
+          successTimeoutRef.current = setTimeout(() => setSuccessMessage(null), 3000);
+        }}
+      />
     </div>
   );
 }
