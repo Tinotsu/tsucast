@@ -11,7 +11,7 @@ import { generateAudio, previewCreditCost, ApiError, type CreditPreview } from "
 import { UrlInput } from "@/components/app/UrlInput";
 import { VoiceSelector } from "@/components/app/VoiceSelector";
 import { isValidUrl } from "@/lib/utils";
-import { Loader2, AlertCircle, RotateCcw, Zap, CheckCircle } from "lucide-react";
+import { Loader2, AlertCircle, RotateCcw, Zap, CheckCircle, Play } from "lucide-react";
 
 interface GenerationResult {
   audioId: string;
@@ -93,12 +93,6 @@ export default function HomePage() {
         title: response.title,
         duration: response.duration,
       });
-      // Play in the global bar player
-      await play({
-        id: response.audioId,
-        url: response.audioUrl,
-        title: response.title,
-      });
       invalidateCredits();
     } catch (err) {
       if (err instanceof ApiError) {
@@ -120,7 +114,7 @@ export default function HomePage() {
 
   const canGenerate = url && isValidUrl(url) && !isGenerating && canAfford;
 
-  const handlePlayCached = async () => {
+  const handlePlayCached = () => {
     if (!cachedResult) return;
     setResult({
       audioId: cachedResult.audioId,
@@ -128,11 +122,14 @@ export default function HomePage() {
       title: cachedResult.title || "Cached Audio",
       duration: 0,
     });
-    // Play in the global bar player
+  };
+
+  const handlePlayResult = async () => {
+    if (!result) return;
     await play({
-      id: cachedResult.audioId,
-      url: cachedResult.audioUrl,
-      title: cachedResult.title || "Cached Audio",
+      id: result.audioId,
+      url: result.audioUrl,
+      title: result.title,
     });
   };
 
@@ -186,7 +183,7 @@ export default function HomePage() {
           </div>
         )}
 
-        {/* Show success message when generated - audio plays in bar player */}
+        {/* Show success message when generated */}
         {result && (
           <div className="mb-6">
             <div className="rounded-2xl border border-[var(--success)] bg-[var(--card)] p-8 text-center">
@@ -195,9 +192,16 @@ export default function HomePage() {
                 {result.title}
               </h3>
               <p className="mb-6 text-sm font-normal text-[var(--muted)]">
-                Now playing in the audio player below
+                Your podcast is ready
               </p>
               <div className="flex flex-col gap-3 sm:flex-row sm:justify-center">
+                <button
+                  onClick={handlePlayResult}
+                  className="flex items-center justify-center gap-2 rounded-lg bg-[var(--foreground)] px-6 py-2 font-bold text-[var(--background)] hover:opacity-80"
+                >
+                  <Play className="h-4 w-4" />
+                  Play
+                </button>
                 <button
                   onClick={resetForm}
                   className="rounded-lg border border-[var(--border)] px-6 py-2 font-bold text-[var(--foreground)] hover:bg-[var(--secondary)]"
@@ -206,7 +210,7 @@ export default function HomePage() {
                 </button>
                 <Link
                   href={`/library?highlight=${result.audioId}`}
-                  className="rounded-lg bg-[var(--foreground)] px-6 py-2 text-center font-bold text-[var(--background)] hover:opacity-80"
+                  className="rounded-lg border border-[var(--border)] px-6 py-2 text-center font-bold text-[var(--foreground)] hover:bg-[var(--secondary)]"
                 >
                   View in Library
                 </Link>
