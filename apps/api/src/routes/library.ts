@@ -49,6 +49,7 @@ app.get('/', async (c) => {
         id,
         title,
         audio_url,
+        transcript_url,
         duration_seconds,
         word_count,
         original_url
@@ -67,6 +68,7 @@ app.get('/', async (c) => {
     id: string;
     title: string;
     audio_url: string;
+    transcript_url: string | null;
     duration_seconds: number;
     word_count: number;
     original_url: string;
@@ -83,6 +85,7 @@ app.get('/', async (c) => {
       title: audio?.title || 'Untitled',
       url: audio?.original_url || '',
       audio_url: audio?.audio_url || '',
+      transcript_url: audio?.transcript_url || null,
       duration: audio?.duration_seconds || 0,
       playback_position: item.playback_position,
       is_played: item.is_played,
