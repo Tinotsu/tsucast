@@ -6,12 +6,12 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { useCredits } from "@/hooks/useCredits";
 import { useVoicePreference } from "@/hooks/useVoicePreference";
+import { useAudioPlayer } from "@/hooks/useAudioPlayer";
 import { generateAudio, previewCreditCost, ApiError, type CreditPreview } from "@/lib/api";
 import { UrlInput } from "@/components/app/UrlInput";
 import { VoiceSelector } from "@/components/app/VoiceSelector";
-import { WebPlayer } from "@/components/app/WebPlayer";
 import { isValidUrl } from "@/lib/utils";
-import { Loader2, AlertCircle, RotateCcw, Zap } from "lucide-react";
+import { Loader2, AlertCircle, RotateCcw, Zap, CheckCircle } from "lucide-react";
 
 interface GenerationResult {
   audioId: string;
@@ -23,6 +23,7 @@ interface GenerationResult {
 export default function HomePage() {
   const { isAuthenticated, isLoading: authLoading } = useAuth();
   const { credits, invalidateCredits } = useCredits();
+  const { play } = useAudioPlayer();
   const router = useRouter();
 
   // Voice preference (persisted to localStorage)
@@ -92,6 +93,12 @@ export default function HomePage() {
         title: response.title,
         duration: response.duration,
       });
+      // Play in the global bar player
+      await play({
+        id: response.audioId,
+        url: response.audioUrl,
+        title: response.title,
+      });
       invalidateCredits();
     } catch (err) {
       if (err instanceof ApiError) {
@@ -113,13 +120,19 @@ export default function HomePage() {
 
   const canGenerate = url && isValidUrl(url) && !isGenerating && canAfford;
 
-  const handlePlayCached = () => {
+  const handlePlayCached = async () => {
     if (!cachedResult) return;
     setResult({
       audioId: cachedResult.audioId,
       audioUrl: cachedResult.audioUrl,
       title: cachedResult.title || "Cached Audio",
       duration: 0,
+    });
+    // Play in the global bar player
+    await play({
+      id: cachedResult.audioId,
+      url: cachedResult.audioUrl,
+      title: cachedResult.title || "Cached Audio",
     });
   };
 
@@ -173,23 +186,31 @@ export default function HomePage() {
           </div>
         )}
 
-        {/* Show player if we have a result */}
+        {/* Show success message when generated - audio plays in bar player */}
         {result && (
           <div className="mb-6">
-            <WebPlayer audioUrl={result.audioUrl} title={result.title} />
-            <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:justify-center">
-              <button
-                onClick={resetForm}
-                className="rounded-lg border border-[var(--border)] px-6 py-2 font-bold text-[var(--foreground)] hover:bg-[var(--secondary)]"
-              >
-                Generate Another
-              </button>
-              <Link
-                href={`/library?highlight=${result.audioId}`}
-                className="rounded-lg bg-[var(--foreground)] px-6 py-2 text-center font-bold text-[var(--background)] hover:opacity-80"
-              >
-                View in Library
-              </Link>
+            <div className="rounded-2xl border border-[var(--success)] bg-[var(--card)] p-8 text-center">
+              <CheckCircle className="mx-auto mb-4 h-12 w-12 text-[var(--success)]" />
+              <h3 className="mb-2 text-lg font-bold text-[var(--foreground)]">
+                {result.title}
+              </h3>
+              <p className="mb-6 text-sm font-normal text-[var(--muted)]">
+                Now playing in the audio player below
+              </p>
+              <div className="flex flex-col gap-3 sm:flex-row sm:justify-center">
+                <button
+                  onClick={resetForm}
+                  className="rounded-lg border border-[var(--border)] px-6 py-2 font-bold text-[var(--foreground)] hover:bg-[var(--secondary)]"
+                >
+                  Generate Another
+                </button>
+                <Link
+                  href={`/library?highlight=${result.audioId}`}
+                  className="rounded-lg bg-[var(--foreground)] px-6 py-2 text-center font-bold text-[var(--background)] hover:opacity-80"
+                >
+                  View in Library
+                </Link>
+              </div>
             </div>
           </div>
         )}
