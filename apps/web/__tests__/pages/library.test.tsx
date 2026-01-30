@@ -216,11 +216,9 @@ describe("Library Page", () => {
         expect(screen.getByText("Test Article")).toBeInTheDocument();
       });
 
-      // WHEN: Clicking on item
-      const playButtons = screen.getAllByRole("button");
-      const playButton = playButtons.find((btn) =>
-        btn.className.includes("rounded-xl")
-      );
+      // WHEN: Clicking on item cover to select it
+      const itemCard = screen.getByText("Test Article").closest('[class*="rounded-xl"]');
+      const playButton = itemCard?.querySelector('button');
       fireEvent.click(playButton!);
 
       // THEN: Player is shown with title
@@ -367,10 +365,9 @@ describe("Library Page", () => {
       });
 
       // Select the item first
-      const playButtons = screen.getAllByRole("button").filter((btn) =>
-        btn.className.includes("rounded-xl")
-      );
-      fireEvent.click(playButtons[0]);
+      const itemCard = screen.getByText("Selected Item").closest('[class*="rounded-xl"]');
+      const playButton = itemCard?.querySelector('button');
+      fireEvent.click(playButton!);
 
       await waitFor(() => {
         expect(screen.getByTestId("web-player")).toBeInTheDocument();

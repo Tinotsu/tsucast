@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Headphones, Play, Pause, Loader2 } from "lucide-react";
+import { Headphones, Play, Pause, Loader2, ListPlus } from "lucide-react";
 import { getFreeContent, type FreeContentItem } from "@/lib/api";
 import { useAudioPlayer } from "@/hooks/useAudioPlayer";
+import { CoverImage } from "@/components/ui/CoverImage";
+import { AddToPlaylistMenu } from "@/components/library/AddToPlaylistMenu";
 import type { AudioTrack } from "@/services/audio-service";
 
 function formatDuration(seconds: number | null): string {
@@ -13,7 +15,7 @@ function formatDuration(seconds: number | null): string {
   return `${mins}:${secs.toString().padStart(2, "0")}`;
 }
 
-function ExploreItem({ item }: { item: FreeContentItem }) {
+function ExploreItem({ item, onAddToPlaylist }: { item: FreeContentItem; onAddToPlaylist: (item: FreeContentItem) => void }) {
   const { play, pause, track, isPlaying, isLoading } = useAudioPlayer();
 
   const isCurrentTrack = track?.id === item.id;
@@ -41,22 +43,10 @@ function ExploreItem({ item }: { item: FreeContentItem }) {
   };
 
   return (
-    <div className="rounded-xl bg-[var(--card)] p-4 transition-shadow hover:shadow-md">
+    <div className="group rounded-xl bg-[var(--card)] p-4 transition-shadow hover:shadow-md">
       <div className="flex items-start gap-4">
-        <button
-          onClick={handleTogglePlay}
-          disabled={!item.audio_url || isThisLoading}
-          aria-label={isThisPlaying ? `Pause ${item.title}` : `Play ${item.title}`}
-          className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-[var(--foreground)] text-[var(--background)] transition-transform hover:scale-105 disabled:opacity-50"
-        >
-          {isThisLoading ? (
-            <Loader2 className="h-5 w-5 animate-spin" />
-          ) : isThisPlaying ? (
-            <Pause className="h-5 w-5" />
-          ) : (
-            <Play className="h-5 w-5 ml-0.5" />
-          )}
-        </button>
+        {/* Cover Image */}
+        <CoverImage cover={item.cover} size={64} />
 
         <div className="flex-1 min-w-0">
           <h3 className="font-bold text-[var(--foreground)] line-clamp-2">{item.title}</h3>
@@ -65,6 +55,33 @@ function ExploreItem({ item }: { item: FreeContentItem }) {
               <span>{formatDuration(item.duration_seconds)} • Free to listen</span>
             )}
           </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          {/* Add to Playlist Button */}
+          <button
+            onClick={() => onAddToPlaylist(item)}
+            aria-label={`Add ${item.title} to playlist`}
+            className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full text-[var(--muted)] opacity-0 group-hover:opacity-100 transition-opacity hover:bg-[var(--secondary)] hover:text-[var(--foreground)]"
+          >
+            <ListPlus className="h-5 w-5" />
+          </button>
+
+          {/* Play Button */}
+          <button
+            onClick={handleTogglePlay}
+            disabled={!item.audio_url || isThisLoading}
+            aria-label={isThisPlaying ? `Pause ${item.title}` : `Play ${item.title}`}
+            className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-[var(--foreground)] text-[var(--background)] transition-transform hover:scale-105 disabled:opacity-50"
+          >
+            {isThisLoading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : isThisPlaying ? (
+              <Pause className="h-4 w-4" />
+            ) : (
+              <Play className="h-4 w-4 ml-0.5" />
+            )}
+          </button>
         </div>
       </div>
     </div>
@@ -75,6 +92,7 @@ export function ExploreTab() {
   const [items, setItems] = useState<FreeContentItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [playlistItem, setPlaylistItem] = useState<FreeContentItem | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -148,9 +166,21 @@ export function ExploreTab() {
       {/* Items */}
       <div className="grid gap-4 sm:grid-cols-2">
         {items.map((item) => (
-          <ExploreItem key={item.id} item={item} />
+          <ExploreItem
+            key={item.id}
+            item={item}
+            onAddToPlaylist={setPlaylistItem}
+          />
         ))}
       </div>
+
+      {/* Add to Playlist Menu */}
+      <AddToPlaylistMenu
+        audioId={playlistItem?.id || ""}
+        audioTitle={playlistItem?.title}
+        isOpen={playlistItem !== null}
+        onClose={() => setPlaylistItem(null)}
+      />
     </div>
   );
 }
