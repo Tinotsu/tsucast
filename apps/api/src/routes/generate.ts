@@ -96,18 +96,19 @@ function buildTranscript(
       cumChars += words[i].text.length + 1; // +1 for space
     }
 
-    // For each chapter, find the word whose cumulative position is closest
+    // For each chapter, find the word that contains the charIndex
+    // Algorithm: find largest i where wordCharPositions[i] <= chapter.charIndex
     for (const chapter of chapters) {
-      // Find first word where cumChars >= chapter.charIndex
       let wordIndex = 0;
+
+      // Binary search for efficiency, or linear scan for clarity
+      // Using linear scan: find the last word whose start position <= charIndex
       for (let i = 0; i < wordCharPositions.length; i++) {
-        if (wordCharPositions[i] >= chapter.charIndex) {
+        if (wordCharPositions[i] <= chapter.charIndex) {
           wordIndex = i;
+        } else {
+          // We've passed the charIndex, use the previous word
           break;
-        }
-        // If we reach the end, use the last word
-        if (i === wordCharPositions.length - 1) {
-          wordIndex = i;
         }
       }
 
@@ -339,6 +340,7 @@ app.post('/', async (c) => {
           return c.json({
             status: 'ready',
             audioUrl: existing.audio_url,
+            transcriptUrl: existing.transcript_url,
             title: existing.title,
             duration: existing.duration_seconds,
             wordCount: existing.word_count,

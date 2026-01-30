@@ -1,10 +1,11 @@
 /**
  * Text-to-Speech Service
  *
- * Primary: Together.ai Kokoro (fast, always warm)
- * Fallback: Kokoro on RunPod Serverless (slower, cold starts)
+ * Primary: Kokoro on RunPod Serverless (returns word-level timestamps for transcripts)
+ * Fallback: Together.ai Kokoro (fast, no timestamps)
  *
  * Story: 3-2 Streaming Audio Generation
+ * Story: Transcript & Chapters Support (provider order swapped for token access)
  */
 
 import { logger } from '../lib/logger.js';
@@ -61,26 +62,45 @@ interface RunPodResponse {
 /**
  * Generate speech from text
  *
- * Uses Together.ai as primary (fast), falls back to RunPod if not configured
+ * Uses RunPod as primary (returns word-level timestamps for transcripts),
+ * falls back to Together.ai if RunPod fails (no timestamps, but fast)
  */
 export async function generateSpeech(options: TtsOptions): Promise<TtsResult> {
-  // Try Together.ai first (faster, no cold starts)
-  if (isTogetherConfigured()) {
+  const apiUrl = process.env.KOKORO_API_URL;
+  const apiKey = process.env.KOKORO_API_KEY;
+  let runPodError: Error | null = null;
+
+  // Try RunPod first (returns tokens for transcript feature)
+  if (apiUrl && apiKey) {
     try {
-      logger.info({ textLength: options.text.length }, 'Using Together.ai TTS');
-      return await generateSpeechTogether(options);
+      logger.info({ textLength: options.text.length }, 'Using RunPod TTS (primary - has tokens)');
+      return await generateSpeechRunPod(options);
     } catch (error) {
-      logger.warn({ error }, 'Together.ai TTS failed, falling back to RunPod');
-      // Fall through to RunPod
+      runPodError = error instanceof Error ? error : new Error(String(error));
+      logger.warn({ error }, 'RunPod TTS failed, falling back to Together.ai');
+      // Fall through to Together.ai
     }
   }
 
-  // Fallback to RunPod
-  return generateSpeechRunPod(options);
+  // Fallback to Together.ai (faster, but no timestamps)
+  if (isTogetherConfigured()) {
+    logger.info({ textLength: options.text.length }, 'Using Together.ai TTS (fallback - no tokens)');
+    return await generateSpeechTogether(options);
+  }
+
+  // No fallback available - re-throw original RunPod error if it exists
+  if (runPodError) {
+    throw runPodError;
+  }
+
+  // Neither provider configured
+  logger.error('No TTS provider configured (need KOKORO_API_URL/KEY or TOGETHER_API_KEY)');
+  throw new Error(ErrorCodes.TTS_FAILED);
 }
 
 /**
- * Generate speech using Kokoro TTS on RunPod Serverless (fallback)
+ * Generate speech using Kokoro TTS on RunPod Serverless (primary)
+ * Returns word-level tokens for transcript generation
  */
 async function generateSpeechRunPod(options: TtsOptions): Promise<TtsResult> {
   const { text, voiceId, signal } = options;
