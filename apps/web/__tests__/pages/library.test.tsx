@@ -24,12 +24,10 @@ vi.mock("next/navigation", () => ({
 // Mock the API module
 const mockGetLibrary = vi.fn();
 const mockDeleteLibraryItem = vi.fn();
-const mockUpdatePlaybackPosition = vi.fn();
 
 vi.mock("@/lib/api", () => ({
   getLibrary: () => mockGetLibrary(),
   deleteLibraryItem: (id: string) => mockDeleteLibraryItem(id),
-  updatePlaybackPosition: (id: string, position: number) => mockUpdatePlaybackPosition(id, position),
   ApiError: class ApiError extends Error {
     code: string;
     status: number;
@@ -47,27 +45,25 @@ vi.mock("@/hooks/useAuth", () => ({
   useAuth: () => mockUseAuth(),
 }));
 
-// Mock useAudioPlayer for queue functionality
+// Mock useAudioPlayer for queue and play functionality
 const mockAddToQueue = vi.fn();
+const mockPlay = vi.fn();
+let mockCurrentTrack: { id: string } | null = null;
+
 vi.mock("@/hooks/useAudioPlayer", () => ({
   useAudioPlayer: () => ({
     addToQueue: mockAddToQueue,
-    track: null,
+    play: mockPlay,
+    track: mockCurrentTrack,
     isPlaying: false,
     queue: [],
   }),
 }));
 
-// Mock WebPlayer component to avoid audio element issues
-vi.mock("@/components/app/WebPlayer", () => ({
-  WebPlayer: ({ title }: { title: string }) => (
-    <div data-testid="web-player">{title}</div>
-  ),
-}));
-
 describe("Library Page", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockCurrentTrack = null;
     // Default: authenticated user
     mockUseAuth.mockReturnValue({
       isLoading: false,
@@ -204,11 +200,11 @@ describe("Library Page", () => {
     });
   });
 
-  describe("Item Selection", () => {
-    it("[P1] should show player when item is selected", async () => {
+  describe("Item Playback", () => {
+    it("[P1] should call play when item is clicked", async () => {
       // GIVEN: Library with items
-      const items = [createLibraryItem({ title: "Test Article" })];
-      mockGetLibrary.mockResolvedValue(items);
+      const item = createLibraryItem({ title: "Test Article", audio_id: "test-123", audio_url: "https://example.com/audio.mp3", duration: 300 });
+      mockGetLibrary.mockResolvedValue([item]);
 
       render(<LibraryPage />);
 
@@ -216,30 +212,21 @@ describe("Library Page", () => {
         expect(screen.getByText("Test Article")).toBeInTheDocument();
       });
 
-      // WHEN: Clicking on item
+      // WHEN: Clicking on item play button
       const playButtons = screen.getAllByRole("button");
       const playButton = playButtons.find((btn) =>
         btn.className.includes("rounded-xl")
       );
       fireEvent.click(playButton!);
 
-      // THEN: Player is shown with title
+      // THEN: play is called with correct track info
       await waitFor(() => {
-        expect(screen.getByTestId("web-player")).toBeInTheDocument();
-      });
-    });
-
-    it("[P1] should show 'Select an item to play' when nothing selected", async () => {
-      // GIVEN: Library with items but nothing selected
-      const items = [createLibraryItem()];
-      mockGetLibrary.mockResolvedValue(items);
-
-      // WHEN: Rendering library page
-      render(<LibraryPage />);
-
-      // THEN: Placeholder message shown
-      await waitFor(() => {
-        expect(screen.getByText("Select an item to play")).toBeInTheDocument();
+        expect(mockPlay).toHaveBeenCalledWith({
+          id: "test-123",
+          url: "https://example.com/audio.mp3",
+          title: "Test Article",
+          duration: 300,
+        });
       });
     });
   });
@@ -354,29 +341,20 @@ describe("Library Page", () => {
       expect(mockDeleteLibraryItem).not.toHaveBeenCalled();
     });
 
-    it("[P2] should call delete API when selected item is confirmed for deletion", async () => {
-      // GIVEN: Library with one item that's selected
-      const item = createLibraryItem({ title: "Selected Item", audio_id: "sel-123" });
+    it("[P2] should call delete API when currently playing item is confirmed for deletion", async () => {
+      // GIVEN: Library with one item that's currently playing
+      const item = createLibraryItem({ title: "Playing Item", audio_id: "sel-123" });
       mockGetLibrary.mockResolvedValue([item]);
       mockDeleteLibraryItem.mockResolvedValue(undefined);
+      mockCurrentTrack = { id: "sel-123" };
 
       render(<LibraryPage />);
 
       await waitFor(() => {
-        expect(screen.getByText("Selected Item")).toBeInTheDocument();
+        expect(screen.getByText("Playing Item")).toBeInTheDocument();
       });
 
-      // Select the item first
-      const playButtons = screen.getAllByRole("button").filter((btn) =>
-        btn.className.includes("rounded-xl")
-      );
-      fireEvent.click(playButtons[0]);
-
-      await waitFor(() => {
-        expect(screen.getByTestId("web-player")).toBeInTheDocument();
-      });
-
-      // WHEN: Deleting the selected item (click trash, then confirm)
+      // WHEN: Deleting the playing item (click trash, then confirm)
       const deleteButton = screen.getByRole("button", { name: /^delete /i });
       fireEvent.click(deleteButton);
 

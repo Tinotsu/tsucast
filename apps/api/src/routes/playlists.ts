@@ -214,6 +214,7 @@ playlists.delete('/:id', async (c) => {
 /**
  * POST /api/playlists/:id/items
  * Add an audio item to a playlist
+ * Supports both audio_cache items and free_content items
  */
 playlists.post('/:id/items', async (c) => {
   const userId = await getUserFromToken(c.req.header('Authorization'));
@@ -245,6 +246,56 @@ playlists.post('/:id/items', async (c) => {
     return c.json({ error: { code: 'NOT_FOUND', message: 'Playlist not found' } }, 404);
   }
 
+  // Check if audioId exists in audio_cache
+  let actualAudioId = audioId;
+  const { data: audioItem } = await client
+    .from('audio_cache')
+    .select('id')
+    .eq('id', audioId)
+    .single();
+
+  // If not in audio_cache, check if it's from free_content
+  if (!audioItem) {
+    const { data: freeContent } = await client
+      .from('free_content')
+      .select('id, title, voice_id, source_url, audio_url, duration_seconds, word_count, file_size_bytes, status')
+      .eq('id', audioId)
+      .eq('status', 'ready')
+      .single();
+
+    if (!freeContent) {
+      return c.json({ error: { code: 'NOT_FOUND', message: 'Audio not found' } }, 404);
+    }
+
+    // Create an audio_cache entry for the free content
+    // Use the free_content id as a unique identifier in url_hash
+    const freeContentUrl = freeContent.source_url || `free-content://${freeContent.id}`;
+    const { data: newAudioEntry, error: insertError } = await client
+      .from('audio_cache')
+      .upsert({
+        url_hash: `free-content-${freeContent.id}`,
+        original_url: freeContentUrl,
+        normalized_url: freeContentUrl,
+        title: freeContent.title,
+        voice_id: freeContent.voice_id,
+        audio_url: freeContent.audio_url,
+        duration_seconds: freeContent.duration_seconds,
+        word_count: freeContent.word_count,
+        file_size_bytes: freeContent.file_size_bytes,
+        status: 'ready',
+      }, { onConflict: 'url_hash' })
+      .select('id')
+      .single();
+
+    if (insertError) {
+      logger.error({ error: insertError, freeContentId: audioId }, 'Failed to create audio_cache entry for free content');
+      return c.json({ error: { code: 'ADD_FAILED', message: 'Failed to add free content to playlist' } }, 500);
+    }
+
+    actualAudioId = newAudioEntry.id;
+    logger.info({ freeContentId: audioId, audioId: actualAudioId }, 'Created audio_cache entry for free content');
+  }
+
   // Get next position
   const { data: existing } = await client
     .from('playlist_items')
@@ -259,7 +310,7 @@ playlists.post('/:id/items', async (c) => {
     .from('playlist_items')
     .insert({
       playlist_id: playlistId,
-      audio_id: audioId,
+      audio_id: actualAudioId,
       position: nextPosition,
     });
 
@@ -267,7 +318,7 @@ playlists.post('/:id/items', async (c) => {
     if (error.code === '23505') {
       return c.json({ error: { code: 'DUPLICATE', message: 'Item already in playlist' } }, 409);
     }
-    logger.error({ error, userId, playlistId, audioId }, 'Failed to add to playlist');
+    logger.error({ error, userId, playlistId, audioId: actualAudioId }, 'Failed to add to playlist');
     return c.json({ error: { code: 'ADD_FAILED', message: 'Failed to add to playlist' } }, 500);
   }
 

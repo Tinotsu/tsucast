@@ -3,13 +3,19 @@
  *
  * Displays admin-curated free content that anyone can listen to without auth.
  * Shown at the top of the library screen for all users.
+ * Long-press to add items to playlists.
  */
 
+import { useState } from 'react';
 import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useFreeContent } from '@/hooks/useFreeContent';
 import { useAudioPlayer } from '@/hooks/useAudioPlayer';
+import { usePlaylists } from '@/hooks/usePlaylists';
+import { AddToPlaylistMenu } from '@/components/library/AddToPlaylistMenu';
+import { CreatePlaylistModal } from '@/components/library/CreatePlaylistModal';
+import type { FreeContentItem } from '@/services/api';
 
 function formatDuration(seconds: number | null): string {
   if (seconds == null) return '';
@@ -20,10 +26,28 @@ function formatDuration(seconds: number | null): string {
 export function FreeContentSection() {
   const { data: items, isLoading, error } = useFreeContent();
   const { loadTrack } = useAudioPlayer();
+  const { createPlaylist, isCreating } = usePlaylists();
+  const [selectedItem, setSelectedItem] = useState<FreeContentItem | null>(null);
+  const [showAddToPlaylistMenu, setShowAddToPlaylistMenu] = useState(false);
+  const [showCreateModal, setShowCreateModal] = useState(false);
 
   if (isLoading || error || !items || items.length === 0) {
     return null;
   }
+
+  const handleLongPress = (item: FreeContentItem) => {
+    setSelectedItem(item);
+    setShowAddToPlaylistMenu(true);
+  };
+
+  const handleCreatePlaylist = async (name: string) => {
+    await createPlaylist(name);
+    setShowCreateModal(false);
+    // Re-open add menu so user can add to the new playlist
+    if (selectedItem) {
+      setShowAddToPlaylistMenu(true);
+    }
+  };
 
   const handlePlay = async (item: (typeof items)[0]) => {
     if (!item.audio_url) return;
@@ -60,14 +84,20 @@ export function FreeContentSection() {
           <TouchableOpacity
             key={item.id}
             onPress={() => handlePlay(item)}
+            onLongPress={() => handleLongPress(item)}
+            delayLongPress={300}
             className="bg-amber-100/50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700 rounded-xl p-4 w-48"
             activeOpacity={0.7}
           >
             <View className="flex-row items-center justify-between mb-2">
               <Ionicons name="headset" size={20} color="#F59E0B" />
-              <View className="bg-amber-500 rounded-full w-8 h-8 items-center justify-center">
-                <Ionicons name="play" size={14} color="#ffffff" />
-              </View>
+              <TouchableOpacity
+                onPress={() => handleLongPress(item)}
+                className="bg-amber-500 rounded-full w-8 h-8 items-center justify-center"
+                accessibilityLabel="Add to playlist"
+              >
+                <Ionicons name="add" size={18} color="#ffffff" />
+              </TouchableOpacity>
             </View>
             <Text
               className="text-sm font-medium text-amber-900 dark:text-amber-100"
@@ -83,6 +113,31 @@ export function FreeContentSection() {
           </TouchableOpacity>
         ))}
       </ScrollView>
+
+      {/* Add to Playlist Menu */}
+      <AddToPlaylistMenu
+        audioId={selectedItem?.id || ''}
+        audioUrl={selectedItem?.audio_url || undefined}
+        audioTitle={selectedItem?.title || undefined}
+        audioDuration={selectedItem?.duration_seconds || undefined}
+        visible={showAddToPlaylistMenu}
+        onClose={() => {
+          setShowAddToPlaylistMenu(false);
+          setSelectedItem(null);
+        }}
+        onCreateNew={() => {
+          setShowAddToPlaylistMenu(false);
+          setShowCreateModal(true);
+        }}
+      />
+
+      {/* Create Playlist Modal */}
+      <CreatePlaylistModal
+        visible={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        onCreate={handleCreatePlaylist}
+        isCreating={isCreating}
+      />
     </View>
   );
 }
