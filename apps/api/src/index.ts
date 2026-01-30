@@ -32,6 +32,7 @@ import faqRoutes from './routes/faq.js';
 import voicesRoutes from './routes/voices.js';
 import adminRoutes from './routes/admin.js';
 import streamRoutes from './routes/stream.js';
+import audioRoutes from './routes/audio.js';
 import { processEmailQueue } from './services/email-sequences.js';
 
 type AppEnv = {
@@ -85,6 +86,7 @@ app.route('/api/faq', faqRoutes);
 app.route('/api/voices', voicesRoutes);
 app.route('/api/admin', adminRoutes);
 app.route('/api/stream', streamRoutes);
+app.route('/api/audio', audioRoutes);
 
 // Root route
 app.get('/', (c) => {

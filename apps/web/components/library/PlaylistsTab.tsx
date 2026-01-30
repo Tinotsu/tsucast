@@ -15,8 +15,12 @@ import {
   Trash2,
   MoreVertical,
   Clock,
+  Pencil,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { CoverImage } from "@/components/ui/CoverImage";
+import { EditItemDialog } from "./EditItemDialog";
+import { getRandomEmoji } from "@/lib/constants";
 
 export function PlaylistsTab() {
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
@@ -26,6 +30,7 @@ export function PlaylistsTab() {
   const [newPlaylistName, setNewPlaylistName] = useState("");
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
+  const [editingPlaylist, setEditingPlaylist] = useState<Playlist | null>(null);
 
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -129,7 +134,10 @@ export function PlaylistsTab() {
             >
               <Link href={`/playlist/${playlist.id}`} className="block">
                 <div className="mb-4 flex h-24 w-full items-center justify-center rounded-lg bg-[var(--secondary)] group-hover:bg-[var(--card)]">
-                  <ListMusic className="h-10 w-10 text-[var(--muted)]" />
+                  <CoverImage
+                    cover={playlist.cover || getRandomEmoji(playlist.id)}
+                    size={64}
+                  />
                 </div>
                 <h3 className="mb-1 truncate font-bold text-[var(--foreground)]">
                   {playlist.name}
@@ -155,7 +163,18 @@ export function PlaylistsTab() {
 
                 {/* Dropdown Menu */}
                 {menuOpenId === playlist.id && (
-                  <div className="absolute right-0 top-full mt-1 w-40 rounded-lg border border-[var(--border)] bg-[var(--card)] py-1 shadow-lg">
+                  <div className="absolute right-0 top-full mt-1 w-40 rounded-lg border border-[var(--border)] bg-[var(--card)] py-1 shadow-lg z-10">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setEditingPlaylist(playlist);
+                        setMenuOpenId(null);
+                      }}
+                      className="flex w-full items-center gap-2 px-4 py-2 text-sm text-[var(--foreground)] hover:bg-[var(--secondary)]"
+                    >
+                      <Pencil className="h-4 w-4" />
+                      Edit
+                    </button>
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
@@ -219,6 +238,28 @@ export function PlaylistsTab() {
             </form>
           </div>
         </div>
+      )}
+
+      {/* Edit Playlist Dialog */}
+      {editingPlaylist && (
+        <EditItemDialog
+          isOpen={!!editingPlaylist}
+          onClose={() => setEditingPlaylist(null)}
+          onSave={(data) => {
+            setPlaylists((prev) =>
+              prev.map((p) =>
+                p.id === editingPlaylist.id
+                  ? { ...p, name: data.title, cover: data.cover }
+                  : p
+              )
+            );
+          }}
+          type="playlist"
+          itemId={editingPlaylist.id}
+          playlistId={editingPlaylist.id}
+          initialTitle={editingPlaylist.name}
+          initialCover={editingPlaylist.cover}
+        />
       )}
     </div>
   );

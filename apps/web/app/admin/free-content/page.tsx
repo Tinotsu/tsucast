@@ -24,6 +24,8 @@ import {
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { CoverImage } from "@/components/ui/CoverImage";
+import { PRESET_EMOJIS } from "@/lib/constants";
 
 const statusConfig = {
   pending: { label: "Pending", color: "bg-gray-400 text-white", icon: Clock },
@@ -83,6 +85,8 @@ export default function AdminFreeContentPage() {
   const [editingItem, setEditingItem] = useState<FreeContentItem | null>(null);
   const [editError, setEditError] = useState<string | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
+  const [editCover, setEditCover] = useState("");
+  const [coverMode, setCoverMode] = useState<"emoji" | "url">("emoji");
 
   const loadItems = useCallback(async () => {
     try {
@@ -244,12 +248,15 @@ export default function AdminFreeContentPage() {
   const openEditModal = (item: FreeContentItem) => {
     setEditingItem(item);
     setEditTitle(item.title);
+    setEditCover(item.cover || "");
+    setCoverMode(item.cover?.startsWith("http") ? "url" : "emoji");
     setEditError(null);
   };
 
   const closeEditModal = useCallback(() => {
     setEditingItem(null);
     setEditTitle("");
+    setEditCover("");
     setEditError(null);
   }, []);
 
@@ -275,8 +282,10 @@ export default function AdminFreeContentPage() {
     setIsUpdating(true);
 
     try {
+      const coverValue = editCover.trim() === "" ? null : editCover.trim();
       const result = await updateAdminFreeContent(editingItem.id, {
         title: editTitle,
+        cover: coverValue,
       });
 
       // Update the item in the list
@@ -467,7 +476,8 @@ export default function AdminFreeContentPage() {
         ) : (
           <div className="divide-y divide-[#e5e5e5]">
             {/* Table Header */}
-            <div className="grid grid-cols-[1fr_100px_80px_100px_120px_80px] gap-4 px-4 py-3 text-xs font-medium text-[#737373]">
+            <div className="grid grid-cols-[48px_1fr_100px_80px_100px_120px_80px] gap-4 px-4 py-3 text-xs font-medium text-[#737373]">
+              <span>Cover</span>
               <span>Title</span>
               <span>Voice</span>
               <span>Status</span>
@@ -485,8 +495,13 @@ export default function AdminFreeContentPage() {
               return (
                 <div
                   key={item.id}
-                  className="grid grid-cols-[1fr_100px_80px_100px_120px_80px] items-center gap-4 px-4 py-3 text-sm"
+                  className="grid grid-cols-[48px_1fr_100px_80px_100px_120px_80px] items-center gap-4 px-4 py-3 text-sm"
                 >
+                  {/* Cover */}
+                  <div className="flex-shrink-0">
+                    <CoverImage cover={item.cover} size={40} />
+                  </div>
+
                   {/* Title + URL */}
                   <div className="min-w-0">
                     {isEditing ? (
@@ -651,6 +666,81 @@ export default function AdminFreeContentPage() {
             )}
 
             <form onSubmit={handleEditSubmit} className="space-y-4">
+              {/* Cover Preview */}
+              <div className="flex justify-center">
+                <CoverImage cover={editCover || null} size={80} />
+              </div>
+
+              {/* Cover Mode Toggle */}
+              <div>
+                <label className="mb-1 block text-sm font-medium text-[#1a1a1a]">
+                  Cover
+                </label>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setCoverMode("emoji")}
+                    className={cn(
+                      "rounded-lg px-3 py-1.5 text-sm font-medium",
+                      coverMode === "emoji"
+                        ? "bg-[#1a1a1a] text-white"
+                        : "border border-[#e5e5e5] text-[#1a1a1a] hover:bg-[#f5f5f5]"
+                    )}
+                  >
+                    Emoji
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCoverMode("url")}
+                    className={cn(
+                      "rounded-lg px-3 py-1.5 text-sm font-medium",
+                      coverMode === "url"
+                        ? "bg-[#1a1a1a] text-white"
+                        : "border border-[#e5e5e5] text-[#1a1a1a] hover:bg-[#f5f5f5]"
+                    )}
+                  >
+                    Image URL
+                  </button>
+                </div>
+              </div>
+
+              {/* Emoji Grid or URL Input */}
+              {coverMode === "emoji" ? (
+                <div className="grid grid-cols-6 gap-2">
+                  {PRESET_EMOJIS.map((emoji) => (
+                    <button
+                      key={emoji}
+                      type="button"
+                      onClick={() => setEditCover(emoji)}
+                      className={cn(
+                        "flex h-10 w-10 items-center justify-center rounded-lg text-xl hover:bg-[#f5f5f5]",
+                        editCover === emoji ? "bg-[#1a1a1a] text-white" : "bg-white"
+                      )}
+                    >
+                      {emoji}
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => setEditCover("")}
+                    className={cn(
+                      "flex h-10 w-10 items-center justify-center rounded-lg text-xs text-[#737373] hover:bg-[#f5f5f5]",
+                      editCover === "" ? "ring-2 ring-[#1a1a1a]" : ""
+                    )}
+                  >
+                    None
+                  </button>
+                </div>
+              ) : (
+                <input
+                  type="url"
+                  value={editCover}
+                  onChange={(e) => setEditCover(e.target.value)}
+                  placeholder="https://example.com/image.jpg"
+                  className="w-full rounded-lg border border-[#e5e5e5] bg-white px-3 py-2 text-sm text-[#1a1a1a] focus:border-[#1a1a1a] focus:outline-none"
+                />
+              )}
+
               {/* Title */}
               <div>
                 <label className="mb-1 block text-sm font-medium text-[#1a1a1a]">

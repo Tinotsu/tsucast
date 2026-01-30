@@ -144,6 +144,7 @@ export interface FreeContentItem {
   status: "pending" | "processing" | "ready" | "failed";
   error_message: string | null;
   featured: boolean;
+  cover: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -168,7 +169,7 @@ export async function createAdminFreeContent(data: {
 
 export async function updateAdminFreeContent(
   id: string,
-  data: { title: string }
+  data: { title?: string; cover?: string | null }
 ): Promise<{ item: FreeContentItem }> {
   return fetchAdminApi(`/api/free-content/admin/${id}`, {
     method: "PATCH",

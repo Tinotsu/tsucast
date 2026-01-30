@@ -10,12 +10,18 @@ import { z } from 'zod';
 import { getSupabase } from '../lib/supabase.js';
 import { getUserFromToken } from '../middleware/auth.js';
 import { logger } from '../lib/logger.js';
+import { validateCover, normalizeCover } from '../utils/cover-validation.js';
 
 // Validation schemas
 const playlistNameSchema = z.string()
   .trim()
   .min(1, 'Playlist name is required')
   .max(255, 'Playlist name too long (max 255 characters)');
+
+const updatePlaylistSchema = z.object({
+  name: z.string().trim().min(1).max(255).optional(),
+  cover: z.string().optional(),
+});
 
 const playlists = new Hono();
 
@@ -39,6 +45,7 @@ playlists.get('/', async (c) => {
     .select(`
       id,
       name,
+      cover,
       created_at,
       updated_at,
       playlist_items(count)
@@ -115,7 +122,7 @@ playlists.get('/:id', async (c) => {
 
   const { data: playlist, error: playlistError } = await client
     .from('playlists')
-    .select('id, name, created_at, updated_at')
+    .select('id, name, cover, created_at, updated_at')
     .eq('id', playlistId)
     .eq('user_id', userId)
     .single();
@@ -133,15 +140,47 @@ playlists.get('/:id', async (c) => {
       audio:audio_cache (
         id,
         title,
+        cover,
         audio_url,
+        transcript_url,
         duration_seconds,
-        original_url
+        original_url,
+        created_by
       )
     `)
     .eq('playlist_id', playlistId)
     .order('position', { ascending: true });
 
-  return c.json({ playlist: { ...playlist, items: items || [] } });
+  // Transform items to add isEditable flag
+  interface AudioData {
+    id: string;
+    title: string;
+    cover: string | null;
+    audio_url: string;
+    transcript_url: string | null;
+    duration_seconds: number;
+    original_url: string;
+    created_by: string | null;
+  }
+  const transformedItems = (items || []).map((item) => {
+    const audioRaw = item.audio as AudioData | AudioData[] | null;
+    const audio = Array.isArray(audioRaw) ? audioRaw[0] : audioRaw;
+    return {
+      ...item,
+      audio: audio ? {
+        id: audio.id,
+        title: audio.title,
+        cover: audio.cover,
+        audio_url: audio.audio_url,
+        transcript_url: audio.transcript_url,
+        duration_seconds: audio.duration_seconds,
+        original_url: audio.original_url,
+        isEditable: audio.created_by === userId || audio.created_by === null,
+      } : null,
+    };
+  });
+
+  return c.json({ playlist: { ...playlist, items: transformedItems } });
 });
 
 /**
@@ -160,16 +199,37 @@ playlists.patch('/:id', async (c) => {
   }
   const playlistId = c.req.param('id');
   const body = await c.req.json();
-  const nameResult = playlistNameSchema.safeParse(body?.name);
 
-  if (!nameResult.success) {
-    const message = nameResult.error.errors[0]?.message || 'Invalid playlist name';
+  const parsed = updatePlaylistSchema.safeParse(body);
+  if (!parsed.success) {
+    const message = parsed.error.errors[0]?.message || 'Invalid input';
     return c.json({ error: { code: 'INVALID_INPUT', message } }, 400);
+  }
+
+  const updates: Record<string, unknown> = {};
+
+  if (parsed.data.name !== undefined) {
+    updates.name = parsed.data.name;
+  }
+
+  if (parsed.data.cover !== undefined) {
+    const coverValue = normalizeCover(parsed.data.cover);
+    if (coverValue !== null) {
+      const validation = validateCover(coverValue);
+      if (!validation.valid) {
+        return c.json({ error: { code: 'INVALID_INPUT', message: validation.error } }, 400);
+      }
+    }
+    updates.cover = coverValue;
+  }
+
+  if (Object.keys(updates).length === 0) {
+    return c.json({ error: { code: 'INVALID_INPUT', message: 'No valid fields to update' } }, 400);
   }
 
   const { error } = await client
     .from('playlists')
-    .update({ name: nameResult.data })
+    .update(updates)
     .eq('id', playlistId)
     .eq('user_id', userId);
 

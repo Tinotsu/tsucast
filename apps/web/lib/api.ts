@@ -3,8 +3,11 @@ import { emitAuthEvent } from './auth-events';
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
 interface GenerateRequest {
-  url: string;
+  url?: string;
+  text?: string;
+  title?: string;
   voiceId?: string;
+  source?: 'url' | 'youtube' | 'text';
 }
 
 interface GenerateResponse {
@@ -13,6 +16,7 @@ interface GenerateResponse {
   title: string;
   duration: number;
   wordCount: number;
+  transcriptUrl?: string | null;
 }
 
 interface CacheCheckResponse {
@@ -29,6 +33,7 @@ interface LibraryItem {
   title: string;
   url: string;
   audio_url: string;
+  transcript_url: string | null;
   duration: number;
   playback_position: number;
   is_played: boolean;
@@ -172,6 +177,7 @@ interface GenerateStatusResponse {
   status: "processing" | "ready" | "failed";
   cacheId?: string;
   audioUrl?: string;
+  transcriptUrl?: string | null;
   title?: string;
   duration?: number;
   wordCount?: number;
@@ -197,6 +203,7 @@ async function pollGenerationStatus(
         title: status.title || "Untitled",
         duration: status.duration || 0,
         wordCount: status.wordCount || 0,
+        transcriptUrl: status.transcriptUrl,
       };
     }
 
@@ -301,6 +308,7 @@ export async function generateAudio(
         title: data.title || "Untitled",
         duration: data.duration || 0,
         wordCount: data.wordCount || 0,
+        transcriptUrl: data.transcriptUrl,
       };
     }
 
@@ -424,6 +432,7 @@ export async function getCheckoutSessionStatus(sessionId: string): Promise<Check
 export interface Playlist {
   id: string;
   name: string;
+  cover: string | null;
   created_at: string;
   updated_at: string;
   itemCount: number;
@@ -436,9 +445,12 @@ export interface PlaylistItem {
   audio: {
     id: string;
     title: string;
+    cover: string | null;
     audio_url: string;
+    transcript_url: string | null;
     duration_seconds: number;
     original_url: string;
+    isEditable: boolean;
   };
 }
 
@@ -471,6 +483,27 @@ export async function renamePlaylist(id: string, name: string): Promise<void> {
   });
 }
 
+export async function editPlaylist(id: string, data: { name?: string; cover?: string | null }): Promise<void> {
+  await fetchApi(`/api/playlists/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function editAudio(audioId: string, data: { title?: string; cover?: string | null }): Promise<void> {
+  await fetchApi(`/api/library/${audioId}`, {
+    method: "PATCH",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function copyAudio(audioId: string, playlistItemId?: string): Promise<{ newAudioId: string; title: string; cover: string | null }> {
+  return fetchApi(`/api/audio/copy`, {
+    method: "POST",
+    body: JSON.stringify({ audioId, playlistItemId }),
+  });
+}
+
 export async function deletePlaylist(id: string): Promise<void> {
   await fetchApi(`/api/playlists/${id}`, {
     method: "DELETE",
@@ -488,6 +521,171 @@ export async function removeFromPlaylist(playlistId: string, itemId: string): Pr
   await fetchApi(`/api/playlists/${playlistId}/items/${itemId}`, {
     method: "DELETE",
   });
+}
+
+// File upload for PDF, EPUB, DOCX, TXT
+// Note: These limits must match apps/api/src/utils/errors.ts LIMITS
+// TODO: Consider fetching limits from API endpoint for single source of truth
+const FILE_SIZE_LIMITS: Record<string, number> = {
+  pdf: 50 * 1024 * 1024,   // MAX_PDF_SIZE_BYTES
+  epub: 20 * 1024 * 1024,  // MAX_EPUB_SIZE_BYTES
+  docx: 20 * 1024 * 1024,  // MAX_DOCX_SIZE_BYTES
+  txt: 5 * 1024 * 1024,    // MAX_TXT_SIZE_BYTES
+};
+
+export async function uploadFile(
+  file: File,
+  voiceId?: string
+): Promise<GenerateResponse> {
+  const token = await getAuthToken();
+  if (!token) {
+    throw new ApiError("Authentication required", "UNAUTHORIZED", 401);
+  }
+
+  // Client-side validation
+  const ext = file.name.split('.').pop()?.toLowerCase();
+  const sizeLimit = ext ? FILE_SIZE_LIMITS[ext] : null;
+  if (!ext || !sizeLimit) {
+    throw new ApiError("Unsupported file type", "UNSUPPORTED_FILE_TYPE", 415);
+  }
+  if (file.size > sizeLimit) {
+    const limitMb = Math.round(sizeLimit / 1024 / 1024);
+    throw new ApiError(
+      `File exceeds ${limitMb}MB limit for ${ext.toUpperCase()} files`,
+      "FILE_TOO_LARGE",
+      413
+    );
+  }
+
+  // Build FormData
+  const formData = new FormData();
+  formData.append('file', file);
+  if (voiceId) formData.append('voiceId', voiceId);
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 120000); // 2 min timeout for large files
+
+  try {
+    const response = await fetch(`${API_URL}/api/upload`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      body: formData, // Don't set Content-Type - browser sets boundary
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeoutId);
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      if (response.status === 401) emitAuthEvent("unauthorized");
+      throw new ApiError(
+        data.error?.message || "Upload failed",
+        data.error?.code || "UPLOAD_FAILED",
+        response.status
+      );
+    }
+
+    return {
+      audioId: data.cacheId || data.audioUrl?.split("/").pop() || "unknown",
+      audioUrl: data.audioUrl,
+      title: data.title || "Untitled",
+      duration: data.duration || 0,
+      wordCount: data.wordCount || 0,
+      transcriptUrl: data.transcriptUrl,
+    };
+  } catch (err) {
+    clearTimeout(timeoutId);
+    if (err instanceof ApiError) throw err;
+    if (err instanceof Error && err.name === "AbortError") {
+      throw new ApiError("Upload timed out", "TIMEOUT", 408);
+    }
+    throw err;
+  }
+}
+
+// Generate from pasted text
+export async function generateFromText(
+  text: string,
+  title: string,
+  voiceId?: string
+): Promise<GenerateResponse> {
+  // Client-side word count validation
+  const wordCount = text.trim().split(/\s+/).filter(w => w.length > 0).length;
+  if (wordCount > 15000) {
+    throw new ApiError(
+      `Content too long (${wordCount.toLocaleString()} words, max 15,000)`,
+      "ARTICLE_TOO_LONG",
+      422
+    );
+  }
+
+  return generateAudio({ text, title, voiceId, source: 'text' });
+}
+
+// Download audio file
+export async function downloadAudio(audioId: string): Promise<void> {
+  const token = await getAuthToken();
+  // Token is optional - free content doesn't require auth
+
+  const headers: HeadersInit = {};
+  if (token) headers.Authorization = `Bearer ${token}`;
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 60000); // 1 min timeout
+
+  try {
+    const response = await fetch(`${API_URL}/api/audio/${audioId}/download`, {
+      headers,
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      let error;
+      try {
+        error = await response.json();
+      } catch {
+        error = { error: { message: "Download failed" } };
+      }
+      throw new ApiError(
+        error.error?.message || "Download failed",
+        error.error?.code || "DOWNLOAD_FAILED",
+        response.status
+      );
+    }
+
+    // Get filename from Content-Disposition header
+    const disposition = response.headers.get("Content-Disposition");
+    const filenameMatch = disposition?.match(/filename="(.+)"/);
+    const filename = filenameMatch ? filenameMatch[1] : "audio.mp3";
+
+    // Trigger browser download
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  } catch (err) {
+    clearTimeout(timeoutId);
+    if (err instanceof ApiError) throw err;
+    if (err instanceof Error && err.name === "AbortError") {
+      throw new ApiError("Download timed out", "TIMEOUT", 408);
+    }
+    throw err;
+  }
+}
+
+// YouTube URL validation helper
+const YOUTUBE_REGEX = /^(?:https?:\/\/)?(?:www\.|m\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})(?:\S*)?$/;
+
+export function isYoutubeUrl(url: string): boolean {
+  return YOUTUBE_REGEX.test(url);
 }
 
 export type { CreditBalance, CreditPreview, CheckoutResponse, CheckoutSessionStatus };

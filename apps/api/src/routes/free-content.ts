@@ -128,7 +128,7 @@ app.put('/admin/:id', async (c) => {
 });
 
 /**
- * PATCH /admin/:id — Admin only. Updates a free content item's title.
+ * PATCH /admin/:id — Admin only. Updates a free content item's title and/or cover.
  */
 app.patch('/admin/:id', async (c) => {
   const id = c.req.param('id');
@@ -144,7 +144,8 @@ app.patch('/admin/:id', async (c) => {
   }
 
   const updateSchema = z.object({
-    title: z.string().min(1).max(500),
+    title: z.string().min(1).max(500).optional(),
+    cover: z.string().max(2048).optional(),
   });
 
   const parsed = updateSchema.safeParse(body);
@@ -152,8 +153,19 @@ app.patch('/admin/:id', async (c) => {
     return c.json({ error: createApiError('VALIDATION_ERROR', parsed.error.issues[0]?.message ?? 'Validation failed') }, 400);
   }
 
+  if (!parsed.data.title && parsed.data.cover === undefined) {
+    return c.json({ error: createApiError('VALIDATION_ERROR', 'At least one field is required') }, 400);
+  }
+
   try {
-    const updated = await updateFreeContent(id, { title: parsed.data.title });
+    const updateData: { title?: string; cover?: string | null } = {};
+    if (parsed.data.title) updateData.title = parsed.data.title;
+    if (parsed.data.cover !== undefined) {
+      // Empty string or null clears the cover
+      updateData.cover = parsed.data.cover.trim() === '' ? null : parsed.data.cover.trim();
+    }
+
+    const updated = await updateFreeContent(id, updateData);
     if (!updated) {
       return c.json({ error: createApiError('NOT_FOUND', 'Free content not found') }, 404);
     }

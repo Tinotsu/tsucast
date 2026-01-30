@@ -28,6 +28,7 @@ export interface FreeContentItem {
   status: 'pending' | 'processing' | 'ready' | 'failed';
   error_message: string | null;
   featured: boolean;
+  cover: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -254,6 +255,7 @@ interface UpdateFreeContentInput {
   title?: string;
   voice_id?: string;
   source_url?: string | null;
+  cover?: string | null;
 }
 
 /**
@@ -271,6 +273,7 @@ export async function updateFreeContent(
   if (input.title !== undefined) updates.title = input.title;
   if (input.voice_id !== undefined) updates.voice_id = input.voice_id;
   if (input.source_url !== undefined) updates.source_url = input.source_url;
+  if (input.cover !== undefined) updates.cover = input.cover;
 
   if (Object.keys(updates).length === 0) {
     // Nothing to update, fetch and return current
@@ -288,6 +291,19 @@ export async function updateFreeContent(
     .eq('id', id)
     .select()
     .single();
+
+  // Sync cover to audio_cache if it was updated
+  if (!error && data && input.cover !== undefined) {
+    const { error: syncError } = await supabase
+      .from('audio_cache')
+      .update({ cover: input.cover })
+      .eq('id', id);
+
+    if (syncError) {
+      logger.error({ id, error: syncError }, 'Failed to sync cover to audio_cache');
+      // Don't fail the operation - free_content was updated
+    }
+  }
 
   if (error) {
     if (error.code === 'PGRST116') {

@@ -21,6 +21,10 @@ import {
   ListMusic,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { CoverImage } from "@/components/ui/CoverImage";
+import { EditItemDialog } from "@/components/library/EditItemDialog";
+import { getRandomEmoji } from "@/lib/constants";
+import { editPlaylist, copyAudio } from "@/lib/api";
 
 function formatDuration(seconds: number | null): string {
   if (!seconds) return "--:--";
@@ -45,6 +49,10 @@ export default function PlaylistPage() {
   const [removingItemId, setRemovingItemId] = useState<string | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [showPlaylistEdit, setShowPlaylistEdit] = useState(false);
+  const [editingItem, setEditingItem] = useState<PlaylistWithItems["items"][0] | null>(null);
+  const [showCopyConfirm, setShowCopyConfirm] = useState<PlaylistWithItems["items"][0] | null>(null);
+  const [isCopying, setIsCopying] = useState(false);
 
   const loadPlaylist = useCallback(async () => {
     setIsLoading(true);
@@ -142,6 +150,60 @@ export default function PlaylistPage() {
     }
   };
 
+  const handleCopyAndEdit = async (item: PlaylistWithItems["items"][0]) => {
+    if (!playlist) return;
+    setIsCopying(true);
+    try {
+      const result = await copyAudio(item.audio.id, item.id);
+      // Update the item in the playlist with the new audio
+      setPlaylist((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          items: prev.items.map((i) =>
+            i.id === item.id
+              ? {
+                  ...i,
+                  audio: {
+                    ...i.audio,
+                    id: result.newAudioId,
+                    title: result.title,
+                    cover: result.cover,
+                    isEditable: true,
+                  },
+                }
+              : i
+          ),
+        };
+      });
+      setShowCopyConfirm(null);
+      // Open edit dialog with the updated item
+      const updatedItem = {
+        ...item,
+        audio: {
+          ...item.audio,
+          id: result.newAudioId,
+          title: result.title,
+          cover: result.cover,
+          isEditable: true,
+        },
+      };
+      setEditingItem(updatedItem);
+    } catch (err) {
+      console.error("Failed to copy audio:", err);
+    } finally {
+      setIsCopying(false);
+    }
+  };
+
+  const handleEditClick = (item: PlaylistWithItems["items"][0]) => {
+    if (item.audio.isEditable) {
+      setEditingItem(item);
+    } else {
+      setShowCopyConfirm(item);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
@@ -183,67 +245,83 @@ export default function PlaylistPage() {
       </Link>
 
       {/* Header */}
-      <div className="mb-8 flex items-start justify-between gap-4">
-        <div className="flex-1">
-          {isEditing ? (
-            <form onSubmit={handleRename} className="flex items-center gap-2">
-              <input
-                type="text"
-                value={editName}
-                onChange={(e) => setEditName(e.target.value)}
-                autoFocus
-                maxLength={255}
-                className="w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-4 py-2 text-2xl font-bold text-[var(--foreground)] focus:border-[var(--foreground)] focus:outline-none"
-              />
-              <button
-                type="submit"
-                disabled={!editName.trim() || isSaving}
-                className="rounded-lg bg-[var(--foreground)] px-4 py-2 font-bold text-[var(--background)] disabled:opacity-50"
-              >
-                {isSaving ? (
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                ) : (
-                  "Save"
-                )}
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setIsEditing(false);
-                  setEditName(playlist.name);
-                }}
-                className="rounded-lg border border-[var(--border)] px-4 py-2 font-bold text-[var(--foreground)]"
-              >
-                Cancel
-              </button>
-            </form>
-          ) : (
-            <>
-              <div className="flex items-center gap-3">
-                <h1 className="text-3xl font-bold tracking-tight text-[var(--foreground)]">
-                  {playlist.name}
-                </h1>
+      <div className="mb-8 flex items-start gap-6">
+        {/* Cover Image */}
+        <button
+          onClick={() => setShowPlaylistEdit(true)}
+          className="group relative flex-shrink-0"
+        >
+          <CoverImage
+            cover={playlist.cover || getRandomEmoji(playlist.id)}
+            size={120}
+            className="transition-opacity group-hover:opacity-80"
+          />
+          <div className="absolute inset-0 flex items-center justify-center rounded-lg bg-black/50 opacity-0 transition-opacity group-hover:opacity-100">
+            <Pencil className="h-6 w-6 text-white" />
+          </div>
+        </button>
+
+        <div className="flex flex-1 items-start justify-between gap-4">
+          <div className="flex-1">
+            {isEditing ? (
+              <form onSubmit={handleRename} className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  autoFocus
+                  maxLength={255}
+                  className="w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-4 py-2 text-2xl font-bold text-[var(--foreground)] focus:border-[var(--foreground)] focus:outline-none"
+                />
                 <button
-                  onClick={() => setIsEditing(true)}
-                  className="rounded-full p-2 text-[var(--muted)] hover:bg-[var(--secondary)] hover:text-[var(--foreground)]"
-                  aria-label="Edit playlist name"
+                  type="submit"
+                  disabled={!editName.trim() || isSaving}
+                  className="rounded-lg bg-[var(--foreground)] px-4 py-2 font-bold text-[var(--background)] disabled:opacity-50"
                 >
-                  <Pencil className="h-4 w-4" />
+                  {isSaving ? (
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                  ) : (
+                    "Save"
+                  )}
                 </button>
-              </div>
-              <p className="mt-2 flex items-center gap-4 text-sm text-[var(--muted)]">
-                <span>
-                  {playlist.items.length}{" "}
-                  {playlist.items.length === 1 ? "item" : "items"}
-                </span>
-                <span className="flex items-center gap-1">
-                  <Clock className="h-3 w-3" />
-                  {Math.floor(totalDuration / 60)} min total
-                </span>
-              </p>
-            </>
-          )}
-        </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsEditing(false);
+                    setEditName(playlist.name);
+                  }}
+                  className="rounded-lg border border-[var(--border)] px-4 py-2 font-bold text-[var(--foreground)]"
+                >
+                  Cancel
+                </button>
+              </form>
+            ) : (
+              <>
+                <div className="flex items-center gap-3">
+                  <h1 className="text-3xl font-bold tracking-tight text-[var(--foreground)]">
+                    {playlist.name}
+                  </h1>
+                  <button
+                    onClick={() => setShowPlaylistEdit(true)}
+                    className="rounded-full p-2 text-[var(--muted)] hover:bg-[var(--secondary)] hover:text-[var(--foreground)]"
+                    aria-label="Edit playlist"
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </button>
+                </div>
+                <p className="mt-2 flex items-center gap-4 text-sm text-[var(--muted)]">
+                  <span>
+                    {playlist.items.length}{" "}
+                    {playlist.items.length === 1 ? "item" : "items"}
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <Clock className="h-3 w-3" />
+                    {Math.floor(totalDuration / 60)} min total
+                  </span>
+                </p>
+              </>
+            )}
+          </div>
 
         <div className="flex items-center gap-2">
           {playlist.items.length > 0 && (
@@ -262,6 +340,7 @@ export default function PlaylistPage() {
           >
             <Trash2 className="h-5 w-5" />
           </button>
+        </div>
         </div>
       </div>
 
@@ -308,8 +387,15 @@ export default function PlaylistPage() {
                   </p>
                 </div>
 
-                {/* Remove Button */}
-                <div className="flex flex-shrink-0 items-center">
+                {/* Action Buttons */}
+                <div className="flex flex-shrink-0 items-center gap-1">
+                  <button
+                    onClick={() => handleEditClick(item)}
+                    className="rounded-lg p-2 text-[var(--foreground)] opacity-0 transition-all group-hover:opacity-100 group-hover:text-[var(--background)] hover:bg-[var(--secondary)]"
+                    aria-label={`Edit ${item.audio.title}`}
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </button>
                   <button
                     onClick={() => handleRemoveItem(item.id)}
                     disabled={removingItemId === item.id}
@@ -358,6 +444,82 @@ export default function PlaylistPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Copy Confirmation Modal */}
+      {showCopyConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-2xl bg-[var(--card)] p-6 shadow-xl">
+            <h2 className="mb-4 text-lg font-bold text-[var(--foreground)]">
+              Create Your Copy?
+            </h2>
+            <p className="mb-6 text-[var(--muted)]">
+              This is shared content. To edit it, we'll create your own copy that you can customize.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowCopyConfirm(null)}
+                className="flex-1 rounded-lg border border-[var(--border)] px-4 py-2 font-bold text-[var(--foreground)] transition-colors hover:bg-[var(--secondary)]"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => handleCopyAndEdit(showCopyConfirm)}
+                disabled={isCopying}
+                className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-[var(--foreground)] px-4 py-2 font-bold text-[var(--background)] transition-colors hover:opacity-90 disabled:opacity-50"
+              >
+                {isCopying && <Loader2 className="h-4 w-4 animate-spin" />}
+                Create Copy
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Playlist Dialog */}
+      {showPlaylistEdit && (
+        <EditItemDialog
+          isOpen={showPlaylistEdit}
+          onClose={() => setShowPlaylistEdit(false)}
+          onSave={(data) => {
+            setPlaylist((prev) =>
+              prev ? { ...prev, name: data.title, cover: data.cover } : prev
+            );
+          }}
+          type="playlist"
+          itemId={playlist.id}
+          playlistId={playlist.id}
+          initialTitle={playlist.name}
+          initialCover={playlist.cover}
+        />
+      )}
+
+      {/* Edit Item Dialog */}
+      {editingItem && (
+        <EditItemDialog
+          isOpen={!!editingItem}
+          onClose={() => setEditingItem(null)}
+          onSave={(data) => {
+            setPlaylist((prev) => {
+              if (!prev) return prev;
+              return {
+                ...prev,
+                items: prev.items.map((item) =>
+                  item.id === editingItem.id
+                    ? {
+                        ...item,
+                        audio: { ...item.audio, title: data.title, cover: data.cover },
+                      }
+                    : item
+                ),
+              };
+            });
+          }}
+          type="podcast"
+          itemId={editingItem.audio.id}
+          initialTitle={editingItem.audio.title}
+          initialCover={editingItem.audio.cover}
+        />
       )}
     </div>
   );
