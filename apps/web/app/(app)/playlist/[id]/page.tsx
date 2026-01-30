@@ -83,6 +83,7 @@ export default function PlaylistPage() {
       url: firstItem.audio.audio_url,
       title: firstItem.audio.title,
       duration: firstItem.audio.duration_seconds,
+      transcriptUrl: firstItem.audio.transcript_url || undefined,
     });
 
     // Add rest to queue
@@ -92,6 +93,7 @@ export default function PlaylistPage() {
         url: item.audio.audio_url,
         title: item.audio.title,
         duration: item.audio.duration_seconds,
+        transcriptUrl: item.audio.transcript_url || undefined,
       });
     });
   };
@@ -102,6 +104,7 @@ export default function PlaylistPage() {
       url: item.audio.audio_url,
       title: item.audio.title,
       duration: item.audio.duration_seconds,
+      transcriptUrl: item.audio.transcript_url || undefined,
     });
   };
 
