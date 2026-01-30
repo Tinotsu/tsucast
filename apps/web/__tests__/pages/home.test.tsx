@@ -7,7 +7,13 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import HomePage from "@/app/(app)/home/page";
+import { AudioPlayerProvider } from "@/providers/AudioPlayerProvider";
 import { createUserProfile } from "../factories";
+
+// Helper to render with providers
+function renderWithProviders(ui: React.ReactElement) {
+  return render(<AudioPlayerProvider>{ui}</AudioPlayerProvider>);
+}
 
 // Mock useRouter
 const mockPush = vi.fn();
@@ -92,7 +98,7 @@ describe("Home Page", () => {
       };
 
       // WHEN: Rendering home page
-      render(<HomePage />);
+      renderWithProviders(<HomePage />);
 
       // THEN: No credits message is shown
       expect(screen.getByText("No Credits Available")).toBeInTheDocument();
@@ -113,7 +119,7 @@ describe("Home Page", () => {
       };
 
       // WHEN: Rendering home page
-      render(<HomePage />);
+      renderWithProviders(<HomePage />);
 
       // THEN: No credits message is not shown
       expect(screen.queryByText("No Credits Available")).not.toBeInTheDocument();
@@ -131,7 +137,7 @@ describe("Home Page", () => {
       };
 
       // WHEN: Rendering home page
-      render(<HomePage />);
+      renderWithProviders(<HomePage />);
 
       // THEN: Generation form elements are present
       expect(screen.getByRole("heading", { name: /generate podcast/i })).toBeInTheDocument();

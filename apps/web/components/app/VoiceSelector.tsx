@@ -1,56 +1,59 @@
 "use client";
 
-import { useEffect } from "react";
-import { Volume2, Check } from "lucide-react";
-
-// MVP: Single default voice only
-// TODO: Add multiple voices when Kokoro voices are configured
-const DEFAULT_VOICE = {
-  id: "default",
-  name: "Default",
-  gender: "female" as const,
-  accent: "American",
-};
+import { VOICES } from "@/lib/voices";
+import { useVoicePreview } from "@/hooks/useVoicePreview";
+import { VoiceCard } from "./VoiceCard";
 
 interface VoiceSelectorProps {
   value: string;
   onChange: (value: string) => void;
   disabled?: boolean;
+  isLoaded?: boolean;
 }
 
-export function VoiceSelector({ value, onChange, disabled }: VoiceSelectorProps) {
-  // Auto-select default voice if not already selected
-  // Must be in useEffect to avoid calling onChange during render
-  useEffect(() => {
-    if (value !== DEFAULT_VOICE.id) {
-      onChange(DEFAULT_VOICE.id);
-    }
-  }, [value, onChange]);
+export function VoiceSelector({
+  value,
+  onChange,
+  disabled,
+  isLoaded = true,
+}: VoiceSelectorProps) {
+  const { playPreview, playingId } = useVoicePreview();
+
+  // Show skeleton while loading
+  if (!isLoaded) {
+    return (
+      <div className="space-y-3">
+        <div className="h-4 w-16 bg-[var(--muted)] rounded animate-pulse" />
+        <div className="flex gap-3 overflow-x-auto pb-2">
+          {[1, 2, 3, 4].map((i) => (
+            <div
+              key={i}
+              className="w-32 h-24 bg-[var(--card)] rounded-xl animate-pulse shrink-0"
+            />
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-3">
-      <label className="block text-sm font-medium tracking-tight text-[#1a1a1a]">
+      <label className="block text-sm font-medium tracking-tight text-[var(--foreground)]">
         Voice
       </label>
-      <div className="rounded-xl bg-white p-6">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#1a1a1a] text-white">
-            <Volume2 className="h-5 w-5" />
-          </div>
-          <div className="flex-1">
-            <p className="font-medium tracking-tight text-[#1a1a1a]">
-              {DEFAULT_VOICE.name}
-            </p>
-            <p className="text-xs font-normal leading-relaxed text-[#737373]">
-              {DEFAULT_VOICE.gender === "female" ? "Female" : "Male"} • {DEFAULT_VOICE.accent}
-            </p>
-          </div>
-          <Check className="h-4 w-4 text-[#1a1a1a]" />
-        </div>
+      <div className="flex gap-3 overflow-x-auto pb-2">
+        {VOICES.map((voice) => (
+          <VoiceCard
+            key={voice.id}
+            voice={voice}
+            isSelected={value === voice.id}
+            isPlaying={playingId === voice.id}
+            onSelect={() => onChange(voice.id)}
+            onPreview={() => playPreview(voice)}
+            disabled={disabled}
+          />
+        ))}
       </div>
-      <p className="text-xs font-normal leading-relaxed text-[#737373]">
-        More voices coming soon
-      </p>
     </div>
   );
 }

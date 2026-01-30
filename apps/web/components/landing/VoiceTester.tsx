@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Play, Pause, Loader2, Volume2 } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface VoiceSample {
   voiceId: string;
@@ -13,9 +14,9 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
 // Fallback data if API unavailable
 const FALLBACK_VOICES = [
-  { voiceId: "af_sarah", name: "Sarah", audioUrl: "" },
-  { voiceId: "am_adam", name: "Adam", audioUrl: "" },
-  { voiceId: "am_michael", name: "Michael", audioUrl: "" },
+  { voiceId: "af_alloy", name: "Alloy", audioUrl: "https://pub-ae747fb86c1a43208efa2aa425b2b9e5.r2.dev/voices/af_alloy.mp3" },
+  { voiceId: "af_sarah", name: "Sarah", audioUrl: "https://pub-ae747fb86c1a43208efa2aa425b2b9e5.r2.dev/voices/af_sarah.mp3" },
+  { voiceId: "am_adam", name: "Adam", audioUrl: "https://pub-ae747fb86c1a43208efa2aa425b2b9e5.r2.dev/voices/am_adam.mp3" },
 ];
 
 /**
@@ -26,7 +27,8 @@ const FALLBACK_VOICES = [
  */
 export function VoiceTester() {
   const [voices, setVoices] = useState<VoiceSample[]>(FALLBACK_VOICES);
-  const [selectedVoice, setSelectedVoice] = useState<string>("af_sarah");
+  const [selectedVoice, setSelectedVoice] = useState<string>("af_alloy");
+  const [isLoadingVoices, setIsLoadingVoices] = useState(true);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -46,6 +48,8 @@ export function VoiceTester() {
       } catch (err) {
         console.error("Failed to fetch voice samples:", err);
         // Keep fallback voices
+      } finally {
+        setIsLoadingVoices(false);
       }
     }
     fetchVoices();
@@ -117,23 +121,40 @@ export function VoiceTester() {
 
   return (
     <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-6">
-      {/* Voice Chips */}
-      <div className="mb-4 flex flex-wrap gap-2">
-        {voices.map((voice) => (
-          <button
-            key={voice.voiceId}
-            data-testid={`voice-chip-${voice.name.toLowerCase()}`}
-            data-selected={selectedVoice === voice.voiceId}
-            onClick={() => handleSelectVoice(voice.voiceId)}
-            className={`rounded-full px-4 py-2 text-sm font-medium transition-all ${
-              selectedVoice === voice.voiceId
-                ? "bg-[var(--foreground)] text-[var(--background)]"
-                : "border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] hover:border-[var(--foreground)]"
-            }`}
-          >
-            {voice.name}
-          </button>
-        ))}
+      {/* Voice Chips - horizontal scroll with gradient fade */}
+      <div className="relative mb-4">
+        <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+          {isLoadingVoices ? (
+            // Loading skeleton
+            <>
+              {[1, 2, 3, 4, 5].map((i) => (
+                <div
+                  key={i}
+                  className="h-9 w-20 shrink-0 animate-pulse rounded-full bg-[var(--muted)]"
+                />
+              ))}
+            </>
+          ) : (
+            voices.map((voice) => (
+              <button
+                key={voice.voiceId}
+                data-testid={`voice-chip-${voice.name.toLowerCase()}`}
+                data-selected={selectedVoice === voice.voiceId}
+                onClick={() => handleSelectVoice(voice.voiceId)}
+                className={cn(
+                  "shrink-0 rounded-full px-4 py-2 text-sm font-medium transition-all",
+                  selectedVoice === voice.voiceId
+                    ? "bg-[var(--foreground)] text-[var(--background)]"
+                    : "border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] hover:border-[var(--foreground)]"
+                )}
+              >
+                {voice.name}
+              </button>
+            ))
+          )}
+        </div>
+        {/* Right fade indicator for scroll */}
+        <div className="pointer-events-none absolute right-0 top-0 h-full w-8 bg-gradient-to-l from-[var(--card)] to-transparent" />
       </div>
 
       {/* Sample quote */}

@@ -17,12 +17,16 @@ const TTS_TIMEOUT_MS = 180000; // 3 minutes — accounts for RunPod cold starts 
 const DEFAULT_KOKORO_VOICE = 'am_adam';
 
 // Valid Kokoro voice IDs — reject unknown IDs before sending to RunPod
+// Includes all 19 American English voices + mobile friendly ID aliases
 const VALID_KOKORO_VOICES = new Set([
-  'am_adam',
-  'af_sarah',
-  'am_michael',
-  'af_bella',
-  'af_alloy',
+  // Mobile friendly IDs (backward compatibility)
+  'alex', 'sarah', 'james', 'emma',
+  // Female voices (af_)
+  'af_alloy', 'af_aoede', 'af_bella', 'af_heart', 'af_jessica',
+  'af_kore', 'af_nicole', 'af_nova', 'af_river', 'af_sarah', 'af_sky',
+  // Male voices (am_)
+  'am_adam', 'am_echo', 'am_eric', 'am_fenrir',
+  'am_liam', 'am_michael', 'am_onyx', 'am_puck',
 ]);
 
 export interface TtsOptions {
