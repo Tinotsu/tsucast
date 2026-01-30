@@ -6,3 +6,4 @@ export { SleepTimer } from './SleepTimer';
 export { QueueButton } from './QueueButton';
 export { QueueItem } from './QueueItem';
 export { QueueSheet } from './QueueSheet';
+export { Transcript } from './Transcript';

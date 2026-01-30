@@ -12,6 +12,7 @@ export interface AudioTrack {
   artist?: string;
   artwork?: string;
   duration?: number;
+  transcriptUrl?: string;
 }
 
 export interface SleepTimerState {

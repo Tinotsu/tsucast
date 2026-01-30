@@ -12,10 +12,12 @@ import {
   ListMusic,
   Loader2,
   FileAudio,
+  FileText,
 } from "lucide-react";
 import { useAudioPlayer } from "@/hooks/useAudioPlayer";
 import { SleepTimerMenu } from "./SleepTimerMenu";
 import { QueuePanel } from "./QueuePanel";
+import { TranscriptPanel } from "./TranscriptPanel";
 import { cn } from "@/lib/utils";
 
 const DEFAULT_ARTIST = "tsucast";
@@ -50,6 +52,7 @@ export function PlayerModal() {
 
   const [mounted, setMounted] = useState(false);
   const [showSleepMenu, setShowSleepMenu] = useState(false);
+  const [showTranscript, setShowTranscript] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
   const [swipeY, setSwipeY] = useState(0);
   const touchStartY = useRef(0);
@@ -144,9 +147,24 @@ export function PlayerModal() {
     >
       {/* Header */}
       <div className="flex h-16 items-center justify-between px-4">
-        <div className="w-10" /> {/* Spacer for centering */}
+        {/* Transcript toggle */}
+        <button
+          onClick={() => setShowTranscript(!showTranscript)}
+          aria-label={showTranscript ? "Hide transcript" : "Show transcript"}
+          disabled={!track?.transcriptUrl}
+          className={cn(
+            "flex h-10 w-10 items-center justify-center rounded-full transition-colors",
+            track?.transcriptUrl
+              ? showTranscript
+                ? "bg-[var(--foreground)] text-[var(--background)]"
+                : "text-[var(--muted)] hover:bg-[var(--secondary)] hover:text-[var(--foreground)]"
+              : "text-[var(--muted)] opacity-30 cursor-not-allowed"
+          )}
+        >
+          <FileText className="h-5 w-5" />
+        </button>
         <span className="text-sm font-medium text-[var(--muted)]">
-          Now Playing
+          {showTranscript ? "Transcript" : "Now Playing"}
         </span>
         <button
           onClick={handleClose}
@@ -159,10 +177,20 @@ export function PlayerModal() {
 
       {/* Content */}
       <div className="flex flex-1 flex-col items-center justify-center px-8">
-        {/* Artwork */}
-        <div className="mb-8 flex h-64 w-64 items-center justify-center rounded-2xl bg-[var(--secondary)]">
-          <FileAudio className="h-24 w-24 text-[var(--muted)]" />
-        </div>
+        {/* Artwork or Transcript */}
+        {showTranscript && track?.transcriptUrl ? (
+          <div className="w-full max-w-2xl flex-1 overflow-hidden">
+            <TranscriptPanel
+              transcriptUrl={track.transcriptUrl}
+              currentTime={currentTime}
+              onSeek={seek}
+            />
+          </div>
+        ) : (
+          <div className="mb-8 flex h-64 w-64 items-center justify-center rounded-2xl bg-[var(--secondary)]">
+            <FileAudio className="h-24 w-24 text-[var(--muted)]" />
+          </div>
+        )}
 
         {/* Title and source */}
         <div className="mb-8 text-center">

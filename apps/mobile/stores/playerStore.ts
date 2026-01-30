@@ -15,6 +15,7 @@ export interface Track {
   wordCount?: number;
   sourceUrl?: string;
   artwork?: string;
+  transcriptUrl?: string;
 }
 
 interface PlayerState {
