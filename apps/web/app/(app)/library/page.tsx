@@ -5,14 +5,11 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/hooks/useAuth";
 import { useAudioPlayer } from "@/hooks/useAudioPlayer";
-import { getLibrary, deleteLibraryItem, updatePlaybackPosition, editLibraryItem, ApiError, type LibraryItem } from "@/lib/api";
+import { getLibrary, deleteLibraryItem, updatePlaybackPosition, ApiError, type LibraryItem } from "@/lib/api";
 import { WebPlayer } from "@/components/app/WebPlayer";
 import { ExploreTab } from "@/components/library/ExploreTab";
 import { PlaylistsTab } from "@/components/library/PlaylistsTab";
-import { EditItemDialog } from "@/components/library/EditItemDialog";
-import { AddToPlaylistMenu } from "@/components/library/AddToPlaylistMenu";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
-import { CoverImage } from "@/components/ui/CoverImage";
 import {
   Headphones,
   Play,
@@ -26,7 +23,6 @@ import {
   List,
   ListMusic,
   ListPlus,
-  Pencil,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -45,7 +41,7 @@ export default function LibraryPage() {
 }
 
 function LibraryPageContent() {
-  const { isLoading: authLoading, isAuthenticated, user } = useAuth();
+  const { isLoading: authLoading, isAuthenticated } = useAuth();
   const { addToQueue } = useAudioPlayer();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -62,8 +58,6 @@ function LibraryPageContent() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [confirmingDeleteId, setConfirmingDeleteId] = useState<string | null>(null);
   const [queuedItemId, setQueuedItemId] = useState<string | null>(null);
-  const [editingItem, setEditingItem] = useState<LibraryItem | null>(null);
-  const [playlistItem, setPlaylistItem] = useState<LibraryItem | null>(null);
   const positionSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastSavedPositionRef = useRef<number>(0);
 
@@ -194,21 +188,6 @@ function LibraryPageContent() {
       setDeletingId(null);
     }
   };
-
-  const handleEditSave = useCallback(async (updates: { title?: string; cover?: string | null }) => {
-    if (!editingItem) return;
-    await editLibraryItem(editingItem.audio_id, updates);
-    // Update local state with the new values
-    setItems(prev => prev.map(item =>
-      item.audio_id === editingItem.audio_id
-        ? {
-            ...item,
-            title: updates.title ?? item.title,
-            cover: updates.cover !== undefined ? updates.cover : item.cover,
-          }
-        : item
-    ));
-  }, [editingItem]);
 
   const formatDuration = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -354,22 +333,21 @@ function LibraryPageContent() {
                       )}
                     >
                       <div className="flex gap-4">
-                        {/* Cover Image + Play Button */}
+                        {/* Play Button */}
                         <button
                           onClick={() => setSelectedItem(item)}
-                          className="relative flex-shrink-0"
+                          className={cn(
+                            "flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl transition-colors",
+                            isSelected
+                              ? "bg-[var(--background)] text-[var(--foreground)]"
+                              : "bg-[var(--foreground)] text-[var(--background)] group-hover:bg-[var(--background)] group-hover:text-[var(--foreground)]"
+                          )}
                         >
-                          <CoverImage cover={item.cover ?? null} size={48} className="rounded-lg" />
-                          <div className={cn(
-                            "absolute inset-0 flex items-center justify-center rounded-lg bg-black/40 opacity-0 transition-opacity group-hover:opacity-100",
-                            isSelected && "opacity-100 bg-black/50"
-                          )}>
-                            {isSelected ? (
-                              <Headphones className="h-5 w-5 text-white" />
-                            ) : (
-                              <Play className="ml-0.5 h-5 w-5 text-white" />
-                            )}
-                          </div>
+                          {isSelected ? (
+                            <Headphones className="h-5 w-5" />
+                          ) : (
+                            <Play className="ml-0.5 h-5 w-5" />
+                          )}
                         </button>
 
                         {/* Content */}
@@ -416,21 +394,6 @@ function LibraryPageContent() {
 
                         {/* Action Buttons */}
                         <div className="flex flex-shrink-0 items-center gap-1">
-                          {/* Edit Button (only for items user created) */}
-                          {item.created_by === user?.id && (
-                            <button
-                              onClick={() => setEditingItem(item)}
-                              aria-label={`Edit ${item.title}`}
-                              className={cn(
-                                "rounded-lg p-2 transition-all",
-                                isSelected ? "text-[var(--background)]" : "text-[var(--foreground)] group-hover:text-[var(--background)]",
-                                "opacity-0 group-hover:opacity-100 hover:bg-[var(--secondary)]"
-                              )}
-                            >
-                              <Pencil className="h-4 w-4" aria-hidden="true" />
-                            </button>
-                          )}
-
                           {/* Add to Queue Button */}
                           <button
                             onClick={() => handleAddToQueue(item)}
@@ -448,19 +411,6 @@ function LibraryPageContent() {
                             ) : (
                               <ListPlus className="h-4 w-4" aria-hidden="true" />
                             )}
-                          </button>
-
-                          {/* Add to Playlist Button */}
-                          <button
-                            onClick={() => setPlaylistItem(item)}
-                            aria-label={`Add ${item.title} to playlist`}
-                            className={cn(
-                              "rounded-lg p-2 transition-all",
-                              isSelected ? "text-[var(--background)]" : "text-[var(--foreground)] group-hover:text-[var(--background)]",
-                              "opacity-0 group-hover:opacity-100 hover:bg-[var(--secondary)]"
-                            )}
-                          >
-                            <ListMusic className="h-4 w-4" aria-hidden="true" />
                           </button>
 
                           {/* Delete Button with Confirmation */}
@@ -538,23 +488,6 @@ function LibraryPageContent() {
           )}
         </>
       )}
-
-      {/* Edit Item Dialog */}
-      <EditItemDialog
-        isOpen={!!editingItem}
-        onClose={() => setEditingItem(null)}
-        onSave={handleEditSave}
-        initialTitle={editingItem?.title ?? ""}
-        initialCover={editingItem?.cover ?? null}
-      />
-
-      {/* Add to Playlist Menu */}
-      <AddToPlaylistMenu
-        audioId={playlistItem?.audio_id || ""}
-        audioTitle={playlistItem?.title}
-        isOpen={playlistItem !== null}
-        onClose={() => setPlaylistItem(null)}
-      />
     </div>
   );
 }
