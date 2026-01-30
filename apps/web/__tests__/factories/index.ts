@@ -29,7 +29,6 @@ export interface LibraryItemData {
   audio_id: string;
   title: string;
   url: string;
-  audio_url: string;
   duration: number;
   playback_position: number;
   is_played: boolean;
@@ -43,7 +42,6 @@ export function createLibraryItem(overrides: Partial<LibraryItemData> = {}): Lib
     audio_id: `audio-${id}`,
     title: `Test Article ${id}`,
     url: `https://example.com/article-${id}`,
-    audio_url: `https://storage.example.com/audio/${id}.mp3`,
     duration: 300 + Math.floor(Math.random() * 600),
     playback_position: 0,
     is_played: false,

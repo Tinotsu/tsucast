@@ -37,7 +37,7 @@ export function CookieConsent() {
   };
 
   return (
-    <div className="fixed bottom-0 inset-x-0 z-[60] bg-zinc-900 border-t border-zinc-800 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
+    <div className="fixed bottom-0 inset-x-0 z-50 bg-zinc-900 border-t border-zinc-800 p-4">
       <div className="mx-auto max-w-4xl flex flex-col sm:flex-row items-center justify-between gap-3">
         <p className="text-sm text-zinc-300">
           We use cookies for product analytics to improve your experience.

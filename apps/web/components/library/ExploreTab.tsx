@@ -1,10 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Headphones, Play, Pause, Loader2, ListPlus } from "lucide-react";
+import { Headphones, Play, Pause, Loader2 } from "lucide-react";
 import { getFreeContent, type FreeContentItem } from "@/lib/api";
 import { useAudioPlayer } from "@/hooks/useAudioPlayer";
-import { AddToPlaylistMenu } from "@/components/library/AddToPlaylistMenu";
 import type { AudioTrack } from "@/services/audio-service";
 
 function formatDuration(seconds: number | null): string {
@@ -14,13 +13,7 @@ function formatDuration(seconds: number | null): string {
   return `${mins}:${secs.toString().padStart(2, "0")}`;
 }
 
-function ExploreItem({
-  item,
-  onAddToPlaylist,
-}: {
-  item: FreeContentItem;
-  onAddToPlaylist: (item: FreeContentItem) => void;
-}) {
+function ExploreItem({ item }: { item: FreeContentItem }) {
   const { play, pause, track, isPlaying, isLoading } = useAudioPlayer();
 
   const isCurrentTrack = track?.id === item.id;
@@ -73,15 +66,6 @@ function ExploreItem({
             )}
           </div>
         </div>
-
-        {/* Add to Playlist Button */}
-        <button
-          onClick={() => onAddToPlaylist(item)}
-          aria-label={`Add ${item.title} to playlist`}
-          className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg text-[var(--muted)] hover:bg-[var(--secondary)] hover:text-[var(--foreground)] transition-colors"
-        >
-          <ListPlus className="h-5 w-5" />
-        </button>
       </div>
     </div>
   );
@@ -91,13 +75,6 @@ export function ExploreTab() {
   const [items, setItems] = useState<FreeContentItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [playlistMenuOpen, setPlaylistMenuOpen] = useState(false);
-  const [selectedItem, setSelectedItem] = useState<FreeContentItem | null>(null);
-
-  const handleAddToPlaylist = (item: FreeContentItem) => {
-    setSelectedItem(item);
-    setPlaylistMenuOpen(true);
-  };
 
   useEffect(() => {
     let cancelled = false;
@@ -171,24 +148,9 @@ export function ExploreTab() {
       {/* Items */}
       <div className="grid gap-4 sm:grid-cols-2">
         {items.map((item) => (
-          <ExploreItem
-            key={item.id}
-            item={item}
-            onAddToPlaylist={handleAddToPlaylist}
-          />
+          <ExploreItem key={item.id} item={item} />
         ))}
       </div>
-
-      {/* Add to Playlist Menu */}
-      <AddToPlaylistMenu
-        audioId={selectedItem?.id || ""}
-        audioTitle={selectedItem?.title}
-        isOpen={playlistMenuOpen}
-        onClose={() => {
-          setPlaylistMenuOpen(false);
-          setSelectedItem(null);
-        }}
-      />
     </div>
   );
 }

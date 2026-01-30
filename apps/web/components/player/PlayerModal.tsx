@@ -10,14 +10,12 @@ import {
   SkipForward,
   Moon,
   ListMusic,
-  ListPlus,
   Loader2,
   FileAudio,
 } from "lucide-react";
 import { useAudioPlayer } from "@/hooks/useAudioPlayer";
 import { SleepTimerMenu } from "./SleepTimerMenu";
 import { QueuePanel } from "./QueuePanel";
-import { AddToPlaylistMenu } from "@/components/library/AddToPlaylistMenu";
 import { cn } from "@/lib/utils";
 
 const DEFAULT_ARTIST = "tsucast";
@@ -52,7 +50,6 @@ export function PlayerModal() {
 
   const [mounted, setMounted] = useState(false);
   const [showSleepMenu, setShowSleepMenu] = useState(false);
-  const [showPlaylistMenu, setShowPlaylistMenu] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
   const [swipeY, setSwipeY] = useState(0);
   const touchStartY = useRef(0);
@@ -254,15 +251,6 @@ export function PlayerModal() {
             {playbackRate}x
           </button>
 
-          {/* Add to Playlist */}
-          <button
-            onClick={() => setShowPlaylistMenu(true)}
-            aria-label="Add to playlist"
-            className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-[var(--muted)] hover:bg-[var(--secondary)] hover:text-[var(--foreground)] transition-colors"
-          >
-            <ListPlus className="h-4 w-4" />
-          </button>
-
           {/* Sleep Timer */}
           <div className="relative">
             <button
@@ -309,14 +297,6 @@ export function PlayerModal() {
 
       {/* Queue Panel */}
       <QueuePanel />
-
-      {/* Add to Playlist Menu */}
-      <AddToPlaylistMenu
-        audioId={track?.id || ""}
-        audioTitle={track?.title}
-        isOpen={showPlaylistMenu}
-        onClose={() => setShowPlaylistMenu(false)}
-      />
     </div>
   );
 

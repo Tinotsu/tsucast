@@ -1,16 +1,18 @@
 "use client";
 
-import { useState, useEffect, useCallback, Suspense } from "react";
+import { useState, useEffect, useCallback, Suspense, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/hooks/useAuth";
 import { useAudioPlayer } from "@/hooks/useAudioPlayer";
-import { getLibrary, deleteLibraryItem, ApiError, type LibraryItem } from "@/lib/api";
+import { getLibrary, deleteLibraryItem, updatePlaybackPosition, ApiError, type LibraryItem } from "@/lib/api";
+import { WebPlayer } from "@/components/app/WebPlayer";
 import { ExploreTab } from "@/components/library/ExploreTab";
 import { PlaylistsTab } from "@/components/library/PlaylistsTab";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import {
+  Headphones,
   Play,
-  Pause,
   Trash2,
   Loader2,
   Library,
@@ -40,7 +42,7 @@ export default function LibraryPage() {
 
 function LibraryPageContent() {
   const { isLoading: authLoading, isAuthenticated } = useAuth();
-  const { play, addToQueue, track: currentTrack, isPlaying } = useAudioPlayer();
+  const { addToQueue } = useAudioPlayer();
   const router = useRouter();
   const searchParams = useSearchParams();
   const highlightId = searchParams.get("highlight");
@@ -52,18 +54,12 @@ function LibraryPageContent() {
   const [items, setItems] = useState<LibraryItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedItem, setSelectedItem] = useState<LibraryItem | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [confirmingDeleteId, setConfirmingDeleteId] = useState<string | null>(null);
   const [queuedItemId, setQueuedItemId] = useState<string | null>(null);
-
-  const handlePlay = useCallback((item: LibraryItem) => {
-    play({
-      id: item.audio_id,
-      url: item.audio_url,
-      title: item.title,
-      duration: item.duration,
-    });
-  }, [play]);
+  const positionSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const lastSavedPositionRef = useRef<number>(0);
 
   const handleAddToQueue = useCallback((item: LibraryItem) => {
     addToQueue({
@@ -128,21 +124,64 @@ function LibraryPageContent() {
     }
   }, [authLoading, isAuthenticated, activeTab, loadLibrary]);
 
-  // Auto-play highlighted item from URL param
+  // Auto-select highlighted item from URL param
   useEffect(() => {
-    if (highlightId && items.length > 0) {
+    if (highlightId && items.length > 0 && !selectedItem) {
       const item = items.find(i => i.audio_id === highlightId);
       if (item) {
-        handlePlay(item);
+        setSelectedItem(item);
       }
     }
-  }, [highlightId, items, handlePlay]);
+  }, [highlightId, items, selectedItem]);
+
+  // Debounced position save - only saves every 5 seconds to avoid excessive API calls
+  const handlePositionChange = useCallback((position: number) => {
+    if (!selectedItem) return;
+
+    // Update local state immediately for responsive UI
+    setItems(prev => prev.map(item =>
+      item.audio_id === selectedItem.audio_id
+        ? { ...item, playback_position: position }
+        : item
+    ));
+
+    // Debounce API call - only save if position changed significantly (>5 seconds)
+    const shouldSave = Math.abs(position - lastSavedPositionRef.current) >= 5;
+    if (!shouldSave) return;
+
+    // Clear any pending save
+    if (positionSaveTimeoutRef.current) {
+      clearTimeout(positionSaveTimeoutRef.current);
+    }
+
+    // Schedule save after 2 second debounce
+    positionSaveTimeoutRef.current = setTimeout(async () => {
+      try {
+        await updatePlaybackPosition(selectedItem.audio_id, position);
+        lastSavedPositionRef.current = position;
+      } catch (err) {
+        console.error("Failed to save position:", err);
+      }
+    }, 2000);
+  }, [selectedItem]);
+
+  // Clean up timeout on unmount and save final position
+  useEffect(() => {
+    return () => {
+      if (positionSaveTimeoutRef.current) {
+        clearTimeout(positionSaveTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const handleDelete = async (audioId: string) => {
     setDeletingId(audioId);
     try {
       await deleteLibraryItem(audioId);
       setItems(prev => prev.filter((item) => item.audio_id !== audioId));
+      if (selectedItem?.audio_id === audioId) {
+        setSelectedItem(null);
+      }
     } catch (err) {
       console.error("Failed to delete:", err);
     } finally {
@@ -273,154 +312,178 @@ function LibraryPageContent() {
               </Link>
             </div>
           ) : (
-            <div className="space-y-3">
-              <p className="mb-4 text-sm text-[var(--muted)]">
-                {items.length} {items.length === 1 ? "item" : "items"}
-              </p>
-              {items.map((item) => {
-                const progress = getProgress(item);
-                const isCurrentlyPlaying = currentTrack?.id === item.audio_id;
+            <div className="grid gap-8 lg:grid-cols-2">
+              {/* Library List */}
+              <div className="space-y-3">
+                <p className="mb-4 text-sm text-[var(--muted)]">
+                  {items.length} {items.length === 1 ? "item" : "items"}
+                </p>
+                {items.map((item) => {
+                  const progress = getProgress(item);
+                  const isSelected = selectedItem?.audio_id === item.audio_id;
 
-                return (
-                  <div
-                    key={item.id}
-                    className={cn(
-                      "group relative rounded-xl p-4 transition-all",
-                      isCurrentlyPlaying
-                        ? "bg-[var(--foreground)] text-[var(--background)]"
-                        : "bg-[var(--card)] hover:bg-[var(--foreground)] hover:text-[var(--background)]"
-                    )}
-                  >
-                    <div className="flex gap-4">
-                      {/* Play Button */}
-                      <button
-                        onClick={() => handlePlay(item)}
-                        className={cn(
-                          "flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl transition-colors",
-                          isCurrentlyPlaying
-                            ? "bg-[var(--background)] text-[var(--foreground)]"
-                            : "bg-[var(--foreground)] text-[var(--background)] group-hover:bg-[var(--background)] group-hover:text-[var(--foreground)]"
-                        )}
-                      >
-                        {isCurrentlyPlaying && isPlaying ? (
-                          <Pause className="h-5 w-5" />
-                        ) : (
-                          <Play className="ml-0.5 h-5 w-5" />
-                        )}
-                      </button>
-
-                      {/* Content */}
-                      <div className="min-w-0 flex-1">
-                        <h3 className={cn(
-                          "line-clamp-2 font-bold",
-                          isCurrentlyPlaying ? "text-[var(--background)]" : "text-[var(--foreground)] group-hover:text-[var(--background)]"
-                        )}>
-                          {item.title}
-                        </h3>
-                        <div className={cn(
-                          "mt-1 flex items-center gap-3 text-xs font-normal",
-                          isCurrentlyPlaying ? "opacity-70" : "text-[var(--muted)] group-hover:opacity-70 group-hover:text-[var(--background)]"
-                        )}>
-                          <span className="flex items-center gap-1">
-                            <Clock className="h-3 w-3" />
-                            {formatDuration(item.duration)}
-                          </span>
-                          <span>{formatDate(item.created_at)}</span>
-                          {item.is_played && (
-                            <span className="flex items-center gap-1 text-[var(--success)]">
-                              <Check className="h-3 w-3" />
-                              Played
-                            </span>
-                          )}
-                        </div>
-
-                        {/* Progress Bar */}
-                        {progress > 0 && progress < 100 && (
-                          <div className={cn(
-                            "mt-2 h-1 overflow-hidden rounded-full",
-                            isCurrentlyPlaying ? "bg-[var(--background)]/20" : "bg-[var(--border)] group-hover:bg-[var(--background)]/20"
-                          )}>
-                            <div
-                              className={cn(
-                                "h-full rounded-full",
-                                isCurrentlyPlaying ? "bg-[var(--background)]" : "bg-[var(--foreground)] group-hover:bg-[var(--background)]"
-                              )}
-                              style={{ width: `${progress}%` }}
-                            />
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Action Buttons */}
-                      <div className="flex flex-shrink-0 items-center gap-1">
-                        {/* Add to Queue Button */}
+                  return (
+                    <div
+                      key={item.id}
+                      className={cn(
+                        "group relative rounded-xl p-4 transition-all",
+                        isSelected
+                          ? "bg-[var(--foreground)] text-[var(--background)]"
+                          : "bg-[var(--card)] hover:bg-[var(--foreground)] hover:text-[var(--background)]"
+                      )}
+                    >
+                      <div className="flex gap-4">
+                        {/* Play Button */}
                         <button
-                          onClick={() => handleAddToQueue(item)}
-                          aria-label={queuedItemId === item.audio_id ? "Added to queue" : `Add ${item.title} to queue`}
+                          onClick={() => setSelectedItem(item)}
                           className={cn(
-                            "rounded-lg p-2 transition-all",
-                            isCurrentlyPlaying ? "text-[var(--background)]" : "text-[var(--foreground)] group-hover:text-[var(--background)]",
-                            queuedItemId === item.audio_id
-                              ? "opacity-100 text-[var(--success)]"
-                              : "opacity-0 group-hover:opacity-100 hover:bg-[var(--secondary)]"
+                            "flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl transition-colors",
+                            isSelected
+                              ? "bg-[var(--background)] text-[var(--foreground)]"
+                              : "bg-[var(--foreground)] text-[var(--background)] group-hover:bg-[var(--background)] group-hover:text-[var(--foreground)]"
                           )}
                         >
-                          {queuedItemId === item.audio_id ? (
-                            <Check className="h-4 w-4" aria-hidden="true" />
+                          {isSelected ? (
+                            <Headphones className="h-5 w-5" />
                           ) : (
-                            <ListPlus className="h-4 w-4" aria-hidden="true" />
+                            <Play className="ml-0.5 h-5 w-5" />
                           )}
                         </button>
 
-                        {/* Delete Button with Confirmation */}
-                        {confirmingDeleteId === item.audio_id ? (
-                          <div className="flex items-center gap-1" role="group" aria-label="Confirm deletion">
-                            <button
-                              onClick={() => {
-                                handleDelete(item.audio_id);
-                                setConfirmingDeleteId(null);
-                              }}
-                              disabled={deletingId === item.audio_id}
-                              aria-label="Confirm delete"
-                              className="rounded-lg bg-[var(--destructive)] px-2 py-1 text-xs font-bold text-white hover:opacity-90"
-                            >
-                              {deletingId === item.audio_id ? (
-                                <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
-                              ) : (
-                                "Delete"
-                              )}
-                            </button>
-                            <button
-                              onClick={() => setConfirmingDeleteId(null)}
-                              aria-label="Cancel delete"
-                              className="rounded-lg bg-[var(--foreground)] px-2 py-1 text-xs font-bold text-[var(--background)] hover:opacity-80"
-                            >
-                              Cancel
-                            </button>
+                        {/* Content */}
+                        <div className="min-w-0 flex-1">
+                          <h3 className={cn(
+                            "line-clamp-2 font-bold",
+                            isSelected ? "text-[var(--background)]" : "text-[var(--foreground)] group-hover:text-[var(--background)]"
+                          )}>
+                            {item.title}
+                          </h3>
+                          <div className={cn(
+                            "mt-1 flex items-center gap-3 text-xs font-normal",
+                            isSelected ? "opacity-70" : "text-[var(--muted)] group-hover:opacity-70 group-hover:text-[var(--background)]"
+                          )}>
+                            <span className="flex items-center gap-1">
+                              <Clock className="h-3 w-3" />
+                              {formatDuration(item.duration)}
+                            </span>
+                            <span>{formatDate(item.created_at)}</span>
+                            {item.is_played && (
+                              <span className="flex items-center gap-1 text-[var(--success)]">
+                                <Check className="h-3 w-3" />
+                                Played
+                              </span>
+                            )}
                           </div>
-                        ) : (
+
+                          {/* Progress Bar */}
+                          {progress > 0 && progress < 100 && (
+                            <div className={cn(
+                              "mt-2 h-1 overflow-hidden rounded-full",
+                              isSelected ? "bg-[var(--background)]/20" : "bg-[var(--border)] group-hover:bg-[var(--background)]/20"
+                            )}>
+                              <div
+                                className={cn(
+                                  "h-full rounded-full",
+                                  isSelected ? "bg-[var(--background)]" : "bg-[var(--foreground)] group-hover:bg-[var(--background)]"
+                                )}
+                                style={{ width: `${progress}%` }}
+                              />
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Action Buttons */}
+                        <div className="flex flex-shrink-0 items-center gap-1">
+                          {/* Add to Queue Button */}
                           <button
-                            onClick={() => setConfirmingDeleteId(item.audio_id)}
-                            disabled={deletingId === item.audio_id}
-                            aria-label={`Delete ${item.title}`}
+                            onClick={() => handleAddToQueue(item)}
+                            aria-label={queuedItemId === item.audio_id ? "Added to queue" : `Add ${item.title} to queue`}
                             className={cn(
-                              "rounded-lg p-2 transition-all hover:bg-[var(--destructive)] hover:text-white",
-                              isCurrentlyPlaying ? "text-[var(--background)]" : "text-[var(--foreground)] group-hover:text-[var(--background)]",
-                              deletingId === item.audio_id ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+                              "rounded-lg p-2 transition-all",
+                              isSelected ? "text-[var(--background)]" : "text-[var(--foreground)] group-hover:text-[var(--background)]",
+                              queuedItemId === item.audio_id
+                                ? "opacity-100 text-[var(--success)]"
+                                : "opacity-0 group-hover:opacity-100 hover:bg-[var(--secondary)]"
                             )}
                           >
-                            {deletingId === item.audio_id ? (
-                              <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                            {queuedItemId === item.audio_id ? (
+                              <Check className="h-4 w-4" aria-hidden="true" />
                             ) : (
-                              <Trash2 className="h-4 w-4" aria-hidden="true" />
+                              <ListPlus className="h-4 w-4" aria-hidden="true" />
                             )}
                           </button>
-                        )}
+
+                          {/* Delete Button with Confirmation */}
+                          {confirmingDeleteId === item.audio_id ? (
+                            <div className="flex items-center gap-1" role="group" aria-label="Confirm deletion">
+                              <button
+                                onClick={() => {
+                                  handleDelete(item.audio_id);
+                                  setConfirmingDeleteId(null);
+                                }}
+                                disabled={deletingId === item.audio_id}
+                                aria-label="Confirm delete"
+                                className="rounded-lg bg-[var(--destructive)] px-2 py-1 text-xs font-bold text-white hover:opacity-90"
+                              >
+                                {deletingId === item.audio_id ? (
+                                  <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
+                                ) : (
+                                  "Delete"
+                                )}
+                              </button>
+                              <button
+                                onClick={() => setConfirmingDeleteId(null)}
+                                aria-label="Cancel delete"
+                                className="rounded-lg bg-[var(--foreground)] px-2 py-1 text-xs font-bold text-[var(--background)] hover:opacity-80"
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => setConfirmingDeleteId(item.audio_id)}
+                              disabled={deletingId === item.audio_id}
+                              aria-label={`Delete ${item.title}`}
+                              className={cn(
+                                "rounded-lg p-2 transition-all hover:bg-[var(--destructive)] hover:text-white",
+                                isSelected ? "text-[var(--background)]" : "text-[var(--foreground)] group-hover:text-[var(--background)]",
+                                deletingId === item.audio_id ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+                              )}
+                            >
+                              {deletingId === item.audio_id ? (
+                                <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                              ) : (
+                                <Trash2 className="h-4 w-4" aria-hidden="true" />
+                              )}
+                            </button>
+                          )}
+                        </div>
                       </div>
                     </div>
+                  );
+                })}
+              </div>
+
+              {/* Player */}
+              <div className="sticky top-24">
+                {selectedItem ? (
+                  <ErrorBoundary>
+                    <WebPlayer
+                      audioUrl={selectedItem.audio_url}
+                      title={selectedItem.title}
+                      initialPosition={selectedItem.playback_position}
+                      onPositionChange={handlePositionChange}
+                    />
+                  </ErrorBoundary>
+                ) : (
+                  <div className="flex h-64 items-center justify-center rounded-2xl border border-dashed border-[var(--border)] bg-[var(--card)]">
+                    <div className="text-center text-[var(--muted)]">
+                      <Headphones className="mx-auto mb-2 h-8 w-8" />
+                      <p className="font-normal">Select an item to play</p>
+                    </div>
                   </div>
-                );
-              })}
+                )}
+              </div>
             </div>
           )}
         </>

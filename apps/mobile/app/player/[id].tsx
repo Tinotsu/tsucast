@@ -19,17 +19,12 @@ import { usePlaybackSpeed } from '@/hooks/usePlaybackSpeed';
 import { useSleepTimer } from '@/hooks/useSleepTimer';
 import { usePositionSaving } from '@/hooks/usePositionSaving';
 import { useQueue } from '@/hooks/useQueue';
-import { usePlaylists } from '@/hooks/usePlaylists';
 import { PlayButton, SkipButton, ProgressBar, SpeedControl, SleepTimer, QueueButton, QueueSheet } from '@/components/player';
-import { AddToPlaylistMenu } from '@/components/library/AddToPlaylistMenu';
-import { CreatePlaylistModal } from '@/components/library/CreatePlaylistModal';
 
 export default function PlayerScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const [showQueue, setShowQueue] = useState(false);
-  const [showAddToPlaylistMenu, setShowAddToPlaylistMenu] = useState(false);
-  const [showCreateModal, setShowCreateModal] = useState(false);
 
   const {
     currentTrack,
@@ -56,17 +51,8 @@ export default function PlayerScreen() {
 
   const { queueLength } = useQueue();
 
-  const { createPlaylist, isCreating } = usePlaylists();
-
   // Position saving - saves automatically during playback
   const { saveOnPause } = usePositionSaving();
-
-  const handleCreatePlaylist = async (name: string) => {
-    await createPlaylist(name);
-    setShowCreateModal(false);
-    // Re-open add menu so user can add to the new playlist
-    setShowAddToPlaylistMenu(true);
-  };
 
   // Enhanced pause handler that saves position
   const handlePause = async () => {
@@ -108,17 +94,12 @@ export default function PlayerScreen() {
         </Text>
 
         <TouchableOpacity
-          onPress={() => currentTrack && setShowAddToPlaylistMenu(true)}
+          onPress={() => {}}
           className="p-2 -mr-2"
-          accessibilityLabel="Add to playlist"
+          accessibilityLabel="More options"
           accessibilityRole="button"
-          disabled={!currentTrack}
         >
-          <Ionicons
-            name="add-circle-outline"
-            size={24}
-            color={currentTrack ? "#92400E" : "#D4A574"}
-          />
+          <Ionicons name="ellipsis-horizontal" size={24} color="#92400E" />
         </TouchableOpacity>
       </View>
 
@@ -219,28 +200,6 @@ export default function PlayerScreen() {
       <QueueSheet
         visible={showQueue}
         onClose={() => setShowQueue(false)}
-      />
-
-      {/* Add to Playlist Menu */}
-      <AddToPlaylistMenu
-        audioId={currentTrack?.id || ''}
-        audioUrl={currentTrack?.audioUrl}
-        audioTitle={currentTrack?.title}
-        audioDuration={currentTrack?.duration}
-        visible={showAddToPlaylistMenu}
-        onClose={() => setShowAddToPlaylistMenu(false)}
-        onCreateNew={() => {
-          setShowAddToPlaylistMenu(false);
-          setShowCreateModal(true);
-        }}
-      />
-
-      {/* Create Playlist Modal */}
-      <CreatePlaylistModal
-        visible={showCreateModal}
-        onClose={() => setShowCreateModal(false)}
-        onCreate={handleCreatePlaylist}
-        isCreating={isCreating}
       />
     </SafeAreaView>
   );
