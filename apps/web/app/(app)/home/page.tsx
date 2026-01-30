@@ -21,7 +21,7 @@ interface GenerationResult {
 }
 
 export default function HomePage() {
-  const { isAuthenticated, isLoading: authLoading } = useAuth();
+  useAuth(); // Ensures user is authenticated (redirects if not)
   const { credits, invalidateCredits } = useCredits();
   const { play } = useAudioPlayer();
   const router = useRouter();
@@ -51,21 +51,26 @@ export default function HomePage() {
       return;
     }
 
+    let cancelled = false;
+
     const loadPreview = async () => {
       setIsLoadingPreview(true);
       try {
         const p = await previewCreditCost(url, selectedVoiceId);
-        setPreview(p);
+        if (!cancelled) setPreview(p);
       } catch (err) {
         console.error("Failed to load preview:", err);
-        setPreview(null);
+        if (!cancelled) setPreview(null);
       } finally {
-        setIsLoadingPreview(false);
+        if (!cancelled) setIsLoadingPreview(false);
       }
     };
 
     const timer = setTimeout(loadPreview, 500);
-    return () => clearTimeout(timer);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
   }, [url, selectedVoiceId]);
 
   const handleCacheHit = useCallback((audioId: string, audioUrl: string, title?: string) => {
@@ -114,23 +119,39 @@ export default function HomePage() {
 
   const canGenerate = url && isValidUrl(url) && !isGenerating && canAfford;
 
-  const handlePlayCached = () => {
+  const handlePlayCached = async () => {
     if (!cachedResult) return;
+    const title = cachedResult.title || "Cached Audio";
     setResult({
       audioId: cachedResult.audioId,
       audioUrl: cachedResult.audioUrl,
-      title: cachedResult.title || "Cached Audio",
+      title,
       duration: 0,
     });
+    // Play immediately in the bar player
+    try {
+      await play({
+        id: cachedResult.audioId,
+        url: cachedResult.audioUrl,
+        title,
+      });
+    } catch (err) {
+      console.error("Failed to play cached audio:", err);
+    }
   };
 
   const handlePlayResult = async () => {
     if (!result) return;
-    await play({
-      id: result.audioId,
-      url: result.audioUrl,
-      title: result.title,
-    });
+    try {
+      await play({
+        id: result.audioId,
+        url: result.audioUrl,
+        title: result.title,
+      });
+    } catch (err) {
+      console.error("Failed to play audio:", err);
+      setError("Failed to play audio. Please try again.");
+    }
   };
 
   const getButtonText = () => {
@@ -197,6 +218,7 @@ export default function HomePage() {
               <div className="flex flex-col gap-3 sm:flex-row sm:justify-center">
                 <button
                   onClick={handlePlayResult}
+                  aria-label={`Play ${result.title}`}
                   className="flex items-center justify-center gap-2 rounded-lg bg-[var(--foreground)] px-6 py-2 font-bold text-[var(--background)] hover:opacity-80"
                 >
                   <Play className="h-4 w-4" />
