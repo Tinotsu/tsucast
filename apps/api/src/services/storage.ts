@@ -97,6 +97,56 @@ export async function uploadAudio(
 }
 
 /**
+ * Upload transcript JSON to R2 storage
+ * Story: Transcript & Chapters Support
+ */
+export async function uploadTranscript(
+  jsonContent: string,
+  options: {
+    urlHash: string;
+  }
+): Promise<UploadResult> {
+  const { urlHash } = options;
+
+  const bucket = process.env.R2_BUCKET;
+  const publicUrl = process.env.R2_PUBLIC_URL;
+
+  if (!bucket || !publicUrl) {
+    throw new Error('R2 bucket configuration missing');
+  }
+
+  const key = `transcripts/${urlHash}.json`;
+
+  try {
+    const client = getR2Client();
+
+    await client.send(
+      new PutObjectCommand({
+        Bucket: bucket,
+        Key: key,
+        Body: jsonContent,
+        ContentType: 'application/json',
+        CacheControl: 'public, max-age=31536000', // Cache for 1 year (matches audio)
+      })
+    );
+
+    const url = `${publicUrl}/${key}`;
+    const size = Buffer.byteLength(jsonContent, 'utf8');
+
+    logger.info({ key, size, url }, 'Transcript uploaded to R2');
+
+    return {
+      key,
+      url,
+      size,
+    };
+  } catch (error) {
+    logger.error({ error, key }, 'R2 transcript upload failed');
+    throw error;
+  }
+}
+
+/**
  * Check if R2 is configured
  */
 export function isStorageConfigured(): boolean {

@@ -18,7 +18,17 @@ logger.info("Loading Kokoro pipeline...")
 pipeline = KPipeline(lang_code="a")  # 'a' = American English
 logger.info("Kokoro pipeline loaded.")
 
-VALID_VOICES = {"am_adam", "af_sarah", "am_michael", "af_bella"}
+# Valid Kokoro voice IDs — matches TypeScript VALID_KOKORO_VOICES in tts.ts
+VALID_VOICES = {
+    # Mobile friendly IDs (backward compatibility)
+    "alex", "sarah", "james", "emma",
+    # Female voices (af_)
+    "af_alloy", "af_aoede", "af_bella", "af_heart", "af_jessica",
+    "af_kore", "af_nicole", "af_nova", "af_river", "af_sarah", "af_sky",
+    # Male voices (am_)
+    "am_adam", "am_echo", "am_eric", "am_fenrir",
+    "am_liam", "am_michael", "am_onyx", "am_puck",
+}
 SAMPLE_RATE = 24000
 
 
@@ -53,10 +63,36 @@ def handler(job: dict) -> dict:
     logger.info("Generating TTS: voice=%s, bitrate=%d, text_len=%d", voice_id, mp3_bitrate, len(text))
 
     # Generate audio chunks from Kokoro pipeline
+    # Also extract word-level timestamps from result.tokens
     audio_chunks = []
+    all_tokens = []
+    cumulative_time = 0.0
+
     for result in pipeline(text, voice=voice_id):
         if result.audio is not None:
             audio_chunks.append(result.audio.numpy() if hasattr(result.audio, "numpy") else np.array(result.audio))
+
+        # Extract tokens with timestamps if available
+        if hasattr(result, "tokens") and result.tokens:
+            for token in result.tokens:
+                # Token structure may vary - handle common attribute names
+                token_text = getattr(token, "text", None) or getattr(token, "word", None) or str(token)
+                start_ts = getattr(token, "start_ts", None) or getattr(token, "start", None) or 0.0
+                end_ts = getattr(token, "end_ts", None) or getattr(token, "end", None) or 0.0
+
+                # Skip empty tokens
+                if not token_text or not token_text.strip():
+                    continue
+
+                all_tokens.append({
+                    "text": token_text.strip(),
+                    "start_ts": round(cumulative_time + float(start_ts), 3),
+                    "end_ts": round(cumulative_time + float(end_ts), 3),
+                })
+
+            # Update cumulative time offset for next chunk
+            if all_tokens:
+                cumulative_time = all_tokens[-1]["end_ts"]
 
     if not audio_chunks:
         return {"error": "No audio generated"}
@@ -77,9 +113,15 @@ def handler(job: dict) -> dict:
 
     audio_base64 = base64.b64encode(mp3_buffer.read()).decode("utf-8")
 
-    logger.info("Generated MP3: %d bytes", len(audio_base64) * 3 // 4)
+    logger.info("Generated MP3: %d bytes, tokens: %d", len(audio_base64) * 3 // 4, len(all_tokens))
 
-    return {"audio_base64": audio_base64}
+    response = {"audio_base64": audio_base64}
+
+    # Include tokens if we extracted any (enables transcript feature)
+    if all_tokens:
+        response["tokens"] = all_tokens
+
+    return response
 
 
 runpod.serverless.start({"handler": handler})

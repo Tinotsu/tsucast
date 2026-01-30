@@ -16,12 +16,14 @@ export interface CacheEntry {
   voice_id: string;
   title: string | null;
   audio_url: string | null;
+  transcript_url: string | null;
   duration_seconds: number | null;
   word_count: number | null;
   file_size_bytes: number | null;
   status: 'pending' | 'processing' | 'ready' | 'failed';
   error_message: string | null;
   created_by: string | null;
+  cover: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -103,6 +105,8 @@ export async function updateCacheReady(params: {
   durationSeconds: number;
   wordCount: number;
   fileSizeBytes: number;
+  cover?: string | null;
+  transcriptUrl?: string | null;
 }): Promise<void> {
   const client = getSupabase();
   if (!client) {
@@ -115,9 +119,11 @@ export async function updateCacheReady(params: {
       status: 'ready',
       title: params.title,
       audio_url: params.audioUrl,
+      transcript_url: params.transcriptUrl ?? null,
       duration_seconds: params.durationSeconds,
       word_count: params.wordCount,
       file_size_bytes: params.fileSizeBytes,
+      cover: params.cover ?? null,
     })
     .eq('url_hash', params.urlHash);
 

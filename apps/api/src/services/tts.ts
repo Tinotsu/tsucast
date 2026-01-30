@@ -35,15 +35,25 @@ export interface TtsOptions {
   signal?: AbortSignal;
 }
 
+export interface TtsToken {
+  text: string;
+  start_ts: number;
+  end_ts: number;
+}
+
 export interface TtsResult {
   audioBuffer: Buffer;
   durationSeconds: number;
+  tokens?: TtsToken[];
 }
 
 interface RunPodResponse {
   id: string;
   status: 'COMPLETED' | 'FAILED' | 'IN_PROGRESS' | 'IN_QUEUE';
-  output?: { audio_base64: string };
+  output?: {
+    audio_base64: string;
+    tokens?: Array<{ text: string; start_ts: number; end_ts: number }>;
+  };
   error?: string;
   executionTime?: number;
 }
@@ -158,12 +168,21 @@ async function generateSpeechRunPod(options: TtsOptions): Promise<TtsResult> {
     // Floor to avoid overcharging — MP3 headers inflate size slightly
     const durationSeconds = Math.floor(audioBuffer.length / 8000);
 
+    // Extract tokens if available (for transcript feature)
+    const tokens = result.output.tokens;
+
     logger.info(
-      { durationSeconds, fileSizeBytes: audioBuffer.length, executionTime: result.executionTime, jobId: result.id },
+      {
+        durationSeconds,
+        fileSizeBytes: audioBuffer.length,
+        executionTime: result.executionTime,
+        jobId: result.id,
+        tokenCount: tokens?.length ?? 0,
+      },
       'TTS generation complete (RunPod)'
     );
 
-    return { audioBuffer, durationSeconds };
+    return { audioBuffer, durationSeconds, tokens };
   } catch (error) {
     clearTimeout(timeoutId);
 

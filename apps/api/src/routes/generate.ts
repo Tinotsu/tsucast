@@ -11,10 +11,11 @@ import { logger } from '../lib/logger.js';
 import { normalizeUrl, hashUrlWithVoice } from '../utils/url.js';
 import { ipRateLimit } from '../middleware/ip-rate-limit.js';
 import { fetchUrl, isPdfUrl, fetchPdf } from '../services/fetcher.js';
-import { parseHtmlContent } from '../services/parser.js';
+import { parseHtmlContent, Chapter } from '../services/parser.js';
 import { parsePdfContent, isImageOnlyPdf } from '../services/pdfParser.js';
 import { generateSpeech } from '../services/tts.js';
-import { uploadAudio, isStorageConfigured } from '../services/storage.js';
+import { uploadAudio, uploadTranscript, isStorageConfigured } from '../services/storage.js';
+import type { TtsToken } from '../services/tts.js';
 import {
   getCacheEntry,
   claimCacheEntry,
@@ -42,6 +43,89 @@ const generateSchema = z.object({
   url: z.string().url(),
   voiceId: z.string(),
 });
+
+// Transcript JSON schema (v1)
+interface TranscriptWord {
+  text: string;
+  start_ts: number;
+  end_ts: number;
+}
+
+interface TranscriptChapter {
+  title: string;
+  start_ts: number;
+  word_index: number;
+}
+
+interface TranscriptJson {
+  version: number;
+  title: string;
+  words: TranscriptWord[];
+  chapters: TranscriptChapter[];
+}
+
+/**
+ * Build transcript JSON from TTS tokens and chapter markers
+ * Maps chapter charIndex to word timestamps using cumulative character counting
+ */
+function buildTranscript(
+  title: string,
+  tokens: TtsToken[],
+  chapters: Chapter[],
+  textContent: string
+): TranscriptJson {
+  // Build words array from tokens
+  const words: TranscriptWord[] = tokens.map((token) => ({
+    text: token.text,
+    start_ts: token.start_ts,
+    end_ts: token.end_ts,
+  }));
+
+  // Map chapters from charIndex to word_index and start_ts
+  // Algorithm: accumulate character positions to find which word corresponds to each chapter
+  const transcriptChapters: TranscriptChapter[] = [];
+
+  if (chapters.length > 0 && words.length > 0) {
+    // Build cumulative character count for each word
+    // Each word is followed by a space (except the last)
+    let cumChars = 0;
+    const wordCharPositions: number[] = [];
+
+    for (let i = 0; i < words.length; i++) {
+      wordCharPositions.push(cumChars);
+      cumChars += words[i].text.length + 1; // +1 for space
+    }
+
+    // For each chapter, find the word whose cumulative position is closest
+    for (const chapter of chapters) {
+      // Find first word where cumChars >= chapter.charIndex
+      let wordIndex = 0;
+      for (let i = 0; i < wordCharPositions.length; i++) {
+        if (wordCharPositions[i] >= chapter.charIndex) {
+          wordIndex = i;
+          break;
+        }
+        // If we reach the end, use the last word
+        if (i === wordCharPositions.length - 1) {
+          wordIndex = i;
+        }
+      }
+
+      transcriptChapters.push({
+        title: chapter.title,
+        start_ts: words[wordIndex].start_ts,
+        word_index: wordIndex,
+      });
+    }
+  }
+
+  return {
+    version: 1,
+    title,
+    words,
+    chapters: transcriptChapters,
+  };
+}
 
 
 // Check if audio exists in cache (legacy endpoint - use /api/cache/check instead)
@@ -88,6 +172,7 @@ app.get('/status/:id', ipRateLimit(60, 60 * 1000), async (c) => {
       title: entry.title,
       duration: entry.duration_seconds,
       wordCount: entry.word_count,
+      transcriptUrl: entry.transcript_url,
     });
   }
 
@@ -316,6 +401,8 @@ app.post('/', async (c) => {
     let title: string;
     let textContent: string;
     let wordCount: number;
+    let cover: string | undefined;
+    let chapters: Chapter[] = [];
 
     try {
       if (isPdf) {
@@ -331,6 +418,7 @@ app.post('/', async (c) => {
         title = pdfResult.title;
         textContent = pdfResult.textContent;
         wordCount = pdfResult.wordCount;
+        // PDFs don't have og:image or chapters - these stay empty
       } else {
         logger.info({ url }, 'Extracting HTML content');
         const html = await fetchUrl(url);
@@ -339,6 +427,8 @@ app.post('/', async (c) => {
         title = htmlResult.title;
         textContent = htmlResult.textContent;
         wordCount = htmlResult.wordCount;
+        cover = htmlResult.image; // og:image extracted by parser
+        chapters = htmlResult.chapters; // chapters extracted from headings
       }
     } catch (error) {
       const errorCode = error instanceof Error ? error.message : 'FETCH_FAILED';
@@ -443,6 +533,29 @@ app.post('/', async (c) => {
       return c.json({ error: createApiError(ErrorCodes.TTS_FAILED) }, 500);
     }
 
+    // Build and upload transcript if tokens are available
+    let transcriptUrl: string | null = null;
+    if (ttsResult.tokens && ttsResult.tokens.length > 0) {
+      try {
+        const transcript = buildTranscript(
+          title,
+          ttsResult.tokens,
+          chapters,
+          textContent
+        );
+        const transcriptJson = JSON.stringify(transcript);
+        const transcriptResult = await uploadTranscript(transcriptJson, { urlHash });
+        transcriptUrl = transcriptResult.url;
+        logger.info({ urlHash, wordCount: transcript.words.length, chapterCount: transcript.chapters.length }, 'Transcript uploaded');
+      } catch (error) {
+        // Transcript upload failure is non-fatal - log and continue
+        logger.error({ error, urlHash }, 'Transcript upload failed - continuing without transcript');
+        // transcriptUrl remains null
+      }
+    } else {
+      logger.info({ urlHash }, 'No tokens available - skipping transcript generation');
+    }
+
     // Update cache with success
     let cacheEntryId: string | null = null;
     if (isCacheConfigured()) {
@@ -453,6 +566,8 @@ app.post('/', async (c) => {
         durationSeconds: ttsResult.durationSeconds,
         wordCount,
         fileSizeBytes: uploadResult.size,
+        cover: cover || null,
+        transcriptUrl,
       });
 
       // Get the cache entry ID to add to user's library
@@ -537,6 +652,7 @@ app.post('/', async (c) => {
     return c.json({
       status: 'ready',
       audioUrl: uploadResult.url,
+      transcriptUrl,
       title,
       duration: ttsResult.durationSeconds,
       wordCount,

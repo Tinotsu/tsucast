@@ -285,9 +285,11 @@ describe('Cache Service', () => {
         status: 'ready',
         title: 'Test Article',
         audio_url: 'https://r2.example.com/audio.mp3',
+        transcript_url: null,
         duration_seconds: 300,
         word_count: 1500,
         file_size_bytes: 5000000,
+        cover: null,
       });
     });
   });
