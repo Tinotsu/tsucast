@@ -28,7 +28,7 @@ export const VOICES: Voice[] = [
     description: 'Clear, professional narrator',
     gender: 'male',
     style: 'Narration',
-    previewUrl: 'https://audio.tsucast.app/voices/alex.mp3',
+    previewUrl: 'https://pub-ae747fb86c1a43208efa2aa425b2b9e5.r2.dev/voices/am_adam.mp3',
     kokoroVoiceId: 'am_adam',
   },
   {
@@ -37,7 +37,7 @@ export const VOICES: Voice[] = [
     description: 'Warm, engaging storyteller',
     gender: 'female',
     style: 'Storytelling',
-    previewUrl: 'https://audio.tsucast.app/voices/sarah.mp3',
+    previewUrl: 'https://pub-ae747fb86c1a43208efa2aa425b2b9e5.r2.dev/voices/af_sarah.mp3',
     kokoroVoiceId: 'af_sarah',
   },
   {
@@ -46,7 +46,7 @@ export const VOICES: Voice[] = [
     description: 'Deep, authoritative voice',
     gender: 'male',
     style: 'Documentary',
-    previewUrl: 'https://audio.tsucast.app/voices/james.mp3',
+    previewUrl: 'https://pub-ae747fb86c1a43208efa2aa425b2b9e5.r2.dev/voices/am_michael.mp3',
     kokoroVoiceId: 'am_michael',
   },
   {
@@ -55,7 +55,7 @@ export const VOICES: Voice[] = [
     description: 'Friendly, conversational tone',
     gender: 'female',
     style: 'Conversational',
-    previewUrl: 'https://audio.tsucast.app/voices/emma.mp3',
+    previewUrl: 'https://pub-ae747fb86c1a43208efa2aa425b2b9e5.r2.dev/voices/af_bella.mp3',
     kokoroVoiceId: 'af_bella',
   },
 ];

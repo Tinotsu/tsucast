@@ -30,16 +30,16 @@ describe('Voices API Endpoints', () => {
       expect(res.status).toBe(200);
 
       const body = await res.json();
-      expect(body.samples).toBeDefined();
-      expect(Array.isArray(body.samples)).toBe(true);
-      expect(body.samples.length).toBeGreaterThan(0);
+      expect(body.voices).toBeDefined();
+      expect(Array.isArray(body.voices)).toBe(true);
+      expect(body.voices.length).toBeGreaterThan(0);
     });
 
     it('should include Adam, Sarah, and Michael voices', async () => {
       const res = await app.request('/api/voices/samples');
       const body = await res.json();
 
-      const voiceIds = body.samples.map((s: { voiceId: string }) => s.voiceId);
+      const voiceIds = body.voices.map((s: { voiceId: string }) => s.voiceId);
       expect(voiceIds).toContain('am_adam');
       expect(voiceIds).toContain('af_sarah');
       expect(voiceIds).toContain('am_michael');
@@ -49,7 +49,7 @@ describe('Voices API Endpoints', () => {
       const res = await app.request('/api/voices/samples');
       const body = await res.json();
 
-      for (const sample of body.samples) {
+      for (const sample of body.voices) {
         expect(sample).toHaveProperty('voiceId');
         expect(sample).toHaveProperty('name');
         expect(sample).toHaveProperty('description');
@@ -65,7 +65,7 @@ describe('Voices API Endpoints', () => {
       const res = await app.request('/api/voices/samples');
       const body = await res.json();
 
-      for (const sample of body.samples) {
+      for (const sample of body.voices) {
         expect(sample.audioUrl).toMatch(/^https:\/\//);
         expect(sample.audioUrl).toMatch(/\.mp3$/);
       }

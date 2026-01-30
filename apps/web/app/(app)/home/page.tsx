@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { useCredits } from "@/hooks/useCredits";
+import { useVoicePreference } from "@/hooks/useVoicePreference";
 import { generateAudio, previewCreditCost, ApiError, type CreditPreview } from "@/lib/api";
 import { UrlInput } from "@/components/app/UrlInput";
 import { VoiceSelector } from "@/components/app/VoiceSelector";
@@ -24,9 +25,11 @@ export default function HomePage() {
   const { credits, invalidateCredits } = useCredits();
   const router = useRouter();
 
+  // Voice preference (persisted to localStorage)
+  const { selectedVoiceId, setSelectedVoiceId, isLoaded: voiceLoaded } = useVoicePreference();
+
   // Generation state
   const [url, setUrl] = useState("");
-  const [voiceId, setVoiceId] = useState("default");
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<GenerationResult | null>(null);
@@ -50,7 +53,7 @@ export default function HomePage() {
     const loadPreview = async () => {
       setIsLoadingPreview(true);
       try {
-        const p = await previewCreditCost(url, voiceId);
+        const p = await previewCreditCost(url, selectedVoiceId);
         setPreview(p);
       } catch (err) {
         console.error("Failed to load preview:", err);
@@ -62,7 +65,7 @@ export default function HomePage() {
 
     const timer = setTimeout(loadPreview, 500);
     return () => clearTimeout(timer);
-  }, [url, voiceId]);
+  }, [url, selectedVoiceId]);
 
   const handleCacheHit = useCallback((audioId: string, audioUrl: string, title?: string) => {
     setCachedResult({ audioId, audioUrl, title });
@@ -82,7 +85,7 @@ export default function HomePage() {
     setCachedResult(null);
 
     try {
-      const response = await generateAudio({ url, voiceId });
+      const response = await generateAudio({ url, voiceId: selectedVoiceId });
       setResult({
         audioId: response.audioId,
         audioUrl: response.audioUrl,
@@ -202,9 +205,10 @@ export default function HomePage() {
             />
 
             <VoiceSelector
-              value={voiceId}
-              onChange={setVoiceId}
+              value={selectedVoiceId}
+              onChange={setSelectedVoiceId}
               disabled={isGenerating}
+              isLoaded={voiceLoaded}
             />
 
             {/* Credit Preview */}

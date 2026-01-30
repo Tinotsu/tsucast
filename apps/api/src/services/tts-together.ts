@@ -12,13 +12,38 @@ const TOGETHER_API_URL = 'https://api.together.xyz/v1/audio/speech';
 const TTS_TIMEOUT_MS = 60000; // 60s per chunk (plenty of margin)
 
 // Map our voice IDs to Together.ai Kokoro voices
+// Includes all 19 American English voices + mobile friendly ID aliases
 const VOICE_MAP: Record<string, string> = {
   default: 'af_alloy',
-  am_adam: 'am_adam',
-  af_sarah: 'af_sarah',
-  am_michael: 'am_michael',
+
+  // === Mobile friendly ID aliases (backward compatibility) ===
+  alex: 'am_adam',
+  sarah: 'af_sarah',
+  james: 'am_michael',
+  emma: 'af_bella',
+
+  // === Female voices (af_) ===
+  af_alloy: 'af_alloy',
+  af_aoede: 'af_aoede',
   af_bella: 'af_bella',
-  // Together.ai has 50+ Kokoro voices - add more as needed
+  af_heart: 'af_heart',
+  af_jessica: 'af_jessica',
+  af_kore: 'af_kore',
+  af_nicole: 'af_nicole',
+  af_nova: 'af_nova',
+  af_river: 'af_river',
+  af_sarah: 'af_sarah',
+  af_sky: 'af_sky',
+
+  // === Male voices (am_) ===
+  am_adam: 'am_adam',
+  am_echo: 'am_echo',
+  am_eric: 'am_eric',
+  am_fenrir: 'am_fenrir',
+  am_liam: 'am_liam',
+  am_michael: 'am_michael',
+  am_onyx: 'am_onyx',
+  am_puck: 'am_puck',
 };
 
 export interface TogetherTtsOptions {
